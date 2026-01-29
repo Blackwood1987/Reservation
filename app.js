@@ -206,12 +206,15 @@ async function registerWithCredentials(){
 async function applySession(user){
   appState.currentUser = user;
   document.body.className=`role-${appState.currentUser.role}`;
-    const badge=document.getElementById("user-badge");
-  badge.className=`user-badge role-${appState.currentUser.role}`;
-  badge.textContent=appState.currentUser.role.toUpperCase();
-  document.getElementById("user-name").textContent=appState.currentUser.name;
+  const badge=document.getElementById("user-badge");
+  if(badge){
+    badge.className=`user-badge role-${appState.currentUser.role}`;
+    badge.textContent=appState.currentUser.role.toUpperCase();
+  }
+  const nameEl=document.getElementById("user-name");
+  if(nameEl) nameEl.textContent=appState.currentUser.name;
   const adminTab=document.getElementById("tab-admin");
-  adminTab.hidden=!(appState.currentUser.role==="admin"||appState.currentUser.role==="supervisor");
+  if(adminTab) adminTab.hidden=!(appState.currentUser.role==="admin"||appState.currentUser.role==="supervisor");
   if(appState.currentUser.role==="supervisor") switchAdminView("audit"); else switchAdminView("users");
   ensureBookingBuckets();
   subscribeBookings();
@@ -238,7 +241,8 @@ function initAuthListener(){
       window.location.href = "index.html";
       return;
     }
-    applySession({uid:user.uid, id:data.id||user.email, name:data.name||user.email, role:data.role||"worker"});
+    const role = String(data.role||"worker").trim().toLowerCase();
+    applySession({uid:user.uid, id:data.id||user.email, name:data.name||user.email, role});
   });
 }
 async function logout(){
@@ -861,6 +865,8 @@ function boot(){
   }
 
 boot();
+
+
 
 
 
