@@ -509,6 +509,66 @@ function renderSchedule(){
     tbody.appendChild(tr);
   }
 }
+
+function handleDragStart(e,machineId,docId){
+  e.dataTransfer.setData("text", JSON.stringify({machineId,docId}));
+  e.target.classList.add("dragging");
+  document.body.classList.add("is-dragging");
+}
+
+function handleDragEnd(e){
+  if(e?.target) e.target.classList.remove("dragging");
+  document.body.classList.remove("is-dragging");
+  document.querySelectorAll(".drag-hover").forEach(el=>el.classList.remove("drag-hover"));
+}
+
+async function handleDrop(e,targetMachineId,targetHour){
+  e.preventDefault();
+  if(!can("edit")) return;
+  const payload=JSON.parse(e.dataTransfer.getData("text"));
+  const sourceMachineId=payload.machineId;
+  const docId=payload.docId;
+  const booking=findBookingByDocId(sourceMachineId,docId);
+  if(!booking) return;
+  if(targetHour+booking.duration>18 || isOverlap(targetMachineId,booking.date,targetHour,booking.duration,docId)){
+    alert("이동 불가");
+    return;
+  }
+  await updateBookingDoc(docId,{machineId: targetMachineId, start: targetHour});
+}
+
+function handleResizeStart(event,id,docId,duration){
+  if(!can("edit")) return;
+  event.stopPropagation();
+  appState.isResizing=true;
+  appState.resizeStartX=event.clientX;
+  appState.resizeOriginDuration=duration;
+  appState.resizeTarget={id,docId};
+  document.body.style.cursor="col-resize";
+}
+
+async function handleResizeEnd(event){
+  if(!appState.isResizing||!appState.resizeTarget) return;
+  appState.isResizing=false;
+  document.body.style.cursor="default";
+  const cell=document.querySelector(".schedule-table td");
+  const cellWidth=cell?cell.offsetWidth:40;
+  const diff=Math.round((event.clientX-appState.resizeStartX)/cellWidth)*0.5;
+  if(diff===0) return;
+  const {id,docId}=appState.resizeTarget;
+  const booking=findBookingByDocId(id,docId);
+  if(!booking) return;
+  const newDuration=appState.resizeOriginDuration+diff;
+  if(newDuration<0.5||booking.start+newDuration>18){
+    alert("변경할 수 없습니다.");
+    return;
+  }
+  if(isOverlap(id,booking.date,booking.start,newDuration,docId)){
+    alert("시간이 겹칩니다.");
+    return;
+  }
+  await updateBookingDoc(docId,{duration:newDuration});
+}
 function renderCalendar(){
   const grid=document.getElementById("calendar-grid");
   const title=document.querySelector(".cal-title");
