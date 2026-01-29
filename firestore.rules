@@ -16,6 +16,11 @@ service cloud.firestore {
       allow update, delete: if isManager();
     }
 
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if isManager();
+    }
+
     match /bookings/{bookingId} {
       allow read: if true;
       allow create: if isSignedIn();

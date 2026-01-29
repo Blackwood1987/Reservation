@@ -15,6 +15,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const configRef = doc(db, "config", "app");
 let bscIds = ["A-01","A-02","A-03","A-04","B-01","B-02","B-03","B-04"];
 let locations = ["Room A","Room B"];
 let machineLocations = {"A-01":"Room A","A-02":"Room A","A-03":"Room A","A-04":"Room A","B-01":"Room B","B-02":"Room B","B-03":"Room B","B-04":"Room B"};
@@ -47,6 +48,8 @@ const demoAccounts = {
 
 const bookings = Object.fromEntries(bscIds.map(id=>[id,[]]));
 let bookingsUnsub = null;
+let configUnsub = null;
+const configState = { loaded: false, exists: false };
 
 
 
@@ -68,6 +71,83 @@ function renderLocationOptions(){
 function ensureBookingBuckets(){
   for(const id of bscIds){if(!bookings[id]) bookings[id]=[];}
   for(const key of Object.keys(bookings)){if(!bscIds.includes(key)) delete bookings[key];}
+}
+
+function buildMachinesMap(){
+  const map = {};
+  for(const id of bscIds){
+    map[id] = {
+      location: getMachineLocation(id),
+      mgmtNo: getMachineMgmtNo(id),
+      desc: getMachineDesc(id)
+    };
+  }
+  return map;
+}
+
+function buildConfigPayload(){
+  return {
+    locations: [...locations],
+    machines: buildMachinesMap(),
+    machineOrder: [...bscIds],
+    updatedAt: serverTimestamp()
+  };
+}
+
+function applyConfigData(data){
+  if(Array.isArray(data.locations) && data.locations.length){
+    locations = [...data.locations];
+  }
+  if(data.machines && typeof data.machines === "object"){
+    const order = Array.isArray(data.machineOrder) ? data.machineOrder : Object.keys(data.machines);
+    const nextIds = order.filter(id=>data.machines[id]);
+    bscIds = nextIds.length ? nextIds : Object.keys(data.machines);
+    const nextLocations = {};
+    const nextMgmt = {};
+    const nextDescs = {};
+    for(const id of bscIds){
+      const entry = data.machines[id] || {};
+      nextLocations[id] = entry.location || locations[0];
+      nextMgmt[id] = entry.mgmtNo || "";
+      nextDescs[id] = entry.desc || "";
+    }
+    machineLocations = nextLocations;
+    machineMgmtNos = nextMgmt;
+    machineDescs = nextDescs;
+  }
+  configState.loaded = true;
+  configState.exists = true;
+  ensureBookingBuckets();
+  renderAll();
+}
+
+function handleConfigMissing(){
+  configState.loaded = true;
+  configState.exists = false;
+  ensureBookingBuckets();
+  renderAll();
+}
+
+function subscribeConfig(){
+  if(configUnsub) configUnsub();
+  configUnsub = onSnapshot(configRef, snap=>{
+    if(snap.exists()) applyConfigData(snap.data());
+    else handleConfigMissing();
+  }, ()=>showToast("설정 동기화에 실패했습니다.","warn"));
+}
+
+async function ensureConfigDoc(){
+  if(!can("admin")) return;
+  if(configState.loaded && configState.exists) return;
+  const snap = await getDoc(configRef);
+  if(!snap.exists()){
+    await setDoc(configRef, buildConfigPayload());
+  }
+}
+
+async function saveConfig(){
+  if(!can("admin")) return;
+  await setDoc(configRef, buildConfigPayload(), { merge: true });
 }
 
 function syncBookingsSnapshot(snapshot){
@@ -224,6 +304,7 @@ async function applySession(user){
   applyHeaderSession(user);
   ensureBookingBuckets();
   subscribeBookings();
+  await ensureConfigDoc();
   renderAll();
 }
 
@@ -255,7 +336,7 @@ function initAuthListener(){
       return;
     }
     const role = String(data.role||"worker").trim().toLowerCase();
-    applySession({uid:user.uid, id:data.id||user.email, name:data.name||user.email, role});
+    await applySession({uid:user.uid, id:data.id||user.email, name:data.name||user.email, role});
   });
 }
 async function logout(){
@@ -840,6 +921,7 @@ async function deleteMachine(id){
   delete machineLocations[id];
   delete machineMgmtNos[id];
   delete machineDescs[id];
+  await saveConfig();
   ensureBookingBuckets();
   renderAll();
 }
@@ -915,6 +997,7 @@ async function saveMachine(){
   }
   closeModal("machine-modal");
   showToast("장비 목록이 갱신되었습니다.","info");
+  await saveConfig();
   ensureBookingBuckets();
   renderAll();
 }
@@ -1030,7 +1113,7 @@ function openLocationModal(mode,loc){
   input.value=loc;
 }
 
-function saveLocation(){
+async function saveLocation(){
   const original=document.getElementById("location-original-name").value;
   const next=document.getElementById("location-name").value.trim();
   if(!next){alert("장소명을 입력하세요.");return;}
@@ -1052,14 +1135,16 @@ function saveLocation(){
   }
   closeModal("location-modal");
   showToast("장소 목록이 갱신되었습니다.","info");
+  await saveConfig();
   renderAll();
 }
 
-function deleteLocation(loc){
+async function deleteLocation(loc){
   const used=bscIds.some(id=>getMachineLocation(id)===loc);
   if(used){alert("장비가 배정된 장소는 삭제할 수 없습니다.");return;}
   if(!confirm(`${loc}를 삭제하시겠습니까?`)) return;
   locations=locations.filter(l=>l!==loc);
+  await saveConfig();
   renderAll();
 }
 
@@ -1112,6 +1197,7 @@ function boot(){
   initStartTimes();
   initTimelineHours();
   bindEvents();
+  subscribeConfig();
   const today=new Date();
   appState.currentYear=today.getFullYear();
   appState.currentMonth=today.getMonth()+1;
