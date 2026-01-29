@@ -206,8 +206,7 @@ async function registerWithCredentials(){
 async function applySession(user){
   appState.currentUser = user;
   document.body.className=`role-${appState.currentUser.role}`;
-  document.getElementById("login-modal").style.display="none";
-  const badge=document.getElementById("user-badge");
+    const badge=document.getElementById("user-badge");
   badge.className=`user-badge role-${appState.currentUser.role}`;
   badge.textContent=appState.currentUser.role.toUpperCase();
   document.getElementById("user-name").textContent=appState.currentUser.name;
@@ -222,22 +221,21 @@ async function applySession(user){
 function initAuthListener(){
   onAuthStateChanged(auth, async (user)=>{
     if(!user){
-      appState.currentUser=null;
-      if(bookingsUnsub){bookingsUnsub();bookingsUnsub=null;}
-      document.body.className="";
-      document.getElementById("login-modal").style.display="flex";
+      window.location.href = "index.html";
       return;
     }
     const snap = await getDoc(doc(db,"users",user.uid));
     if(!snap.exists()){
       await signOut(auth);
-      alert("\uACC4\uC815 \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+      alert("계정 정보를 찾을 수 없습니다.");
+      window.location.href = "index.html";
       return;
     }
     const data = snap.data();
     if(!data.approved){
       await signOut(auth);
-      alert("\uC2B9\uC778 \uB300\uAE30 \uC911\uC785\uB2C8\uB2E4.");
+      alert("승인 대기 중입니다.");
+      window.location.href = "index.html";
       return;
     }
     applySession({uid:user.uid, id:data.id||user.email, name:data.name||user.email, role:data.role||"worker"});
@@ -247,6 +245,7 @@ async function logout(){
   try{
     await signOut(auth);
   }catch(e){}
+  window.location.href = "index.html";
 }
 
 function switchView(view){
@@ -859,11 +858,10 @@ function boot(){
   resetToNow();
   renderAll();
   initAuthListener();
-  const loginModal=document.getElementById("login-modal");
-  if(loginModal) loginModal.style.display="flex";
-}
+  }
 
 boot();
+
 
 
 

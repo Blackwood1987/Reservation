@@ -34,6 +34,19 @@ body {
   overflow: hidden;
 }
 
+body.login-page {
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+}
+
+.login-panel {
+  width: 420px;
+  max-width: 100%;
+}
+
 .app-header {
   display: flex;
   align-items: center;
