@@ -117,25 +117,42 @@ function initTimelineHours(){
 }
 function login(role){
   const found=users.find(u=>u.role===role);
-  appState.currentUser=found||{id:"guest",name:"게스트",role:"worker",password:"1234"};
-  document.body.className=`role-${appState.currentUser.role}`;
-  document.getElementById("login-modal").style.display="none";
-  const badge=document.getElementById("user-badge");
-  badge.className=`user-badge role-${appState.currentUser.role}`;
-  badge.textContent=appState.currentUser.role.toUpperCase();
-  document.getElementById("user-name").textContent=appState.currentUser.name;
-  const adminTab=document.getElementById("tab-admin");
-  adminTab.hidden=!(appState.currentUser.role==="admin"||appState.currentUser.role==="supervisor");
-  if(appState.currentUser.role==="supervisor") switchAdminView("audit"); else switchAdminView("users");
-  renderAll();
+  applySession(found||{id:"guest",name:"\uAC8C\uC2A4\uD2B8",role:"worker"});
 }
-function loginWithCredentials(){
+async function loginWithCredentials(){
   const id=document.getElementById("login-id").value.trim();
   const password=document.getElementById("login-password").value;
   if(!id||!password){alert("\uC544\uC774\uB514 \uB610\uB294 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");return;}
-  const user=users.find(u=>u.id===id&&u.password===password);
-  if(!user){alert("\uC544\uC774\uB514 \uB610\uB294 \uBE44\uBC00\uBC88\uD638\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");return;}
-  appState.currentUser=user;
+  try{
+    await signInWithEmailAndPassword(auth,id,password);
+  }catch(e){
+    alert("\uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+  }
+}
+
+async function registerWithCredentials(){
+  const name=document.getElementById("login-name").value.trim();
+  const id=document.getElementById("login-id").value.trim();
+  const password=document.getElementById("login-password").value;
+  if(!name){alert("\uC774\uB984\uC744 \uC785\uB825\uD574\uC8FC\uC138\uC694.");return;}
+  if(!id||!password){alert("\uC544\uC774\uB514 \uB610\uB294 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");return;}
+  try{
+    const cred = await createUserWithEmailAndPassword(auth,id,password);
+    await setDoc(doc(db,"users",cred.user.uid),{
+      id,
+      name,
+      role:"worker",
+      approved:false,
+      createdAt: serverTimestamp()
+    });
+    alert("\uAC00\uC785\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uAD00\uB9AC\uC790 \uC2B9\uC778 \uD6C4 \uB85C\uADF8\uC778 \uAC00\uB2A5\uD569\uB2C8\uB2E4.");
+    await signOut(auth);
+  }catch(e){
+    alert("\uD68C\uC6D0\uAC00\uC785\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+  }
+}
+async function applySession(user){
+  appState.currentUser = user;
   document.body.className=`role-${appState.currentUser.role}`;
   document.getElementById("login-modal").style.display="none";
   const badge=document.getElementById("user-badge");
@@ -147,7 +164,29 @@ function loginWithCredentials(){
   if(appState.currentUser.role==="supervisor") switchAdminView("audit"); else switchAdminView("users");
   renderAll();
 }
-function logout(){location.reload();}
+
+async function initAuthListener(){
+  onAuthStateChanged(auth, async (user)=>{
+    if(!user){
+      document.getElementById("login-modal").style.display="flex";
+      return;
+    }
+    const snap = await getDoc(doc(db,"users",user.uid));
+    if(!snap.exists()){
+      await signOut(auth);
+      alert("\uACC4\uC815 \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+      return;
+    }
+    const data = snap.data();
+    if(!data.approved){
+      await signOut(auth);
+      alert("\uC2B9\uC778 \uB300\uAE30 \uC911\uC785\uB2C8\uB2E4.");
+      return;
+    }
+    applySession({uid:user.uid, id:data.id||user.email, name:data.name||user.email, role:data.role||"worker"});
+  });
+}
+function logout(){try{await signOut(auth);}catch(e){} }
 
 function switchView(view){
   if(view==="admin"&&!can("admin")){alert("접근 권한이 없습니다.");return;}
@@ -458,19 +497,33 @@ function renderAdmin(){
     machinesBtn.style.display="flex";
     locationsBtn.style.display="flex";
   }
-  renderUserTable();
+  refreshUsersFromDb();
   renderLocationTable();
   renderMachineTable();
   renderPendingList();
   renderStats();
 }
 
+async function refreshUsersFromDb(){
+  const snap = await getDocs(collection(db,"users"));
+  users = snap.docs.map(docSnap=>({uid: docSnap.id, ...docSnap.data()}));
+  renderUserTable();
+}
+
+async function approveUser(uid){
+  await updateDoc(doc(db,"users",uid),{approved:true});
+  await refreshUsersFromDb();
+}
 function renderUserTable(){
-  const tbody=document.getElementById("user-table-body");tbody.innerHTML="";
+  const tbody=document.getElementById("user-table-body");
+  tbody.innerHTML="";
   for(const user of users){
     const tr=document.createElement("tr");
     const canDelete=appState.currentUser&&user.id!==appState.currentUser.id;
-    tr.innerHTML=`<td>${user.name}</td><td>${user.id}</td><td><span class="status-badge role-${user.role}">${user.role.toUpperCase()}</span></td><td><span style="color:#2ecc71;font-weight:900">● Active</span></td><td><button class="btn-edit" data-edit-user="${user.id}">수정</button>${canDelete?`<button class="btn-del" data-del-user="${user.id}">삭제</button>`:""}</td>`;
+    const statusLabel=user.approved?"\uC2B9\uC778\uB428":"\uC2B9\uC778\uB300\uAE30";
+    const statusColor=user.approved?"#2ecc71":"#f39c12";
+    const approveBtn = user.approved ? "" : `<button class="btn-edit" data-approve-user="${user.uid}">\uC2B9\uC778</button>`;
+    tr.innerHTML=`<td>${user.name}</td><td>${user.id}</td><td><span class="status-badge role-${user.role}">${user.role.toUpperCase()}</span></td><td><span style="color:${statusColor};font-weight:900">● ${statusLabel}</span></td><td>${approveBtn}<button class="btn-edit" data-edit-user="${user.uid}">\uC218\uC815</button>${canDelete?`<button class="btn-del" data-del-user="${user.uid}">\uC0AD\uC81C</button>`:""}</td>`;
     tbody.appendChild(tr);
   }
 }
@@ -571,7 +624,7 @@ function processApproval(action){
   closeModal("approval-modal");appState.approvalTarget=null;renderAll();
 }
 
-function openUserModal(mode,id){
+function openUserModal(mode,uid){
   const modal=document.getElementById("user-modal");
   modal.style.display="flex";
   const title=document.getElementById("user-modal-title");
@@ -590,54 +643,33 @@ function openUserModal(mode,id){
     roleSelect.value="worker";
     return;
   }
-  const user=users.find(u=>u.id===id); if(!user) return;
+  const user=users.find(u=>u.uid===uid); if(!user) return;
   title.textContent="\uACC4\uC815 \uC218\uC815";
-  originalId.value=user.id;
+  originalId.value=user.uid;
   nameInput.value=user.name;
   idInput.value=user.id;
-  pwdInput.value=user.password||"";
+  pwdInput.value="";
   idInput.disabled=true;
   roleSelect.value=user.role;
 }
 
-function saveUser(){
-  const originalId=document.getElementById("user-original-id").value;
+async function saveUser(){
+  const uid=document.getElementById("user-original-id").value;
   const id=document.getElementById("user-id").value.trim();
   const name=document.getElementById("user-name").value.trim();
   const role=document.getElementById("user-role").value;
-  const password=document.getElementById("user-password").value.trim();
   if(!id||!name){alert("\uC815\uBCF4\uB97C \uBAA8\uB450 \uC785\uB825\uD574\uC8FC\uC138\uC694.");return;}
-  if(!originalId && !password){alert("\uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");return;}
-  if(originalId){
-    const idx=users.findIndex(u=>u.id===originalId);
-    if(idx===-1) return;
-    const nextPassword=password||users[idx].password||"";
-    users[idx]={...users[idx],name,role,password:nextPassword};
-  }else{
-    if(users.some(u=>u.id===id)){alert("\uC774\uBBF8 \uC874\uC7AC\uD558\uB294 ID\uC785\uB2C8\uB2E4.");return;}
-    users.push({id,name,role,password});
+  if(!uid){
+    alert("\uD68C\uC6D0 \uAC00\uC785\uC740 \uB85C\uADF8\uC778 \uD654\uBA74\uC5D0\uC11C \uC9C4\uD589\uD569\uB2C8\uB2E4.");
+    closeModal("user-modal");
+    return;
   }
+  await updateDoc(doc(db,"users",uid),{name,role});
   closeModal("user-modal");
-  renderUserTable();
-  saveUsers();
+  await refreshUsersFromDb();
 }
 
-function deleteUser(id){if(!confirm("정말 삭제하시겠습니까?")) return;users=users.filter(u=>u.id!==id);
-  renderUserTable();
-  saveUsers();}
-
-function handleDragStart(event,id,index){appState.dragPayload={id,index};event.dataTransfer.effectAllowed="move";}
-function handleDragEnd(){appState.dragPayload=null;document.querySelectorAll(".drag-hover").forEach(el=>el.classList.remove("drag-hover"));}
-
-function handleDrop(event,targetId,targetHour){
-  event.preventDefault();if(!can("edit")||!appState.dragPayload) return;
-  const {id:sourceId,index}=appState.dragPayload;const booking=bookings[sourceId][index];if(!booking) return;
-  bookings[sourceId].splice(index,1);
-  if(targetHour+booking.duration>18||isOverlap(targetId,booking.date,targetHour,booking.duration)){
-    bookings[sourceId].splice(index,0,booking);alert("이동할 수 없습니다.");
-  }else{booking.start=targetHour;bookings[targetId].push(booking);} 
-  renderAll();
-}
+async function deleteUser(uid){if(!confirm("\uC815\uB9D0 \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?")) return;await deleteDoc(doc(db,"users",uid));await refreshUsersFromDb();}
 
 function handleResizeStart(event,id,index,duration){
   if(!can("edit")) return;event.stopPropagation();
@@ -680,6 +712,7 @@ function printReport(){
 function bindEvents(){
   document.querySelectorAll(".role-btn").forEach(btn=>btn.addEventListener("click",()=>login(btn.dataset.role)));
   document.getElementById("btn-login").addEventListener("click",loginWithCredentials);
+  document.getElementById("btn-signup").addEventListener("click",registerWithCredentials);
   document.getElementById("btn-logout").addEventListener("click",logout);
   document.querySelectorAll(".tab-btn").forEach(btn=>btn.addEventListener("click",()=>switchView(btn.dataset.view)));
   document.querySelectorAll("[data-date-delta]").forEach(btn=>btn.addEventListener("click",()=>updateDate(Number(btn.dataset.dateDelta))));
@@ -691,7 +724,7 @@ function bindEvents(){
   document.getElementById("btn-approve").addEventListener("click",()=>processApproval("approve"));
   document.getElementById("btn-reject").addEventListener("click",()=>processApproval("reject"));
   document.querySelectorAll("[data-close-modal]").forEach(btn=>btn.addEventListener("click",()=>closeModal(btn.dataset.closeModal)));
-  document.getElementById("btn-create-user").addEventListener("click",()=>openUserModal("create"));
+  document.getElementById("btn-create-user").addEventListener("click",()=>refreshUsersFromDb());
   document.getElementById("btn-save-user").addEventListener("click",saveUser);
   document.getElementById("btn-create-machine").addEventListener("click",()=>openMachineModal("create"));
   document.getElementById("btn-create-location").addEventListener("click",()=>openLocationModal("create"));
@@ -701,6 +734,7 @@ function bindEvents(){
   document.addEventListener("click",e=>{
     const editId=e.target.getAttribute("data-edit-user"); if(editId) openUserModal("edit",editId);
     const delId=e.target.getAttribute("data-del-user"); if(delId) deleteUser(delId);
+    const approveUserId=e.target.getAttribute("data-approve-user"); if(approveUserId) approveUser(approveUserId);
     const editMachine=e.target.getAttribute("data-edit-machine"); if(editMachine) openMachineModal("edit",editMachine);
     const delMachine=e.target.getAttribute("data-del-machine"); if(delMachine) deleteMachine(delMachine);
     const editLocation=e.target.getAttribute("data-edit-location"); if(editLocation) openLocationModal("edit",editLocation);
@@ -892,6 +926,23 @@ function deleteLocation(loc){
   locations=locations.filter(l=>l!==loc);
   renderAll();
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

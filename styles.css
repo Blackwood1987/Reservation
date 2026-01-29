@@ -1327,6 +1327,13 @@ body.role-worker .resize-handle {
   margin-bottom: 16px;
 }
 
+.login-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .login-divider {
   margin: 12px 0;
   font-size: 12px;
