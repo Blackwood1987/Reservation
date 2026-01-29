@@ -756,6 +756,57 @@ function renderLocationTable(){
   }
 }
 
+function openUserModal(mode,uid){
+  const modal=document.getElementById("user-modal");
+  if(!modal) return;
+  modal.style.display="flex";
+  const title=document.getElementById("user-modal-title");
+  const originalId=document.getElementById("user-original-id");
+  const nameInput=document.getElementById("user-name");
+  const idInput=document.getElementById("user-id");
+  const pwdInput=document.getElementById("user-password");
+  const roleSelect=document.getElementById("user-role");
+  if(mode==="create"){
+    if(title) title.textContent="계정 생성";
+    if(originalId) originalId.value="";
+    if(nameInput) nameInput.value="";
+    if(idInput){idInput.value=""; idInput.disabled=false;}
+    if(pwdInput) pwdInput.value="";
+    if(roleSelect) roleSelect.value="worker";
+    return;
+  }
+  const user=users.find(u=>u.uid===uid);
+  if(!user) return;
+  if(title) title.textContent="계정 수정";
+  if(originalId) originalId.value=user.uid;
+  if(nameInput) nameInput.value=user.name||"";
+  if(idInput){idInput.value=user.id||""; idInput.disabled=true;}
+  if(pwdInput) pwdInput.value="";
+  if(roleSelect) roleSelect.value=user.role||"worker";
+}
+
+async function saveUser(){
+  const uid=document.getElementById("user-original-id")?.value || "";
+  const id=document.getElementById("user-id")?.value.trim() || "";
+  const name=document.getElementById("user-name")?.value.trim() || "";
+  const role=document.getElementById("user-role")?.value || "worker";
+  if(!id||!name){alert("정보를 모두 입력해주세요.");return;}
+  if(!uid){
+    alert("회원가입은 로그인 화면에서 진행합니다.");
+    closeModal("user-modal");
+    return;
+  }
+  await updateDoc(doc(db,"users",uid),{name,role});
+  closeModal("user-modal");
+  await refreshUsersFromDb();
+}
+
+async function deleteUser(uid){
+  if(!confirm("정말 삭제하시겠습니까?")) return;
+  await deleteDoc(doc(db,"users",uid));
+  await refreshUsersFromDb();
+}
+
 function openLocationModal(mode,loc){
   const modal=document.getElementById("location-modal");
   modal.style.display="flex";
