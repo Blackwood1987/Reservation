@@ -42,8 +42,6 @@ const appState = {
 
 let users = [];
 const demoAccounts = {
-  admin: { email: "demo-admin@reservation.local", password: "demo1234" },
-  supervisor: { email: "demo-supervisor@reservation.local", password: "demo1234" },
   worker: { email: "demo-worker@reservation.local", password: "demo1234" }
 };
 
@@ -126,7 +124,9 @@ function getPendingBookings(date=getViewDate()){
 }
 
 function can(action){
-  const user=appState.currentUser; if(!user) return false;
+  const user=appState.currentUser;
+  if(!user) return false;
+  if(user.role==="guest") return false;
   const isManager=user.role==="admin"||user.role==="supervisor";
   if(action==="create") return true;
   if(action==="edit"||action==="approve"||action==="admin"||action==="print") return isManager;
@@ -203,7 +203,7 @@ async function registerWithCredentials(){
     alert("\uD68C\uC6D0\uAC00\uC785\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
   }
 }
-async function applySession(user){
+function applyHeaderSession(user){
   appState.currentUser = user;
   document.body.className=`role-${appState.currentUser.role}`;
   const badge=document.getElementById("user-badge");
@@ -213,9 +213,22 @@ async function applySession(user){
   }
   const nameEl=document.getElementById("user-name");
   if(nameEl) nameEl.textContent=appState.currentUser.name;
+  const logoutBtn=document.getElementById("btn-logout");
+  if(logoutBtn) logoutBtn.textContent=appState.currentUser.role==="guest" ? "로그인" : "로그아웃";
   const adminTab=document.getElementById("tab-admin");
   if(adminTab) adminTab.hidden=!(appState.currentUser.role==="admin"||appState.currentUser.role==="supervisor");
   if(appState.currentUser.role==="supervisor") switchAdminView("audit"); else switchAdminView("users");
+}
+
+async function applySession(user){
+  applyHeaderSession(user);
+  ensureBookingBuckets();
+  subscribeBookings();
+  renderAll();
+}
+
+function applyGuestSession(){
+  applyHeaderSession({id:"guest", name:"게스트", role:"guest"});
   ensureBookingBuckets();
   subscribeBookings();
   renderAll();
@@ -224,7 +237,7 @@ async function applySession(user){
 function initAuthListener(){
   onAuthStateChanged(auth, async (user)=>{
     if(!user){
-      window.location.href = "index.html";
+      applyGuestSession();
       return;
     }
     const snap = await getDoc(doc(db,"users",user.uid));
@@ -464,49 +477,65 @@ function renderChart(){
 function renderSchedule(){
   const tbody=document.getElementById("schedule-body");tbody.innerHTML="";
   const date=getViewDate();
-  for(const id of bscIds){
-    const tr=document.createElement("tr");
-    const nameTd=document.createElement("td");nameTd.className="col-machine";nameTd.textContent=id;tr.appendChild(nameTd);
-    for(let i=0;i<18;i+=1){
-      const hour=9+i*0.5;
-      const booking=(bookings[id]||[]).find(b=>b.date===date&&b.start===hour);
-      if(booking){
-        const td=document.createElement("td");td.style.padding="2px";
-        const span=booking.duration/0.5;td.colSpan=span;
-        const block=document.createElement("div");block.className="booking-block";
-        if(booking.status==="pending"){
-          block.classList.add("pending");block.style.backgroundColor=statusMeta.pending.color;
-          block.innerHTML=`<span>${booking.user} (대기)</span>`;
-          block.addEventListener("click",()=>openApprovalModal(id,booking.docId));
-        }else if(booking.user==="System"){
-          block.style.backgroundColor=statusMeta.system.color;block.innerHTML="<span>소독</span>";
-        }else{
-          block.style.backgroundColor=statusMeta[booking.purpose].color;
-          block.innerHTML=`<span>${booking.user}</span><span class="booking-sub">${statusMeta[booking.purpose].label}</span><div class="resize-handle"></div>`;
+  for(const loc of locations){
+    const ids=bscIds.filter(id=>getMachineLocation(id)===loc);
+    if(ids.length===0) continue;
+    const locRow=document.createElement("tr");
+    locRow.className="schedule-location-row";
+    const locCell=document.createElement("td");
+    locCell.className="schedule-location";
+    locCell.colSpan=19;
+    locCell.innerHTML=`<span class="schedule-location-name">${loc}</span><span class="schedule-location-count">${ids.length}대</span>`;
+    locRow.appendChild(locCell);
+    tbody.appendChild(locRow);
+    for(const id of ids){
+      const tr=document.createElement("tr");
+      const nameTd=document.createElement("td");nameTd.className="col-machine";nameTd.textContent=id;tr.appendChild(nameTd);
+      for(let i=0;i<18;i+=1){
+        const hour=9+i*0.5;
+        const booking=(bookings[id]||[]).find(b=>b.date===date&&b.start===hour);
+        if(booking){
+          const td=document.createElement("td");td.style.padding="2px";
+          const span=booking.duration/0.5;td.colSpan=span;
+          const block=document.createElement("div");block.className="booking-block";
+          if(booking.status==="pending"){
+            block.classList.add("pending");block.style.backgroundColor=statusMeta.pending.color;
+            block.innerHTML=`<span>${booking.user} (대기)</span>`;
+            block.addEventListener("click",()=>openApprovalModal(id,booking.docId));
+          }else if(booking.user==="System"){
+            block.style.backgroundColor=statusMeta.system.color;block.innerHTML="<span>소독</span>";
+          }else{
+            block.style.backgroundColor=statusMeta[booking.purpose].color;
+            block.innerHTML=`<span>${booking.user}</span><span class="booking-sub">${statusMeta[booking.purpose].label}</span><div class="resize-handle"></div>`;
+          }
+          if(can("edit")&&booking.user!=="System"){
+            block.draggable=true;
+            block.addEventListener("dragstart",e=>handleDragStart(e,id,booking.docId));
+            block.addEventListener("dragend",handleDragEnd);
+            const handle=block.querySelector(".resize-handle");
+            if(handle) handle.addEventListener("mousedown",e=>handleResizeStart(e,id,booking.docId,booking.duration));
+          }else{
+            block.style.cursor="default";
+            const handle=block.querySelector(".resize-handle");if(handle) handle.style.display="none";
+          }
+          td.appendChild(block);tr.appendChild(td);i+=span-1;continue;
         }
-        if(can("edit")&&booking.user!=="System"){
-          block.draggable=true;
-          block.addEventListener("dragstart",e=>handleDragStart(e,id,booking.docId));
-          block.addEventListener("dragend",handleDragEnd);
-          const handle=block.querySelector(".resize-handle");
-          if(handle) handle.addEventListener("mousedown",e=>handleResizeStart(e,id,booking.docId,booking.duration));
-        }else{
-          block.style.cursor="default";
-          const handle=block.querySelector(".resize-handle");if(handle) handle.style.display="none";
+        const td=document.createElement("td");
+        if(can("edit")){
+          td.addEventListener("dragover",e=>{e.preventDefault();td.classList.add("drag-hover");});
+          td.addEventListener("dragleave",()=>td.classList.remove("drag-hover"));
+          td.addEventListener("drop",e=>{td.classList.remove("drag-hover");handleDrop(e,id,hour);});
         }
-        td.appendChild(block);tr.appendChild(td);i+=span-1;continue;
+        const empty=document.createElement("div");empty.className="empty-slot";
+        if(can("create")){
+          empty.addEventListener("click",()=>openBookingModal(id,hour));
+        }else{
+          empty.classList.add("disabled");
+        }
+        td.appendChild(empty);tr.appendChild(td);
       }
-      const td=document.createElement("td");
-      if(can("edit")){
-        td.addEventListener("dragover",e=>{e.preventDefault();td.classList.add("drag-hover");});
-        td.addEventListener("dragleave",()=>td.classList.remove("drag-hover"));
-        td.addEventListener("drop",e=>{td.classList.remove("drag-hover");handleDrop(e,id,hour);});
-      }
-      const empty=document.createElement("div");empty.className="empty-slot";
-      empty.addEventListener("click",()=>openBookingModal(id,hour));
-      td.appendChild(empty);tr.appendChild(td);
+      tbody.appendChild(tr);
     }
-    tbody.appendChild(tr);
   }
 }
 

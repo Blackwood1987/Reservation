@@ -17,8 +17,6 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const demoAccounts = {
-  admin: { email: "demo-admin@reservation.local", password: "demo1234" },
-  supervisor: { email: "demo-supervisor@reservation.local", password: "demo1234" },
   worker: { email: "demo-worker@reservation.local", password: "demo1234" }
 };
 
@@ -80,7 +78,7 @@ function bindEvents(){
   if(loginBtn) loginBtn.addEventListener("click",loginWithCredentials);
   const signupBtn=document.getElementById("btn-signup");
   if(signupBtn) signupBtn.addEventListener("click",registerWithCredentials);
-  document.querySelectorAll(".role-btn").forEach(btn=>btn.addEventListener("click",()=>loginDemo(btn.dataset.role)));
+  document.querySelectorAll(".role-btn[data-role]").forEach(btn=>btn.addEventListener("click",()=>loginDemo(btn.dataset.role)));
 }
 
 function initAuthListener(){
