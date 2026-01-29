@@ -1,4 +1,21 @@
-﻿let bscIds = ["A-01","A-02","A-03","A-04","B-01","B-02","B-03","B-04"];
+﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC3hAHfZFH6g4SjQbwdFIh-V61wezsoDnY",
+  authDomain: "reservation-e033a.firebaseapp.com",
+  projectId: "reservation-e033a",
+  storageBucket: "reservation-e033a.firebasestorage.app",
+  messagingSenderId: "380110711617",
+  appId: "1:380110711617:web:2c938ef843c87fc00a4fc0",
+  measurementId: "G-CXXB40V1KE"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+let bscIds = ["A-01","A-02","A-03","A-04","B-01","B-02","B-03","B-04"];
 let locations = ["Room A","Room B"];
 let machineLocations = {"A-01":"Room A","A-02":"Room A","A-03":"Room A","A-04":"Room A","B-01":"Room B","B-02":"Room B","B-03":"Room B","B-04":"Room B"};
 let machineMgmtNos = {"A-01":"EQ-001","A-02":"EQ-002","A-03":"EQ-003","A-04":"EQ-004","B-01":"EQ-005","B-02":"EQ-006","B-03":"EQ-007","B-04":"EQ-008"};
@@ -23,34 +40,17 @@ const appState = {
   bookingTarget:{id:null,start:9},approvalTarget:null
 };
 
-let users = [
-  {id:"admin01",name:"김관리",role:"admin",password:"1234"},
-  {id:"sup01",name:"박감독",role:"supervisor",password:"1234"},
-  {id:"work01",name:"이작업",role:"worker",password:"1234"},
-  {id:"work02",name:"최신입",role:"worker",password:"1234"}
-];
+let users = [];
+const demoAccounts = {
+  admin: { email: "demo-admin@reservation.local", password: "demo1234" },
+  supervisor: { email: "demo-supervisor@reservation.local", password: "demo1234" },
+  worker: { email: "demo-worker@reservation.local", password: "demo1234" }
+};
 
 const bookings = Object.fromEntries(bscIds.map(id=>[id,[]]));
+let bookingsUnsub = null;
 
-const usersStorageKey = "equip-users-v1";
-function loadUsers(){
-  try{
-    if(typeof localStorage === "undefined") return null;
-    const raw = localStorage.getItem(usersStorageKey);
-    if(!raw) return null;
-    const parsed = JSON.parse(raw);
-    if(!Array.isArray(parsed)) return null;
-    return parsed.map(u=>({...u,password:u.password||"1234"}));
-  }catch(e){
-    return null;
-  }
-}
-function saveUsers(){
-  try{
-    if(typeof localStorage === "undefined") return;
-    localStorage.setItem(usersStorageKey, JSON.stringify(users));
-  }catch(e){}
-}
+
 
 function todayISO(){return new Date().toISOString().slice(0,10);} 
 function formatTime(val){const h=Math.floor(val);const m=Math.round((val-h)*60);return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;}
@@ -67,13 +67,60 @@ function renderLocationOptions(){
   sel.innerHTML=locations.map(loc=>`<option value="${loc}">${loc}</option>`).join("");
   if(current && locations.includes(current)) sel.value=current;
 }
-function getBookingsForDate(id,date){return bookings[id].filter(b=>b.date===date);} 
+function ensureBookingBuckets(){
+  for(const id of bscIds){if(!bookings[id]) bookings[id]=[];}
+  for(const key of Object.keys(bookings)){if(!bscIds.includes(key)) delete bookings[key];}
+}
+
+function syncBookingsSnapshot(snapshot){
+  const next = Object.fromEntries(bscIds.map(id=>[id,[]]));
+  snapshot.forEach(docSnap=>{
+    const data = docSnap.data();
+    const machineId = data.machineId;
+    if(!machineId || !next[machineId]) return;
+    next[machineId].push({ docId: docSnap.id, ...data });
+  });
+  for(const id of bscIds){
+    next[id].sort((a,b)=>a.date.localeCompare(b.date)||a.start-b.start);
+  }
+  Object.keys(bookings).forEach(key=>delete bookings[key]);
+  Object.assign(bookings,next);
+}
+
+function subscribeBookings(){
+  if(bookingsUnsub) bookingsUnsub();
+  bookingsUnsub = onSnapshot(collection(db,"bookings"), snapshot=>{
+    syncBookingsSnapshot(snapshot);
+    renderAll();
+  }, ()=> showToast("예약 동기화에 실패했습니다.","warn"));
+}
+
+function normalizeLoginId(value){
+  if(!value) return "";
+  return value.includes("@") ? value : value + "@reservation.local";
+}
+
+async function createBookingDoc(payload){
+  const data = { ...payload, createdAt: serverTimestamp() };
+  return addDoc(collection(db,"bookings"), data);
+}
+
+async function updateBookingDoc(docId, updates){
+  return updateDoc(doc(db,"bookings",docId), { ...updates, updatedAt: serverTimestamp() });
+}
+
+async function deleteBookingDoc(docId){
+  return deleteDoc(doc(db,"bookings",docId));
+}
+
+function getBookingsForDate(id,date){return (bookings[id]||[]).filter(b=>b.date===date);} 
+function findBookingByDocId(id, docId){return (bookings[id]||[]).find(b=>b.docId===docId);}  
 function getCurrentBooking(id){const date=getViewDate();const hour=appState.currentHour;return getBookingsForDate(id,date).find(b=>b.start<=hour&&hour<(b.start+b.duration));}
 
 function getPendingBookings(date=getViewDate()){
   const pending=[];
   for(const id of bscIds){
-    getBookingsForDate(id,date).filter(b=>b.status==="pending").forEach((b,index)=>pending.push({id,index,booking:b}));
+    getBookingsForDate(id,date).filter(b=>b.status==="pending").forEach(b=>pending.push({id,docId:b.docId,booking:b}));
   }
   return pending.sort((a,b)=>a.id.localeCompare(b.id)||a.booking.start-b.booking.start);
 }
@@ -96,13 +143,7 @@ function showToast(message,type="success"){
   setTimeout(()=>{toast.style.opacity="0";setTimeout(()=>toast.remove(),220);},2600);
 }
 
-function seedDemoBookings(){
-  const date=todayISO();
-  bookings["A-01"].push({user:"김연구",start:9,duration:3,purpose:"process",status:"confirmed",date});
-  bookings["A-03"].push({user:"이설비",start:10,duration:2,purpose:"maint",status:"confirmed",date});
-  bookings["B-02"].push({user:"박환경",start:11.5,duration:1,purpose:"em",status:"confirmed",date});
-  bookings["B-04"].push({user:"최신입",start:14,duration:2,purpose:"clean",status:"pending",date});
-}
+
 
 function initStartTimes(){
   const select=document.getElementById("booking-start"); select.innerHTML="";
@@ -115,16 +156,25 @@ function initTimelineHours(){
   document.getElementById("timeline-hours").innerHTML=nodes;
   document.getElementById("day-timeline-hours").innerHTML=nodes;
 }
-function login(role){
-  const found=users.find(u=>u.role===role);
-  applySession(found||{id:"guest",name:"\uAC8C\uC2A4\uD2B8",role:"worker"});
+async function login(role){
+  const demo = demoAccounts[role];
+  if(!demo){
+    alert("데모 계정을 확인해주세요.");
+    return;
+  }
+  try{
+    await signInWithEmailAndPassword(auth,demo.email,demo.password);
+  }catch(e){
+    alert("데모 계정 로그인에 실패했습니다. 관리자에게 문의하세요.");
+  }
 }
 async function loginWithCredentials(){
-  const id=document.getElementById("login-id").value.trim();
+  const rawId=document.getElementById("login-id").value.trim();
   const password=document.getElementById("login-password").value;
-  if(!id||!password){alert("\uC544\uC774\uB514 \uB610\uB294 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");return;}
+  if(!rawId||!password){alert("\uC544\uC774\uB514 \uB610\uB294 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");return;}
+  const email=normalizeLoginId(rawId);
   try{
-    await signInWithEmailAndPassword(auth,id,password);
+    await signInWithEmailAndPassword(auth,email,password);
   }catch(e){
     alert("\uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
   }
@@ -132,14 +182,16 @@ async function loginWithCredentials(){
 
 async function registerWithCredentials(){
   const name=document.getElementById("login-name").value.trim();
-  const id=document.getElementById("login-id").value.trim();
+  const rawId=document.getElementById("login-id").value.trim();
   const password=document.getElementById("login-password").value;
   if(!name){alert("\uC774\uB984\uC744 \uC785\uB825\uD574\uC8FC\uC138\uC694.");return;}
-  if(!id||!password){alert("\uC544\uC774\uB514 \uB610\uB294 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");return;}
+  if(!rawId||!password){alert("\uC544\uC774\uB514 \uB610\uB294 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");return;}
+  const email=normalizeLoginId(rawId);
   try{
-    const cred = await createUserWithEmailAndPassword(auth,id,password);
+    const cred = await createUserWithEmailAndPassword(auth,email,password);
     await setDoc(doc(db,"users",cred.user.uid),{
-      id,
+      id: rawId,
+      email,
       name,
       role:"worker",
       approved:false,
@@ -162,12 +214,17 @@ async function applySession(user){
   const adminTab=document.getElementById("tab-admin");
   adminTab.hidden=!(appState.currentUser.role==="admin"||appState.currentUser.role==="supervisor");
   if(appState.currentUser.role==="supervisor") switchAdminView("audit"); else switchAdminView("users");
+  ensureBookingBuckets();
+  subscribeBookings();
   renderAll();
 }
 
-async function initAuthListener(){
+function initAuthListener(){
   onAuthStateChanged(auth, async (user)=>{
     if(!user){
+      appState.currentUser=null;
+      if(bookingsUnsub){bookingsUnsub();bookingsUnsub=null;}
+      document.body.className="";
       document.getElementById("login-modal").style.display="flex";
       return;
     }
@@ -186,7 +243,11 @@ async function initAuthListener(){
     applySession({uid:user.uid, id:data.id||user.email, name:data.name||user.email, role:data.role||"worker"});
   });
 }
-function logout(){try{await signOut(auth);}catch(e){} }
+async function logout(){
+  try{
+    await signOut(auth);
+  }catch(e){}
+}catch(e){} }
 
 function switchView(view){
   if(view==="admin"&&!can("admin")){alert("접근 권한이 없습니다.");return;}
@@ -405,16 +466,15 @@ function renderSchedule(){
     const nameTd=document.createElement("td");nameTd.className="col-machine";nameTd.textContent=id;tr.appendChild(nameTd);
     for(let i=0;i<18;i+=1){
       const hour=9+i*0.5;
-      const bookingIndex=bookings[id].findIndex(b=>b.date===date&&b.start===hour);
-      if(bookingIndex>-1){
-        const booking=bookings[id][bookingIndex];
+      const booking=(bookings[id]||[]).find(b=>b.date===date&&b.start===hour);
+      if(booking){
         const td=document.createElement("td");td.style.padding="2px";
         const span=booking.duration/0.5;td.colSpan=span;
         const block=document.createElement("div");block.className="booking-block";
         if(booking.status==="pending"){
           block.classList.add("pending");block.style.backgroundColor=statusMeta.pending.color;
           block.innerHTML=`<span>${booking.user} (대기)</span>`;
-          block.addEventListener("click",()=>openApprovalModal(id,bookingIndex));
+          block.addEventListener("click",()=>openApprovalModal(id,booking.docId));
         }else if(booking.user==="System"){
           block.style.backgroundColor=statusMeta.system.color;block.innerHTML="<span>소독</span>";
         }else{
@@ -423,10 +483,10 @@ function renderSchedule(){
         }
         if(can("edit")&&booking.user!=="System"){
           block.draggable=true;
-          block.addEventListener("dragstart",e=>handleDragStart(e,id,bookingIndex));
+          block.addEventListener("dragstart",e=>handleDragStart(e,id,booking.docId));
           block.addEventListener("dragend",handleDragEnd);
           const handle=block.querySelector(".resize-handle");
-          if(handle) handle.addEventListener("mousedown",e=>handleResizeStart(e,id,bookingIndex,booking.duration));
+          if(handle) handle.addEventListener("mousedown",e=>handleResizeStart(e,id,booking.docId,booking.duration));
         }else{
           block.style.cursor="default";
           const handle=block.querySelector(".resize-handle");if(handle) handle.style.display="none";
@@ -483,7 +543,7 @@ function openDayModal(date){
 }
 
 function renderAdmin(){
-  if(!can("admin")) return;
+  if(!can("admin") || appState.currentView!=="admin") return;
   const usersBtn=document.querySelector('[data-admin-view="users"]');
   const machinesBtn=document.querySelector('[data-admin-view="machines"]');
   const locationsBtn=document.querySelector('[data-admin-view="locations"]');
@@ -533,9 +593,9 @@ function renderPendingList(){
   const pending=getPendingBookings();
   if(pending.length===0){const empty=document.createElement("div");empty.className="pending-item";empty.innerHTML='<strong>승인 대기 없음</strong><span class="pending-meta">현재 날짜에 대기 중인 요청이 없습니다.</span>';list.appendChild(empty);return;}
   for(const item of pending){
-    const {id,index,booking}=item;
+    const {id,docId,booking}=item;
     const div=document.createElement("div");div.className="pending-item";
-    div.innerHTML=`<strong>${id} · ${booking.user}</strong><div class="pending-meta">${booking.date} · ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}</div><div class="pending-meta">목적: ${statusMeta[booking.purpose].label}</div><div class="pending-actions"><button class="btn-edit" data-approve="${id}|${index}">승인</button><button class="btn-del" data-reject="${id}|${index}">반려</button></div>`;
+    div.innerHTML=`<strong>${id} · ${booking.user}</strong><div class="pending-meta">${booking.date} · ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}</div><div class="pending-meta">목적: ${statusMeta[booking.purpose].label}</div><div class="pending-actions"><button class="btn-edit" data-approve-id="${id}" data-approve-doc="${docId}">승인</button><button class="btn-del" data-reject-id="${id}" data-reject-doc="${docId}">반려</button></div>`;
     list.appendChild(div);
   }
 }
@@ -567,7 +627,7 @@ function openBookingModal(id,start){
 }
 function closeModal(id){document.getElementById(id).style.display="none";}
 
-function confirmBooking(){
+async function confirmBooking(){
   const user=document.getElementById("booking-user").value.trim();
   const date=document.getElementById("booking-date").value;
   const start=Number(document.getElementById("booking-start").value);
@@ -577,6 +637,7 @@ function confirmBooking(){
   if(!user||!date){alert("정보를 모두 입력해주세요.");return;}
   if(start+duration>18){alert("운영 시간을 초과합니다.");return;}
   const status=appState.currentUser.role==="worker"?"pending":"confirmed";
+  const userId=appState.currentUser.id||appState.currentUser.name||user;
   const weeks=recurring?4:1; let success=0;
   for(let i=0;i<weeks;i+=1){
     const dateObj=new Date(date);dateObj.setDate(dateObj.getDate()+i*7);
@@ -585,267 +646,82 @@ function confirmBooking(){
       if(!recurring){alert("해당 날짜/시간에 예약이 중복됩니다.");return;}
       continue;
     }
-    bookings[appState.bookingTarget.id].push({user,date:targetDate,start,duration,purpose,status});
+    await createBookingDoc({
+      machineId: appState.bookingTarget.id,
+      user,
+      userId,
+      createdBy: appState.currentUser.uid || null,
+      date: targetDate,
+      start,
+      duration,
+      purpose,
+      status
+    });
     success+=1;
-    if(status==="confirmed") addSystemBuffer(appState.bookingTarget.id,targetDate,start+duration);
+    if(status==="confirmed") await addSystemBuffer(appState.bookingTarget.id,targetDate,start+duration);
   }
   closeModal("booking-modal");
   if(success===0){alert("모든 반복 예약이 중복으로 인해 실패했습니다.");return;}
   showToast(status==="pending"?"예약 요청이 등록되었습니다.":"예약이 확정되었습니다.");
   if(recurring) showToast(`${success}건의 반복 예약이 등록되었습니다.`,"info");
-  renderAll();
 }
 
 function isOverlap(id,date,start,duration){
   return getBookingsForDate(id,date).some(b=>start<b.start+b.duration&&start+duration>b.start);
 }
 
-function addSystemBuffer(id,date,bufferStart){
+async function addSystemBuffer(id,date,bufferStart,ignoreDocId){
   if(bufferStart>=18) return;
-  if(isOverlap(id,date,bufferStart,0.5)) return;
-  bookings[id].push({user:"System",date,start:bufferStart,duration:0.5,purpose:"clean",status:"confirmed"});
+  if(isOverlap(id,date,bufferStart,0.5,ignoreDocId)) return;
+  await createBookingDoc({
+    machineId: id,
+    user: "System",
+    userId: "system",
+    createdBy: "system",
+    date,
+    start: bufferStart,
+    duration: 0.5,
+    purpose: "clean",
+    status: "confirmed"
+  });
 }
 
-function openApprovalModal(id,index){
+function openApprovalModal(id,docId){
   if(!can("approve")) return;
-  const booking=bookings[id][index];
+  const booking=findBookingByDocId(id,docId);
   if(!booking||booking.status!=="pending") return;
-  appState.approvalTarget={id,index};
+  appState.approvalTarget={id,docId};
   document.getElementById("approval-modal").style.display="flex";
   document.getElementById("approval-text").textContent=`${booking.user}님의 예약 요청을 처리합니다.`;
   document.getElementById("approval-detail").innerHTML=`날짜: ${booking.date}<br />장비: ${id}<br />시간: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}<br />목적: ${statusMeta[booking.purpose].label}`;
 }
 
-function processApproval(action){
+async function processApproval(action){
   const target=appState.approvalTarget;if(!target) return;
-  const {id,index}=target;const booking=bookings[id][index];if(!booking) return;
-  if(action==="approve"){booking.status="confirmed";addSystemBuffer(id,booking.date,booking.start+booking.duration);showToast("예약이 승인되었습니다.");}
-  else{bookings[id].splice(index,1);showToast("예약이 반려되었습니다.","info");}
-  closeModal("approval-modal");appState.approvalTarget=null;renderAll();
-}
-
-function openUserModal(mode,uid){
-  const modal=document.getElementById("user-modal");
-  modal.style.display="flex";
-  const title=document.getElementById("user-modal-title");
-  const originalId=document.getElementById("user-original-id");
-  const nameInput=document.getElementById("user-name");
-  const idInput=document.getElementById("user-id");
-  const pwdInput=document.getElementById("user-password");
-  const roleSelect=document.getElementById("user-role");
-  if(mode==="create"){
-    title.textContent="\uACC4\uC815 \uC0DD\uC131";
-    originalId.value="";
-    nameInput.value="";
-    idInput.value="";
-    pwdInput.value="";
-    idInput.disabled=false;
-    roleSelect.value="worker";
-    return;
-  }
-  const user=users.find(u=>u.uid===uid); if(!user) return;
-  title.textContent="\uACC4\uC815 \uC218\uC815";
-  originalId.value=user.uid;
-  nameInput.value=user.name;
-  idInput.value=user.id;
-  pwdInput.value="";
-  idInput.disabled=true;
-  roleSelect.value=user.role;
-}
-
-async function saveUser(){
-  const uid=document.getElementById("user-original-id").value;
-  const id=document.getElementById("user-id").value.trim();
-  const name=document.getElementById("user-name").value.trim();
-  const role=document.getElementById("user-role").value;
-  if(!id||!name){alert("\uC815\uBCF4\uB97C \uBAA8\uB450 \uC785\uB825\uD574\uC8FC\uC138\uC694.");return;}
-  if(!uid){
-    alert("\uD68C\uC6D0 \uAC00\uC785\uC740 \uB85C\uADF8\uC778 \uD654\uBA74\uC5D0\uC11C \uC9C4\uD589\uD569\uB2C8\uB2E4.");
-    closeModal("user-modal");
-    return;
-  }
-  await updateDoc(doc(db,"users",uid),{name,role});
-  closeModal("user-modal");
-  await refreshUsersFromDb();
-}
-
-async function deleteUser(uid){if(!confirm("\uC815\uB9D0 \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?")) return;await deleteDoc(doc(db,"users",uid));await refreshUsersFromDb();}
-
-function handleResizeStart(event,id,index,duration){
-  if(!can("edit")) return;event.stopPropagation();
-  appState.isResizing=true;appState.resizeStartX=event.clientX;appState.resizeOriginDuration=duration;appState.resizeTarget={id,index};
-  document.body.style.cursor="col-resize";
-}
-
-function handleResizeEnd(event){
-  if(!appState.isResizing||!appState.resizeTarget) return;
-  appState.isResizing=false;document.body.style.cursor="default";
-  const cell=document.querySelector(".schedule-table td");
-  const cellWidth=cell?cell.offsetWidth:40;
-  const diff=Math.round((event.clientX-appState.resizeStartX)/cellWidth)*0.5;
-  if(diff===0) return;
-  const {id,index}=appState.resizeTarget;const booking=bookings[id][index];if(!booking) return;
-  const newDuration=appState.resizeOriginDuration+diff;
-  if(newDuration<0.5||booking.start+newDuration>18){alert("변경할 수 없습니다.");return;}
-  bookings[id].splice(index,1);
-  if(isOverlap(id,booking.date,booking.start,newDuration)){bookings[id].splice(index,0,booking);alert("시간이 겹칩니다.");return;}
-  booking.duration=newDuration;bookings[id].push(booking);renderAll();
-}
-function printReport(){
-  if(!can("print")){alert("권한이 없습니다.");return;}
-  const date=getViewDate();
-  const rows=[];
-  for(const id of bscIds){for(const booking of getBookingsForDate(id,date)) rows.push({id,...booking});}
-  rows.sort((a,b)=>a.id.localeCompare(b.id)||a.start-b.start);
-  const now=new Date();
-  const reportId=crypto.randomUUID().slice(0,16).toUpperCase();
-  const tableRows=rows.length?rows.map(b=>{
-    const purpose=b.user==="System"?"자동 소독":statusMeta[b.purpose].label;
-    const status=b.status==="pending"?"승인 대기":"확정";
-    return `<tr><td>${b.id}</td><td>${b.user}</td><td>${purpose}</td><td>${status}</td><td>${b.date}</td><td>${formatTime(b.start)}</td><td>${formatTime(b.start+b.duration)}</td></tr>`;
-  }).join(""):'<tr><td colspan="7">해당 날짜에 예약이 없습니다.</td></tr>';
-  const html=`<!doctype html><html lang="ko"><head><meta charset="UTF-8" /><title>장비 일일 운영 리포트</title><style>body{font-family:"Malgun Gothic",sans-serif;padding:24px;color:#222}h1{text-align:center;border-bottom:2px solid #333;padding-bottom:10px}.meta{text-align:right;font-size:12px;color:#555;margin-bottom:12px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}th,td{border:1px solid #999;padding:8px;text-align:center}th{background:#f0f0f0}.footer{margin-top:40px;display:flex;justify-content:space-between}.sign{width:45%;border-bottom:1px solid #ccc;height:36px;margin-top:30px}</style></head><body><h1>EQUIPMENT DAILY REPORT</h1><div class="meta">기준 날짜: ${date}<br />생성 시각: ${now.toLocaleString()}<br />리포트 ID: ${reportId}<br />출력자: ${appState.currentUser.name}</div><table><thead><tr><th>장비</th><th>작업자</th><th>목적</th><th>상태</th><th>날짜</th><th>시작</th><th>종료</th></tr></thead><tbody>${tableRows}</tbody></table><div class="footer"><div style="width:45%"><strong>수행자</strong><div class="sign"></div></div><div style="width:45%"><strong>검토자</strong><div class="sign"></div></div></div><script>window.onload=()=>window.print();<\/script></body></html>`;
-  const win=window.open("","_blank","width=980,height=820");
-  if(!win) return; win.document.write(html); win.document.close();
-}
-
-function bindEvents(){
-  document.querySelectorAll(".role-btn").forEach(btn=>btn.addEventListener("click",()=>login(btn.dataset.role)));
-  document.getElementById("btn-login").addEventListener("click",loginWithCredentials);
-  document.getElementById("btn-signup").addEventListener("click",registerWithCredentials);
-  document.getElementById("btn-logout").addEventListener("click",logout);
-  document.querySelectorAll(".tab-btn").forEach(btn=>btn.addEventListener("click",()=>switchView(btn.dataset.view)));
-  document.querySelectorAll("[data-date-delta]").forEach(btn=>btn.addEventListener("click",()=>updateDate(Number(btn.dataset.dateDelta))));
-  document.getElementById("btn-today").addEventListener("click",setToday);
-  document.querySelectorAll("[data-month-delta]").forEach(btn=>btn.addEventListener("click",()=>changeMonth(Number(btn.dataset.monthDelta))));
-  document.getElementById("time-slider").addEventListener("input",e=>updateTimeFromSlider(e.target.value));
-  document.getElementById("btn-now").addEventListener("click",resetToNow);
-  document.getElementById("btn-save-booking").addEventListener("click",confirmBooking);
-  document.getElementById("btn-approve").addEventListener("click",()=>processApproval("approve"));
-  document.getElementById("btn-reject").addEventListener("click",()=>processApproval("reject"));
-  document.querySelectorAll("[data-close-modal]").forEach(btn=>btn.addEventListener("click",()=>closeModal(btn.dataset.closeModal)));
-  document.getElementById("btn-create-user").addEventListener("click",()=>refreshUsersFromDb());
-  document.getElementById("btn-save-user").addEventListener("click",saveUser);
-  document.getElementById("btn-create-machine").addEventListener("click",()=>openMachineModal("create"));
-  document.getElementById("btn-create-location").addEventListener("click",()=>openLocationModal("create"));
-  document.getElementById("btn-save-machine").addEventListener("click",saveMachine);
-  document.getElementById("btn-save-location").addEventListener("click",saveLocation);
-  document.getElementById("btn-print").addEventListener("click",printReport);
-  document.addEventListener("click",e=>{
-    const editId=e.target.getAttribute("data-edit-user"); if(editId) openUserModal("edit",editId);
-    const delId=e.target.getAttribute("data-del-user"); if(delId) deleteUser(delId);
-    const approveUserId=e.target.getAttribute("data-approve-user"); if(approveUserId) approveUser(approveUserId);
-    const editMachine=e.target.getAttribute("data-edit-machine"); if(editMachine) openMachineModal("edit",editMachine);
-    const delMachine=e.target.getAttribute("data-del-machine"); if(delMachine) deleteMachine(delMachine);
-    const editLocation=e.target.getAttribute("data-edit-location"); if(editLocation) openLocationModal("edit",editLocation);
-    const delLocation=e.target.getAttribute("data-del-location"); if(delLocation) deleteLocation(delLocation);
-    const approveKey=e.target.getAttribute("data-approve"); if(approveKey){const [id,index]=approveKey.split("|");openApprovalModal(id,Number(index));}
-    const rejectKey=e.target.getAttribute("data-reject"); if(rejectKey){const [id,index]=rejectKey.split("|");appState.approvalTarget={id,index:Number(index)};processApproval("reject");}
-    const adminView=e.target.closest(".admin-btn"); if(adminView&&adminView.dataset.adminView) switchAdminView(adminView.dataset.adminView);
-  });
-  document.addEventListener("mouseup",handleResizeEnd);
-}
-
-function boot(){
-  seedDemoBookings(); initStartTimes(); initTimelineHours();
-  const storedUsers = loadUsers();
-  if(storedUsers) users = storedUsers; else saveUsers();
-  bindEvents();
-  const today=new Date(); appState.currentYear=today.getFullYear(); appState.currentMonth=today.getMonth()+1;
-  resetToNow(); renderAll(); document.getElementById("login-modal").style.display="flex";
-}
-
-boot();
-
-function renderMachineTable(){
-  const tbody=document.getElementById("machine-table-body");
-  if(!tbody) return;
-  tbody.innerHTML="";
-  for(const id of bscIds){
-    const tr=document.createElement("tr");
-    const count=(bookings[id]||[]).length;
-    const mgmt=getMachineMgmtNo(id);
-    const desc=getMachineDesc(id);
-    const descShort=desc.length>24?`${desc.slice(0,24)}...`:desc;
-    tr.innerHTML=`<td>${id}</td><td>${mgmt}</td><td>${getMachineLocation(id)}</td><td title="${desc.replace(/"/g,'&quot;')}">${descShort}</td><td>${count}</td><td><button class="btn-edit" data-edit-machine="${id}">수정</button><button class="btn-del" data-del-machine="${id}">삭제</button></td>`;
-    tbody.appendChild(tr);
-  }
-}
-
-function openMachineModal(mode,id){
-  const modal=document.getElementById("machine-modal");
-  modal.style.display="flex";
-  const title=document.getElementById("machine-modal-title");
-  const original=document.getElementById("machine-original-id");
-  const input=document.getElementById("machine-id");
-  const mgmtInput=document.getElementById("machine-mgmt");
-  const descInput=document.getElementById("machine-desc");
-  const locationSel=document.getElementById("machine-location");
-  if(mode==="create"){
-    title.textContent="장비 등록";
-    original.value="";
-    input.value="";
-    mgmtInput.value="";
-    descInput.value="";
-    input.disabled=false;
-    locationSel.value=locations[0];
-    return;
-  }
-  title.textContent="장비 수정";
-  original.value=id;
-  input.value=id;
-  mgmtInput.value=getMachineMgmtNo(id);
-  descInput.value=getMachineDesc(id);
-  input.disabled=false;
-  locationSel.value=getMachineLocation(id);
-}
-
-function saveMachine(){
-  const originalId=document.getElementById("machine-original-id").value;
-  const nextId=document.getElementById("machine-id").value.trim();
-  const nextMgmt=document.getElementById("machine-mgmt").value.trim();
-  const nextDesc=document.getElementById("machine-desc").value.trim();
-  const nextLocation=document.getElementById("machine-location").value;
-  if(!nextId){alert("장비 ID를 입력하세요.");return;}
-  if(originalId){
-    if(originalId!==nextId && bscIds.includes(nextId)){
-      alert("이미 존재하는 장비 ID입니다.");
-      return;
-    }
-    bscIds=bscIds.map(id=>id===originalId?nextId:id);
-    bookings[nextId]=bookings[originalId]||[];
-    machineLocations[nextId]=nextLocation;
-    machineMgmtNos[nextId]=nextMgmt;
-    machineDescs[nextId]=nextDesc;
-    if(originalId!==nextId){
-      delete bookings[originalId];
-      delete machineLocations[originalId];
-      delete machineMgmtNos[originalId];
-      delete machineDescs[originalId];
-    }
+  const {id,docId}=target;const booking=findBookingByDocId(id,docId);if(!booking) return;
+  if(action==="approve"){
+    await updateBookingDoc(docId,{status:"confirmed"});
+    await addSystemBuffer(id,booking.date,booking.start+booking.duration,docId);
+    showToast("예약이 승인되었습니다.");
   }else{
-    if(bscIds.includes(nextId)){
-      alert("이미 존재하는 장비 ID입니다.");
-      return;
-    }
-    bscIds=[...bscIds,nextId];
-    bookings[nextId]=[];
-    machineLocations[nextId]=nextLocation;
-    machineMgmtNos[nextId]=nextMgmt;
-    machineDescs[nextId]=nextDesc;
+    await deleteBookingDoc(docId);
+    showToast("예약이 반려되었습니다.","info");
   }
-  closeModal("machine-modal");
-  showToast("장비 목록이 갱신되었습니다.","info");
-  renderAll();
+  closeModal("approval-modal");
+  appState.approvalTarget=null;
 }
-
-function deleteMachine(id){
+async function deleteMachine(id){
   if(!confirm(`장비 ${id}를 삭제하시겠습니까?`)) return;
+  const existing=bookings[id]||[];
+  for(const booking of existing){
+    if(booking.docId) await deleteBookingDoc(booking.docId);
+  }
   bscIds=bscIds.filter(x=>x!==id);
   delete bookings[id];
   delete machineLocations[id];
   delete machineMgmtNos[id];
   delete machineDescs[id];
+  ensureBookingBuckets();
   renderAll();
 }
 
@@ -926,6 +802,44 @@ function deleteLocation(loc){
   locations=locations.filter(l=>l!==loc);
   renderAll();
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
