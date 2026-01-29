@@ -890,6 +890,21 @@ async function saveMachine(){
   renderAll();
 }
 
+function renderMachineTable(){
+  const tbody=document.getElementById("machine-table-body");
+  if(!tbody) return;
+  tbody.innerHTML="";
+  for(const id of bscIds){
+    const tr=document.createElement("tr");
+    const count=(bookings[id]||[]).length;
+    const mgmt=getMachineMgmtNo(id);
+    const desc=getMachineDesc(id);
+    const descShort=desc.length>24?`${desc.slice(0,24)}...`:desc;
+    tr.innerHTML=`<td>${id}</td><td>${mgmt}</td><td>${getMachineLocation(id)}</td><td title="${desc.replace(/"/g,"&quot;")}">${descShort}</td><td>${count}</td><td><button class="btn-edit" data-edit-machine="${id}">수정</button><button class="btn-del" data-del-machine="${id}">삭제</button></td>`;
+    tbody.appendChild(tr);
+  }
+}
+
 
 
 
