@@ -728,6 +728,81 @@ async function deleteMachine(id){
   renderAll();
 }
 
+function openMachineModal(mode,id){
+  const modal=document.getElementById("machine-modal");
+  if(!modal) return;
+  modal.style.display="flex";
+  const title=document.getElementById("machine-modal-title");
+  const original=document.getElementById("machine-original-id");
+  const input=document.getElementById("machine-id");
+  const mgmtInput=document.getElementById("machine-mgmt");
+  const descInput=document.getElementById("machine-desc");
+  const locationSel=document.getElementById("machine-location");
+  renderLocationOptions();
+  if(mode==="create"){
+    if(title) title.textContent="장비 등록";
+    if(original) original.value="";
+    if(input){input.value=""; input.disabled=false;}
+    if(mgmtInput) mgmtInput.value="";
+    if(descInput) descInput.value="";
+    if(locationSel) locationSel.value=locations[0];
+    return;
+  }
+  if(title) title.textContent="장비 수정";
+  if(original) original.value=id;
+  if(input){input.value=id; input.disabled=false;}
+  if(mgmtInput) mgmtInput.value=getMachineMgmtNo(id);
+  if(descInput) descInput.value=getMachineDesc(id);
+  if(locationSel) locationSel.value=getMachineLocation(id);
+}
+
+async function saveMachine(){
+  const originalId=document.getElementById("machine-original-id")?.value || "";
+  const nextId=document.getElementById("machine-id")?.value.trim() || "";
+  const nextMgmt=document.getElementById("machine-mgmt")?.value.trim() || "";
+  const nextDesc=document.getElementById("machine-desc")?.value.trim() || "";
+  const nextLocation=document.getElementById("machine-location")?.value || locations[0];
+  if(!nextId){alert("장비 ID를 입력하세요.");return;}
+  if(originalId){
+    if(originalId!==nextId && bscIds.includes(nextId)){
+      alert("이미 존재하는 장비 ID입니다.");
+      return;
+    }
+    if(originalId!==nextId){
+      bscIds=bscIds.map(mid=>mid===originalId?nextId:mid);
+      machineLocations[nextId]=nextLocation;
+      machineMgmtNos[nextId]=nextMgmt;
+      machineDescs[nextId]=nextDesc;
+      delete machineLocations[originalId];
+      delete machineMgmtNos[originalId];
+      delete machineDescs[originalId];
+      const existing=bookings[originalId]||[];
+      for(const booking of existing){
+        if(booking.docId) await updateBookingDoc(booking.docId,{machineId: nextId});
+      }
+      delete bookings[originalId];
+    }else{
+      machineLocations[originalId]=nextLocation;
+      machineMgmtNos[originalId]=nextMgmt;
+      machineDescs[originalId]=nextDesc;
+    }
+  }else{
+    if(bscIds.includes(nextId)){
+      alert("이미 존재하는 장비 ID입니다.");
+      return;
+    }
+    bscIds=[...bscIds,nextId];
+    machineLocations[nextId]=nextLocation;
+    machineMgmtNos[nextId]=nextMgmt;
+    machineDescs[nextId]=nextDesc;
+    bookings[nextId]=[];
+  }
+  closeModal("machine-modal");
+  showToast("장비 목록이 갱신되었습니다.","info");
+  ensureBookingBuckets();
+  renderAll();
+}
+
 
 
 
@@ -762,7 +837,7 @@ function openUserModal(mode,uid){
   modal.style.display="flex";
   const title=document.getElementById("user-modal-title");
   const originalId=document.getElementById("user-original-id");
-  const nameInput=document.getElementById("user-name");
+  const nameInput=document.getElementById("user-display-name");
   const idInput=document.getElementById("user-id");
   const pwdInput=document.getElementById("user-password");
   const roleSelect=document.getElementById("user-role");
@@ -788,7 +863,7 @@ function openUserModal(mode,uid){
 async function saveUser(){
   const uid=document.getElementById("user-original-id")?.value || "";
   const id=document.getElementById("user-id")?.value.trim() || "";
-  const name=document.getElementById("user-name")?.value.trim() || "";
+  const name=document.getElementById("user-display-name")?.value.trim() || "";
   const role=document.getElementById("user-role")?.value || "worker";
   if(!id||!name){alert("정보를 모두 입력해주세요.");return;}
   if(!uid){
