@@ -569,6 +569,33 @@ async function handleResizeEnd(event){
   }
   await updateBookingDoc(docId,{duration:newDuration});
 }
+
+function printReport(){
+  if(!can("print")){
+    alert("권한이 없습니다.");
+    return;
+  }
+  const date=getViewDate();
+  const rows=[];
+  for(const id of bscIds){
+    for(const booking of getBookingsForDate(id,date)){
+      rows.push({id,...booking});
+    }
+  }
+  rows.sort((a,b)=>a.id.localeCompare(b.id)||a.start-b.start);
+  const now=new Date();
+  const reportId=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2,10)).toUpperCase();
+  const tableRows=rows.length?rows.map(b=>{
+    const purpose=b.user==="System"?"자동 소독":statusMeta[b.purpose]?.label||b.purpose;
+    const status=b.status==="pending"?"승인 대기":"확정";
+    return `<tr><td>${b.id}</td><td>${b.user}</td><td>${purpose}</td><td>${status}</td><td>${b.date}</td><td>${formatTime(b.start)}</td><td>${formatTime(b.start+b.duration)}</td></tr>`;
+  }).join(""):'<tr><td colspan="7">해당 날짜에 예약이 없습니다.</td></tr>';
+  const html=`<!doctype html><html lang="ko"><head><meta charset="UTF-8" /><title>장비 일일 운영 리포트</title><style>body{font-family:"Malgun Gothic",sans-serif;padding:24px;color:#222}h1{text-align:center;border-bottom:2px solid #333;padding-bottom:10px}.meta{text-align:right;font-size:12px;color:#555;margin-bottom:12px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}th,td{border:1px solid #999;padding:8px;text-align:center}th{background:#f0f0f0}.footer{margin-top:40px;display:flex;justify-content:space-between}.sign{width:45%;border-bottom:1px solid #ccc;height:36px;margin-top:30px}</style></head><body><h1>장비 일일 운영 리포트</h1><div class="meta">기준 날짜: ${date}<br />생성 시각: ${now.toLocaleString()}<br />리포트 ID: ${reportId}<br />출력자: ${appState.currentUser.name}</div><table><thead><tr><th>장비</th><th>작업자</th><th>목적</th><th>상태</th><th>날짜</th><th>시작</th><th>종료</th></tr></thead><tbody>${tableRows}</tbody></table><div class="footer"><div style="width:45%"><strong>수행자</strong><div class="sign"></div></div><div style="width:45%"><strong>검토자</strong><div class="sign"></div></div></div><script>window.onload=()=>window.print();<\/script></body></html>`;
+  const win=window.open("","_blank","width=980,height=820");
+  if(!win) return;
+  win.document.write(html);
+  win.document.close();
+}
 function renderCalendar(){
   const grid=document.getElementById("calendar-grid");
   const title=document.querySelector(".cal-title");
