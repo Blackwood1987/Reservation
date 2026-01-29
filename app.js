@@ -247,7 +247,7 @@ async function logout(){
   try{
     await signOut(auth);
   }catch(e){}
-}catch(e){} }
+}
 
 function switchView(view){
   if(view==="admin"&&!can("admin")){alert("접근 권한이 없습니다.");return;}
