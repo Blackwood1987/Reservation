@@ -40,12 +40,11 @@ async function loginWithCredentials(){
 }
 
 async function registerWithCredentials(){
-  const name=document.getElementById("login-name").value.trim();
   const rawId=document.getElementById("login-id").value.trim();
   const password=document.getElementById("login-password").value;
-  if(!name){alert("이름을 입력해주세요.");return;}
   if(!rawId||!password){alert("아이디 또는 비밀번호를 입력해주세요.");return;}
   const email=normalizeLoginId(rawId);
+  const name=rawId;
   try{
     const cred = await createUserWithEmailAndPassword(auth,email,password);
     await setDoc(doc(db,"users",cred.user.uid),{
@@ -105,3 +104,4 @@ function initAuthListener(){
 
 bindEvents();
 initAuthListener();
+
