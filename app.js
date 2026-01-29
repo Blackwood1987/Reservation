@@ -803,6 +803,68 @@ function deleteLocation(loc){
   renderAll();
 }
 
+function bindEvents(){
+  const on=(id,evt,handler)=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener(evt,handler);
+  };
+  document.querySelectorAll(".role-btn").forEach(btn=>btn.addEventListener("click",()=>login(btn.dataset.role)));
+  on("btn-login","click",loginWithCredentials);
+  on("btn-signup","click",registerWithCredentials);
+  on("btn-logout","click",logout);
+  document.querySelectorAll(".tab-btn").forEach(btn=>btn.addEventListener("click",()=>switchView(btn.dataset.view)));
+  document.querySelectorAll("[data-date-delta]").forEach(btn=>btn.addEventListener("click",()=>updateDate(Number(btn.dataset.dateDelta))));
+  on("btn-today","click",setToday);
+  document.querySelectorAll("[data-month-delta]").forEach(btn=>btn.addEventListener("click",()=>changeMonth(Number(btn.dataset.monthDelta))));
+  on("time-slider","input",e=>updateTimeFromSlider(e.target.value));
+  on("btn-now","click",resetToNow);
+  on("btn-save-booking","click",confirmBooking);
+  on("btn-approve","click",()=>processApproval("approve"));
+  on("btn-reject","click",()=>processApproval("reject"));
+  document.querySelectorAll("[data-close-modal]").forEach(btn=>btn.addEventListener("click",()=>closeModal(btn.dataset.closeModal)));
+  on("btn-create-user","click",()=>refreshUsersFromDb());
+  on("btn-save-user","click",saveUser);
+  on("btn-create-machine","click",()=>openMachineModal("create"));
+  on("btn-create-location","click",()=>openLocationModal("create"));
+  on("btn-save-machine","click",saveMachine);
+  on("btn-save-location","click",saveLocation);
+  on("btn-print","click",printReport);
+  document.addEventListener("click",e=>{
+    const editId=e.target.getAttribute("data-edit-user"); if(editId) openUserModal("edit",editId);
+    const delId=e.target.getAttribute("data-del-user"); if(delId) deleteUser(delId);
+    const approveUserId=e.target.getAttribute("data-approve-user"); if(approveUserId) approveUser(approveUserId);
+    const editMachine=e.target.getAttribute("data-edit-machine"); if(editMachine) openMachineModal("edit",editMachine);
+    const delMachine=e.target.getAttribute("data-del-machine"); if(delMachine) deleteMachine(delMachine);
+    const editLocation=e.target.getAttribute("data-edit-location"); if(editLocation) openLocationModal("edit",editLocation);
+    const delLocation=e.target.getAttribute("data-del-location"); if(delLocation) deleteLocation(delLocation);
+    const approveId=e.target.getAttribute("data-approve-id");
+    const approveDoc=e.target.getAttribute("data-approve-doc");
+    if(approveId && approveDoc){openApprovalModal(approveId,approveDoc);}
+    const rejectId=e.target.getAttribute("data-reject-id");
+    const rejectDoc=e.target.getAttribute("data-reject-doc");
+    if(rejectId && rejectDoc){appState.approvalTarget={id:rejectId,docId:rejectDoc};processApproval("reject");}
+    const adminView=e.target.closest(".admin-btn"); if(adminView&&adminView.dataset.adminView) switchAdminView(adminView.dataset.adminView);
+  });
+  document.addEventListener("mouseup",handleResizeEnd);
+}
+
+function boot(){
+  initStartTimes();
+  initTimelineHours();
+  bindEvents();
+  const today=new Date();
+  appState.currentYear=today.getFullYear();
+  appState.currentMonth=today.getMonth()+1;
+  ensureBookingBuckets();
+  resetToNow();
+  renderAll();
+  initAuthListener();
+  const loginModal=document.getElementById("login-modal");
+  if(loginModal) loginModal.style.display="flex";
+}
+
+boot();
+
 
 
 
