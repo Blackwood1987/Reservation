@@ -290,7 +290,21 @@ function showToast(message,type="success"){
 
 function initStartTimes(){
   const select=document.getElementById("booking-start"); select.innerHTML="";
-  for(let h=9;h<18;h+=0.5){const opt=document.createElement("option");opt.value=String(h);opt.textContent=formatTime(h);select.appendChild(opt);} 
+  const now=new Date();
+  const today=todayISO();
+  const viewDate=getViewDate();
+  let minHour=9;
+  if(viewDate === today){
+    minHour = now.getHours() + now.getMinutes()/60;
+    minHour = Math.max(9, Math.ceil(minHour*2)/2);
+  }
+  for(let h=9;h<18;h+=0.5){
+    const opt = document.createElement("option");
+    opt.value = String(h);
+    opt.textContent = formatTime(h);
+    if(h < minHour) opt.disabled = true;
+    select.appendChild(opt);
+  }
 }
 
 function initTimelineHours(){
@@ -427,6 +441,7 @@ function updateDate(delta){
   const date=new Date(appState.currentDate);
   date.setDate(date.getDate()+delta);
   appState.currentDate=date.toISOString().slice(0,10);
+  initStartTimes();
   renderAll();
 }
 
@@ -436,6 +451,7 @@ function setToday(){
   appState.currentYear=today.getFullYear();
   appState.currentMonth=today.getMonth()+1;
   resetToNow();
+  initStartTimes();
   renderAll();
 }
 
@@ -597,7 +613,7 @@ function renderChart(){
   purposeList.forEach(p=>{counts[p.key]=0;});
   for(const id of bscIds){
     const booking=getCurrentBooking(id);
-    if(booking&&booking.status==="confirmed"&&booking.user!=="System"){
+    if(booking&&booking.user!=="System"){
       const key = counts[booking.purpose] !== undefined ? booking.purpose : "other";
       if(counts[key] === undefined) counts[key]=0;
       counts[key]+=1;
@@ -986,13 +1002,13 @@ async function confirmBooking(){
   const recurring=document.getElementById("booking-recurring").checked;
   const autoClean=document.getElementById("booking-autoclean")?.checked || false;
   if(!user||!date){alert("정보를 모두 입력해주세요.");return;}
-  if(start+duration>18){alert("운영 시간을 초과합니다.");return;}
+  if(start < 9 || start+duration>18){alert("운영 시간(09:00~18:00)을 초과합니다.");return;}
   const allowedPurposes = getPurposesForMachine(appState.bookingTarget.id);
   if(allowedPurposes.length && !allowedPurposes.some(p=>p.key===purpose)){
     alert("선택한 목적은 해당 장비에 사용할 수 없습니다.");
     return;
   }
-  const status=appState.currentUser.role==="worker"?"pending":"confirmed";
+  const status="confirmed";
   const userId=appState.currentUser.id||appState.currentUser.name||user;
   const weeks=recurring?4:1; let success=0;
   for(let i=0;i<weeks;i+=1){
