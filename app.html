@@ -329,6 +329,10 @@
         <h3 id="approval-title" class="modal-title">예약 승인 요청</h3>
         <p id="approval-text" class="modal-sub"></p>
         <div class="approval-detail" id="approval-detail"></div>
+        <div class="form-group">
+          <label for="reject-reason">반려 사유</label>
+          <textarea id="reject-reason" rows="3" placeholder="예: 일정 변경, 정보 누락"></textarea>
+        </div>
         <button id="btn-approve" class="btn btn-approve" type="button">승인</button>
         <button id="btn-reject" class="btn btn-reject" type="button">반려</button>
         <button class="btn btn-cancel full" data-close-modal="approval-modal" type="button">취소</button>
@@ -442,7 +446,7 @@
       </div>
     </div>
 
-    <script type="module" src="app.js?v=20260129-12"></script>
+    <script type="module" src="app.js?v=20260129-13"></script>
   </body>
 </html>
 

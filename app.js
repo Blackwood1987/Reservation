@@ -154,7 +154,7 @@ function syncBookingsSnapshot(snapshot){
   const next = Object.fromEntries(bscIds.map(id=>[id,[]]));
   snapshot.forEach(docSnap=>{
     const data = docSnap.data();
-    if(data.status === "deleted") return;
+    if(data.status === "deleted" || data.status === "rejected") return;
     const machineId = data.machineId;
     if(!machineId || !next[machineId]) return;
     next[machineId].push({ docId: docSnap.id, ...data });
@@ -959,6 +959,8 @@ function openApprovalModal(id,docId){
   const autoCleanText = booking.autoClean ? "예" : "아니오";
   document.getElementById("approval-detail").innerHTML=
     `날짜: ${booking.date}<br />장비: ${id}<br />시간: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}<br />목적: ${statusMeta[booking.purpose].label}<br />자동 소독: ${autoCleanText}`;
+  const reasonEl = document.getElementById("reject-reason");
+  if(reasonEl) reasonEl.value = "";
 }
 
 async function processApproval(action){
@@ -971,7 +973,19 @@ async function processApproval(action){
     }
     showToast("예약이 승인되었습니다.");
   }else{
-    await deleteBookingDoc(docId);
+    const reasonEl = document.getElementById("reject-reason");
+    const reason = reasonEl ? reasonEl.value.trim() : "";
+    if(!reason){
+      alert("반려 사유를 입력해주세요.");
+      return;
+    }
+    const rejectedBy = appState.currentUser?.uid || "system";
+    await updateBookingDoc(docId,{
+      status: "rejected",
+      rejectReason: reason,
+      rejectedBy,
+      rejectedAt: serverTimestamp()
+    });
     showToast("예약이 반려되었습니다.","info");
   }
   closeModal("approval-modal");
@@ -1255,7 +1269,7 @@ function bindEvents(){
     if(approveId && approveDoc){openApprovalModal(approveId,approveDoc);}
     const rejectId=e.target.getAttribute("data-reject-id");
     const rejectDoc=e.target.getAttribute("data-reject-doc");
-    if(rejectId && rejectDoc){appState.approvalTarget={id:rejectId,docId:rejectDoc};processApproval("reject");}
+    if(rejectId && rejectDoc){openApprovalModal(rejectId,rejectDoc);}
     const adminView=e.target.closest(".admin-btn"); if(adminView&&adminView.dataset.adminView) switchAdminView(adminView.dataset.adminView);
   });
   document.addEventListener("mouseup",handleResizeEnd);

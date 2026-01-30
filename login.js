@@ -96,7 +96,7 @@ function initAuthListener(){
       alert("승인 대기 중입니다.");
       return;
     }
-    window.location.href = "app.html";
+    window.location.replace("app.html");
   });
 }
 
