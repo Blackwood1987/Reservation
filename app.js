@@ -214,6 +214,10 @@ function can(action){
   return false;
 }
 
+function canDeleteBooking(){
+  return appState.currentUser?.role === "admin";
+}
+
 function typeIcon(type){if(type==="success") return "✅"; if(type==="warn") return "⚠️"; return "ℹ️";}
 function showToast(message,type="success"){
   const container=document.getElementById("toast-container");
@@ -590,7 +594,7 @@ function renderSchedule(){
             block.style.backgroundColor=statusMeta[booking.purpose].color;
             block.innerHTML=`<span>${booking.user}</span><span class="booking-sub">${statusMeta[booking.purpose].label}</span><div class="resize-handle"></div>`;
           }
-          if(can("edit") && booking.user!=="System"){
+          if(canDeleteBooking()){
             const delBtn=document.createElement("button");
             delBtn.type="button";
             delBtn.className="booking-delete";
@@ -697,7 +701,8 @@ function printReport(){
     alert("권한이 없습니다.");
     return;
   }
-  const date=getViewDate();
+  const dateInput=document.getElementById("report-date");
+  const date=(dateInput && dateInput.value) ? dateInput.value : getViewDate();
   const rows=[];
   for(const id of bscIds){
     for(const booking of getBookingsForDate(id,date)){
@@ -774,6 +779,10 @@ function renderAdmin(){
   renderMachineTable();
   renderPendingList();
   renderStats();
+  const reportDate=document.getElementById("report-date");
+  if(reportDate && !reportDate.value){
+    reportDate.value=getViewDate();
+  }
 }
 
 async function refreshUsersFromDb(){
