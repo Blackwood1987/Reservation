@@ -325,14 +325,14 @@ function initAuthListener(){
     if(!snap.exists()){
       await signOut(auth);
       alert("계정 정보를 찾을 수 없습니다.");
-      window.location.href = "index.html";
+      window.location.replace("index.html");
       return;
     }
     const data = snap.data();
     if(!data.approved){
       await signOut(auth);
       alert("승인 대기 중입니다.");
-      window.location.href = "index.html";
+      window.location.replace("index.html");
       return;
     }
     const role = String(data.role||"worker").trim().toLowerCase();
@@ -343,7 +343,7 @@ async function logout(){
   try{
     await signOut(auth);
   }catch(e){}
-  window.location.href = "index.html";
+  window.location.replace("index.html");
 }
 
 function switchView(view){
@@ -824,6 +824,8 @@ function openBookingModal(id,start){
   document.getElementById("booking-date").value=getViewDate();
   document.getElementById("booking-user").value=appState.currentUser.name;
   document.getElementById("booking-recurring").checked=false;
+  const autoClean=document.getElementById("booking-autoclean");
+  if(autoClean) autoClean.checked=false;
 }
 function closeModal(id){document.getElementById(id).style.display="none";}
 
@@ -834,6 +836,7 @@ async function confirmBooking(){
   const duration=Number(document.getElementById("booking-duration").value);
   const purpose=document.getElementById("booking-purpose").value;
   const recurring=document.getElementById("booking-recurring").checked;
+  const autoClean=document.getElementById("booking-autoclean")?.checked || false;
   if(!user||!date){alert("정보를 모두 입력해주세요.");return;}
   if(start+duration>18){alert("운영 시간을 초과합니다.");return;}
   const status=appState.currentUser.role==="worker"?"pending":"confirmed";
@@ -855,10 +858,13 @@ async function confirmBooking(){
       start,
       duration,
       purpose,
-      status
+      status,
+      autoClean
     });
     success+=1;
-    if(status==="confirmed") await addSystemBuffer(appState.bookingTarget.id,targetDate,start+duration);
+    if(status==="confirmed" && autoClean){
+      await addSystemBuffer(appState.bookingTarget.id,targetDate,start+duration);
+    }
   }
   closeModal("booking-modal");
   if(success===0){alert("모든 반복 예약이 중복으로 인해 실패했습니다.");return;}
@@ -893,7 +899,9 @@ function openApprovalModal(id,docId){
   appState.approvalTarget={id,docId};
   document.getElementById("approval-modal").style.display="flex";
   document.getElementById("approval-text").textContent=`${booking.user}님의 예약 요청을 처리합니다.`;
-  document.getElementById("approval-detail").innerHTML=`날짜: ${booking.date}<br />장비: ${id}<br />시간: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}<br />목적: ${statusMeta[booking.purpose].label}`;
+  const autoCleanText = booking.autoClean ? "예" : "아니오";
+  document.getElementById("approval-detail").innerHTML=
+    `날짜: ${booking.date}<br />장비: ${id}<br />시간: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}<br />목적: ${statusMeta[booking.purpose].label}<br />자동 소독: ${autoCleanText}`;
 }
 
 async function processApproval(action){
@@ -901,7 +909,9 @@ async function processApproval(action){
   const {id,docId}=target;const booking=findBookingByDocId(id,docId);if(!booking) return;
   if(action==="approve"){
     await updateBookingDoc(docId,{status:"confirmed"});
-    await addSystemBuffer(id,booking.date,booking.start+booking.duration,docId);
+    if(booking.autoClean){
+      await addSystemBuffer(id,booking.date,booking.start+booking.duration,docId);
+    }
     showToast("예약이 승인되었습니다.");
   }else{
     await deleteBookingDoc(docId);
