@@ -38,7 +38,7 @@ const appState = {
   currentDate:todayISO(),currentYear:new Date().getFullYear(),
   currentMonth:new Date().getMonth()+1,dragPayload:null,
   isResizing:false,resizeStartX:0,resizeOriginDuration:0,resizeTarget:null,
-  bookingTarget:{id:null,start:9},approvalTarget:null
+  bookingTarget:{id:null,start:9},approvalTarget:null,deleteTarget:null
 };
 
 let users = [];
@@ -154,6 +154,7 @@ function syncBookingsSnapshot(snapshot){
   const next = Object.fromEntries(bscIds.map(id=>[id,[]]));
   snapshot.forEach(docSnap=>{
     const data = docSnap.data();
+    if(data.status === "deleted") return;
     const machineId = data.machineId;
     if(!machineId || !next[machineId]) return;
     next[machineId].push({ docId: docSnap.id, ...data });
@@ -589,6 +590,17 @@ function renderSchedule(){
             block.style.backgroundColor=statusMeta[booking.purpose].color;
             block.innerHTML=`<span>${booking.user}</span><span class="booking-sub">${statusMeta[booking.purpose].label}</span><div class="resize-handle"></div>`;
           }
+          if(can("edit") && booking.user!=="System"){
+            const delBtn=document.createElement("button");
+            delBtn.type="button";
+            delBtn.className="booking-delete";
+            delBtn.textContent="삭제";
+            delBtn.addEventListener("click",(e)=>{
+              e.stopPropagation();
+              openDeleteModal(id, booking.docId);
+            });
+            block.appendChild(delBtn);
+          }
           if(can("edit")&&booking.user!=="System"){
             block.draggable=true;
             block.addEventListener("dragstart",e=>handleDragStart(e,id,booking.docId));
@@ -828,6 +840,51 @@ function openBookingModal(id,start){
   if(autoClean) autoClean.checked=false;
 }
 function closeModal(id){document.getElementById(id).style.display="none";}
+
+function openDeleteModal(id, docId){
+  if(!can("edit")){alert("권한이 없습니다.");return;}
+  appState.deleteTarget = { id, docId };
+  const reason = document.getElementById("delete-reason");
+  if(reason) reason.value = "";
+  document.getElementById("delete-modal").style.display = "flex";
+}
+
+async function confirmDelete(){
+  const target = appState.deleteTarget;
+  if(!target) return;
+  const reasonEl = document.getElementById("delete-reason");
+  const reason = reasonEl ? reasonEl.value.trim() : "";
+  if(!reason){
+    alert("삭제 사유를 입력해주세요.");
+    return;
+  }
+  const { id, docId } = target;
+  const booking = findBookingByDocId(id, docId);
+  if(!booking){ closeModal("delete-modal"); return; }
+  const deletedBy = appState.currentUser?.uid || "system";
+  await updateDoc(doc(db,"bookings",docId),{
+    status: "deleted",
+    deleteReason: reason,
+    deletedBy,
+    deletedAt: serverTimestamp()
+  });
+
+  if(booking.autoClean){
+    const bufferStart = booking.start + booking.duration;
+    const buffer = getBookingsForDate(id, booking.date).find(b=>b.user==="System" && b.start===bufferStart && b.duration===0.5);
+    if(buffer?.docId){
+      await updateDoc(doc(db,"bookings",buffer.docId),{
+        status: "deleted",
+        deleteReason: "연동 예약 삭제",
+        deletedBy,
+        deletedAt: serverTimestamp()
+      });
+    }
+  }
+  closeModal("delete-modal");
+  appState.deleteTarget = null;
+  showToast("예약이 삭제되었습니다.","info");
+}
 
 async function confirmBooking(){
   const user=document.getElementById("booking-user").value.trim();
@@ -1176,6 +1233,7 @@ function bindEvents(){
   on("btn-save-booking","click",confirmBooking);
   on("btn-approve","click",()=>processApproval("approve"));
   on("btn-reject","click",()=>processApproval("reject"));
+  on("btn-confirm-delete","click",confirmDelete);
   document.querySelectorAll("[data-close-modal]").forEach(btn=>btn.addEventListener("click",()=>closeModal(btn.dataset.closeModal)));
   on("btn-create-user","click",()=>refreshUsersFromDb());
   on("btn-save-user","click",saveUser);
