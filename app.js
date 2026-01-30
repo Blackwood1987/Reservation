@@ -80,6 +80,30 @@ function getPurposeMeta(key){
     tile: base.tile
   };
 }
+
+function isPurposeAllowedForMachine(purpose, machineId){
+  if(!purpose || !machineId) return true;
+  const list = Array.isArray(purpose.machines) ? purpose.machines : null;
+  if(!list || list.length === 0) return true;
+  return list.includes(machineId);
+}
+
+function getPurposesForMachine(machineId){
+  return purposeList.filter(p=>isPurposeAllowedForMachine(p, machineId));
+}
+
+function renderPurposeOptions(machineId){
+  const sel=document.getElementById("booking-purpose");
+  if(!sel) return;
+  const current=sel.value;
+  const options = machineId ? getPurposesForMachine(machineId) : purposeList;
+  if(options.length === 0){
+    sel.innerHTML = '<option value="" disabled>선택 가능한 목적이 없습니다</option>';
+    return;
+  }
+  sel.innerHTML=options.map(p=>`<option value="${p.key}">${p.label}</option>`).join("");
+  if(current && options.some(p=>p.key===current)) sel.value=current;
+}
 function renderPurposeOptions(){
   const sel=document.getElementById("booking-purpose");
   if(!sel) return;
@@ -116,7 +140,11 @@ function buildConfigPayload(){
     locations: [...locations],
     machines: buildMachinesMap(),
     machineOrder: [...bscIds],
-    purposes: purposeList.map(p=>({ key: p.key, label: p.label })),
+    purposes: purposeList.map(p=>({
+      key: p.key,
+      label: p.label,
+      machines: Array.isArray(p.machines) ? p.machines : null
+    })),
     updatedAt: serverTimestamp()
   };
 }
@@ -126,7 +154,11 @@ function applyConfigData(data){
     locations = [...data.locations];
   }
   if(Array.isArray(data.purposes) && data.purposes.length){
-    purposeList = data.purposes.map(p=>({ key: String(p.key), label: String(p.label) }));
+    purposeList = data.purposes.map(p=>({
+      key: String(p.key),
+      label: String(p.label),
+      machines: Array.isArray(p.machines) ? p.machines.map(m=>String(m)) : null
+    }));
   }else{
     purposeList = [...defaultPurposeList];
   }
@@ -434,7 +466,7 @@ function resetToNow(){
 
 function renderAll(){
   renderLocationOptions();
-  renderPurposeOptions();
+  renderPurposeOptions(appState.bookingTarget?.id);
   renderDateLabels();
   renderDashboard();
   renderSchedule();
@@ -896,9 +928,11 @@ function openBookingModal(id,start){
   document.getElementById("booking-date").value=getViewDate();
   document.getElementById("booking-user").value=appState.currentUser.name;
   document.getElementById("booking-recurring").checked=false;
+  renderPurposeOptions(id);
   const purposeSelect=document.getElementById("booking-purpose");
-  if(purposeSelect && !purposeSelect.value && purposeList.length){
-    purposeSelect.value=purposeList[0].key;
+  if(purposeSelect && !purposeSelect.value){
+    const options = getPurposesForMachine(id);
+    if(options.length) purposeSelect.value=options[0].key;
   }
   const autoClean=document.getElementById("booking-autoclean");
   if(autoClean) autoClean.checked=false;
@@ -960,6 +994,11 @@ async function confirmBooking(){
   const autoClean=document.getElementById("booking-autoclean")?.checked || false;
   if(!user||!date){alert("정보를 모두 입력해주세요.");return;}
   if(start+duration>18){alert("운영 시간을 초과합니다.");return;}
+  const allowedPurposes = getPurposesForMachine(appState.bookingTarget.id);
+  if(allowedPurposes.length && !allowedPurposes.some(p=>p.key===purpose)){
+    alert("선택한 목적은 해당 장비에 사용할 수 없습니다.");
+    return;
+  }
   const status=appState.currentUser.role==="worker"?"pending":"confirmed";
   const userId=appState.currentUser.id||appState.currentUser.name||user;
   const weeks=recurring?4:1; let success=0;
@@ -1196,7 +1235,10 @@ function renderPurposeTable(){
   tbody.innerHTML="";
   for(const purpose of purposeList){
     const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${purpose.key}</td><td>${purpose.label}</td><td><button class="btn-edit" data-edit-purpose="${purpose.key}">수정</button><button class="btn-del" data-del-purpose="${purpose.key}">삭제</button></td>`;
+    const scope = (!purpose.machines || purpose.machines.length === 0)
+      ? "전체"
+      : `${purpose.machines.length}대`;
+    tr.innerHTML=`<td>${purpose.key}</td><td>${purpose.label}</td><td>${scope}</td><td><button class="btn-edit" data-edit-purpose="${purpose.key}">수정</button><button class="btn-del" data-del-purpose="${purpose.key}">삭제</button></td>`;
     tbody.appendChild(tr);
   }
 }
@@ -1209,11 +1251,13 @@ function openPurposeModal(mode,key){
   const original=document.getElementById("purpose-original-key");
   const keyInput=document.getElementById("purpose-key");
   const labelInput=document.getElementById("purpose-label");
+  renderPurposeMachineList();
   if(mode==="create"){
     if(title) title.textContent="가동 목적 등록";
     if(original) original.value="";
     if(keyInput){ keyInput.value=""; keyInput.disabled=false; }
     if(labelInput) labelInput.value="";
+    setPurposeAll(true);
     return;
   }
   const existing=purposeList.find(p=>p.key===key);
@@ -1222,6 +1266,43 @@ function openPurposeModal(mode,key){
   if(original) original.value=existing.key;
   if(keyInput){ keyInput.value=existing.key; keyInput.disabled=true; }
   if(labelInput) labelInput.value=existing.label;
+  if(existing.machines && existing.machines.length){
+    setPurposeAll(false);
+    setPurposeMachineChecks(existing.machines);
+  }else{
+    setPurposeAll(true);
+  }
+}
+
+function renderPurposeMachineList(){
+  const container=document.getElementById("purpose-machine-list");
+  if(!container) return;
+  container.innerHTML="";
+  for(const id of bscIds){
+    const label=document.createElement("label");
+    label.innerHTML=`<input type="checkbox" value="${id}" />${id}`;
+    container.appendChild(label);
+  }
+}
+
+function setPurposeMachineChecks(ids){
+  const container=document.getElementById("purpose-machine-list");
+  if(!container) return;
+  container.querySelectorAll("input[type='checkbox']").forEach(cb=>{
+    cb.checked = ids.includes(cb.value);
+  });
+}
+
+function setPurposeAll(isAll){
+  const allToggle=document.getElementById("purpose-all");
+  const container=document.getElementById("purpose-machine-list");
+  if(allToggle) allToggle.checked = isAll;
+  if(container){
+    container.querySelectorAll("input[type='checkbox']").forEach(cb=>{
+      cb.disabled = isAll;
+      if(isAll) cb.checked = false;
+    });
+  }
 }
 
 function isPurposeUsed(key){
@@ -1232,13 +1313,26 @@ async function savePurpose(){
   const original=document.getElementById("purpose-original-key")?.value || "";
   const key=document.getElementById("purpose-key")?.value.trim() || "";
   const label=document.getElementById("purpose-label")?.value.trim() || "";
+  const allToggle=document.getElementById("purpose-all");
+  const applyAll = allToggle ? allToggle.checked : true;
+  const selected = [];
+  const container=document.getElementById("purpose-machine-list");
+  if(container){
+    container.querySelectorAll("input[type='checkbox']").forEach(cb=>{
+      if(cb.checked) selected.push(cb.value);
+    });
+  }
   if(!key || !label){alert("코드와 표시명을 입력하세요.");return;}
+  if(!applyAll && selected.length === 0){
+    alert("적용할 장비를 하나 이상 선택하세요.");
+    return;
+  }
   if(!original){
     if(purposeList.some(p=>p.key===key)){alert("이미 존재하는 코드입니다.");return;}
-    purposeList=[...purposeList,{key,label}];
+    purposeList=[...purposeList,{key,label,machines: applyAll ? null : selected}];
   }else{
     const idx=purposeList.findIndex(p=>p.key===original);
-    if(idx>-1) purposeList[idx]={key:original,label};
+    if(idx>-1) purposeList[idx]={key:original,label,machines: applyAll ? null : selected};
   }
   closeModal("purpose-modal");
   await saveConfig();
@@ -1388,6 +1482,7 @@ function bindEvents(){
   on("btn-save-location","click",saveLocation);
   on("btn-save-purpose","click",savePurpose);
   on("btn-print","click",printReport);
+  on("purpose-all","change",(e)=>setPurposeAll(e.target.checked));
   document.addEventListener("click",e=>{
     const editId=e.target.getAttribute("data-edit-user"); if(editId) openUserModal("edit",editId);
     const delId=e.target.getAttribute("data-del-user"); if(delId) deleteUser(delId);
