@@ -146,6 +146,10 @@
               <strong>장비 관리</strong>
               <span>장비 등록/수정/삭제</span>
             </button>
+            <button class="admin-btn" data-admin-view="purposes">
+              <strong>가동 목적 관리</strong>
+              <span>목적 목록 편집</span>
+            </button>
             <button class="admin-btn" data-admin-view="locations">
               <strong>장소 관리</strong>
               <span>장소 등록/수정/삭제</span>
@@ -219,6 +223,22 @@
               </table>
             </section>
 
+            <section id="admin-purposes" class="admin-section">
+              <div class="card-header">
+                <h3 class="card-title">가동 목적 관리</h3>
+                <button id="btn-create-purpose" class="btn-time-reset success" type="button">+ 목적 등록</button>
+              </div>
+              <table class="user-table">
+                <thead>
+                  <tr>
+                    <th>코드</th>
+                    <th>표시명</th>
+                    <th>관리</th>
+                  </tr>
+                </thead>
+                <tbody id="purpose-table-body"></tbody>
+              </table>
+            </section>
             <section id="admin-audit" class="admin-section">
               <div class="card-header">
                 <h3 class="card-title">승인 및 보고</h3>
@@ -389,6 +409,25 @@
       </div>
     </div>
 
+    <div id="purpose-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="purpose-modal-title">
+      <div class="modal">
+        <h3 id="purpose-modal-title" class="modal-title">가동 목적 등록</h3>
+        <input id="purpose-original-key" type="hidden" />
+        <div class="form-group">
+          <label for="purpose-key">목적 코드</label>
+          <input id="purpose-key" type="text" placeholder="예: process" />
+        </div>
+        <div class="form-group">
+          <label for="purpose-label">표시명</label>
+          <input id="purpose-label" type="text" placeholder="예: 공정" />
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-cancel" data-close-modal="purpose-modal" type="button">취소</button>
+          <button id="btn-save-purpose" class="btn btn-save" type="button">저장</button>
+        </div>
+      </div>
+    </div>
+
         <div id="location-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="location-modal-title">
       <div class="modal">
         <h3 id="location-modal-title" class="modal-title">장소 등록</h3>
@@ -450,7 +489,7 @@
       </div>
     </div>
 
-    <script type="module" src="app.js?v=20260129-15"></script>
+    <script type="module" src="app.js?v=20260129-16"></script>
   </body>
 </html>
 

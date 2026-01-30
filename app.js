@@ -33,6 +33,16 @@ const statusMeta = {
   system:{label:"자동 소독",color:"var(--status-system)",tile:"tile-system"}
 };
 
+const defaultPurposeList = [
+  { key: "process", label: "공정" },
+  { key: "maint", label: "유지보수" },
+  { key: "em", label: "EM" },
+  { key: "clean", label: "청소" },
+  { key: "other", label: "기타" }
+];
+
+let purposeList = [...defaultPurposeList];
+
 const appState = {
   currentUser:null,currentView:"dashboard",currentHour:9,
   currentDate:todayISO(),currentYear:new Date().getFullYear(),
@@ -61,6 +71,22 @@ function getViewDate(){return appState.currentDate;}
 function getMachineLocation(id){return machineLocations[id]||locations[0];}
 function getMachineMgmtNo(id){return machineMgmtNos[id]||"";}
 function getMachineDesc(id){return machineDescs[id]||"";}
+function getPurposeMeta(key){
+  const found = purposeList.find(p=>p.key===key);
+  const base = statusMeta[key] || statusMeta.other;
+  return {
+    label: found ? found.label : (base.label || key),
+    color: base.color,
+    tile: base.tile
+  };
+}
+function renderPurposeOptions(){
+  const sel=document.getElementById("booking-purpose");
+  if(!sel) return;
+  const current=sel.value;
+  sel.innerHTML=purposeList.map(p=>`<option value="${p.key}">${p.label}</option>`).join("");
+  if(current && purposeList.some(p=>p.key===current)) sel.value=current;
+}
 function renderLocationOptions(){
   const sel=document.getElementById("machine-location");
   if(!sel) return;
@@ -90,6 +116,7 @@ function buildConfigPayload(){
     locations: [...locations],
     machines: buildMachinesMap(),
     machineOrder: [...bscIds],
+    purposes: purposeList.map(p=>({ key: p.key, label: p.label })),
     updatedAt: serverTimestamp()
   };
 }
@@ -97,6 +124,11 @@ function buildConfigPayload(){
 function applyConfigData(data){
   if(Array.isArray(data.locations) && data.locations.length){
     locations = [...data.locations];
+  }
+  if(Array.isArray(data.purposes) && data.purposes.length){
+    purposeList = data.purposes.map(p=>({ key: String(p.key), label: String(p.label) }));
+  }else{
+    purposeList = [...defaultPurposeList];
   }
   if(data.machines && typeof data.machines === "object"){
     const order = Array.isArray(data.machineOrder) ? data.machineOrder : Object.keys(data.machines);
@@ -124,6 +156,7 @@ function applyConfigData(data){
 function handleConfigMissing(){
   configState.loaded = true;
   configState.exists = false;
+  purposeList = [...defaultPurposeList];
   ensureBookingBuckets();
   renderAll();
 }
@@ -399,7 +432,15 @@ function resetToNow(){
   renderDashboard();
 }
 
-function renderAll(){renderLocationOptions();renderDateLabels();renderDashboard();renderSchedule();renderCalendar();renderAdmin();}
+function renderAll(){
+  renderLocationOptions();
+  renderPurposeOptions();
+  renderDateLabels();
+  renderDashboard();
+  renderSchedule();
+  renderCalendar();
+  renderAdmin();
+}
 
 function renderDateLabels(){
   const label=formatDateLabel(getViewDate());
@@ -458,7 +499,7 @@ function getTileMeta(booking){
   if(!booking) return {tile:statusMeta.free.tile,labelText:statusMeta.free.label};
   if(booking.status==="pending") return {tile:statusMeta.pending.tile,labelText:`${statusMeta.pending.label} · ${booking.user}`};
   if(booking.user==="System") return {tile:statusMeta.system.tile,labelText:statusMeta.system.label};
-  const meta=statusMeta[booking.purpose];
+  const meta=getPurposeMeta(booking.purpose);
   return {tile:meta.tile,labelText:`${meta.label} · ${booking.user}`};
 }
 
@@ -469,7 +510,7 @@ function handleTileClick(id){
     alert(`[승인 대기]\n신청자: ${booking.user}\n시간: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}\n\n승인은 '관리 > 승인 및 보고'에서 가능합니다.`);
     return;
   }
-  const purpose=booking.user==="System"?"자동 소독":statusMeta[booking.purpose].label;
+  const purpose=booking.user==="System"?"자동 소독":getPurposeMeta(booking.purpose).label;
   alert(`[예약 정보]\n작업자: ${booking.user}\n목적: ${purpose}\n시간: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}`);
 }
 
@@ -480,7 +521,7 @@ function showTooltip(event,id,booking){
   tooltip.style.display="block";
   tooltip.style.left=`${event.clientX-rect.left+14}px`;
   tooltip.style.top=`${event.clientY-rect.top+14}px`;
-  tooltip.textContent=booking?`${id}: ${booking.user} · ${booking.status==="pending"?"승인 대기":statusMeta[booking.purpose].label}`:`${id}: 사용 가능`;
+  tooltip.textContent=booking?`${id}: ${booking.user} · ${booking.status==="pending"?"승인 대기":getPurposeMeta(booking.purpose).label}`:`${id}: 사용 가능`;
 }
 function hideTooltip(){document.getElementById("map-tooltip").style.display="none";}
 
@@ -500,7 +541,7 @@ function renderTimeline(container,date){
       const width=(booking.duration/9)*100;const left=((booking.start-9)/9)*100;
       bar.className=`tl-bar ${booking.status==="pending"?"pending":""}`.trim();
       bar.style.width=`${width}%`;bar.style.left=`${left}%`;
-      if(booking.status!=="pending") bar.style.background=booking.user==="System"?statusMeta.system.color:statusMeta[booking.purpose].color;
+      if(booking.status!=="pending") bar.style.background=booking.user==="System"?statusMeta.system.color:getPurposeMeta(booking.purpose).color;
       bar.textContent=booking.status==="pending"?`${booking.user} (대기)`:booking.user;
       track.appendChild(bar);
     }
@@ -522,16 +563,20 @@ function getStatusMeta(booking){
   if(!booking) return {color:statusMeta.free.color,label:statusMeta.free.label,text:"대기 중"};
   if(booking.status==="pending") return {color:statusMeta.pending.color,label:statusMeta.pending.label,text:`${booking.user} (승인 대기)`};
   if(booking.user==="System") return {color:statusMeta.system.color,label:statusMeta.system.label,text:"시스템 소독"};
-  const meta=statusMeta[booking.purpose];
+  const meta=getPurposeMeta(booking.purpose);
   return {color:meta.color,label:meta.label,text:`${booking.user} 작업 중`};
 }
 
 function renderChart(){
-  const counts={process:0,maint:0,em:0,clean:0,other:0,free:0};
+  const counts={free:0};
+  purposeList.forEach(p=>{counts[p.key]=0;});
   for(const id of bscIds){
     const booking=getCurrentBooking(id);
-    if(booking&&booking.status==="confirmed"&&booking.user!=="System") counts[booking.purpose]+=1;
-    else if(!booking) counts.free+=1;
+    if(booking&&booking.status==="confirmed"&&booking.user!=="System"){
+      const key = counts[booking.purpose] !== undefined ? booking.purpose : "other";
+      if(counts[key] === undefined) counts[key]=0;
+      counts[key]+=1;
+    } else if(!booking) counts.free+=1;
   }
   const total=bscIds.length;
   const svg=document.getElementById("donut-chart");
@@ -544,12 +589,13 @@ function renderChart(){
     const circle=document.createElementNS("http://www.w3.org/2000/svg","circle");
     circle.setAttribute("cx","21");circle.setAttribute("cy","21");circle.setAttribute("r","15.9155");
     circle.setAttribute("fill","transparent");circle.setAttribute("stroke-width","5");
-    circle.setAttribute("stroke",statusMeta[key].color);
+    const meta = key==="free" ? statusMeta.free : getPurposeMeta(key);
+    circle.setAttribute("stroke",meta.color);
     circle.setAttribute("stroke-dasharray",`${percent} ${100-percent}`);
     circle.setAttribute("stroke-dashoffset",String(25-startAngle));
     svg.appendChild(circle);
     const legendItem=document.createElement("div");legendItem.className="legend-item";
-    legendItem.innerHTML=`<span class="legend-dot" style="background:${statusMeta[key].color}"></span><span>${statusMeta[key].label} (${counts[key]}대)</span>`;
+    legendItem.innerHTML=`<span class="legend-dot" style="background:${meta.color}"></span><span>${meta.label} (${counts[key]}대)</span>`;
     legend.appendChild(legendItem);
     startAngle+=percent;
   }
@@ -591,8 +637,9 @@ function renderSchedule(){
           }else if(booking.user==="System"){
             block.style.backgroundColor=statusMeta.system.color;block.innerHTML="<span>소독</span>";
           }else{
-            block.style.backgroundColor=statusMeta[booking.purpose].color;
-            block.innerHTML=`<span>${booking.user}</span><span class="booking-sub">${statusMeta[booking.purpose].label}</span><div class="resize-handle"></div>`;
+            const purposeMeta=getPurposeMeta(booking.purpose);
+            block.style.backgroundColor=purposeMeta.color;
+            block.innerHTML=`<span>${booking.user}</span><span class="booking-sub">${purposeMeta.label}</span><div class="resize-handle"></div>`;
           }
           if(canDeleteBooking()){
             const delBtn=document.createElement("button");
@@ -713,7 +760,7 @@ function printReport(){
   const now=new Date();
   const reportId=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2,10)).toUpperCase();
   const tableRows=rows.length?rows.map(b=>{
-    const purpose=b.user==="System"?"자동 소독":statusMeta[b.purpose]?.label||b.purpose;
+    const purpose=b.user==="System"?"자동 소독":getPurposeMeta(b.purpose).label;
     const status=b.status==="pending"?"승인 대기":"확정";
     return `<tr><td>${b.id}</td><td>${b.user}</td><td>${purpose}</td><td>${status}</td><td>${b.date}</td><td>${formatTime(b.start)}</td><td>${formatTime(b.start+b.duration)}</td></tr>`;
   }).join(""):'<tr><td colspan="7">해당 날짜에 예약이 없습니다.</td></tr>';
@@ -763,20 +810,24 @@ function renderAdmin(){
   if(!can("admin") || appState.currentView!=="admin") return;
   const usersBtn=document.querySelector('[data-admin-view="users"]');
   const machinesBtn=document.querySelector('[data-admin-view="machines"]');
+  const purposesBtn=document.querySelector('[data-admin-view="purposes"]');
   const locationsBtn=document.querySelector('[data-admin-view="locations"]');
   if(appState.currentUser.role==="supervisor"){
     usersBtn.style.display="none";
     machinesBtn.style.display="none";
+    if(purposesBtn) purposesBtn.style.display="none";
     locationsBtn.style.display="none";
     switchAdminView("audit");
   }else{
     usersBtn.style.display="flex";
     machinesBtn.style.display="flex";
+    if(purposesBtn) purposesBtn.style.display="flex";
     locationsBtn.style.display="flex";
   }
   refreshUsersFromDb();
   renderLocationTable();
   renderMachineTable();
+  renderPurposeTable();
   renderPendingList();
   renderStats();
   const reportDate=document.getElementById("report-date");
@@ -816,7 +867,7 @@ function renderPendingList(){
   for(const item of pending){
     const {id,docId,booking}=item;
     const div=document.createElement("div");div.className="pending-item";
-    div.innerHTML=`<strong>${id} · ${booking.user}</strong><div class="pending-meta">${booking.date} · ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}</div><div class="pending-meta">목적: ${statusMeta[booking.purpose].label}</div><div class="pending-actions"><button class="btn-edit" data-approve-id="${id}" data-approve-doc="${docId}">승인</button><button class="btn-del" data-reject-id="${id}" data-reject-doc="${docId}">반려</button></div>`;
+    div.innerHTML=`<strong>${id} · ${booking.user}</strong><div class="pending-meta">${booking.date} · ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}</div><div class="pending-meta">목적: ${getPurposeMeta(booking.purpose).label}</div><div class="pending-actions"><button class="btn-edit" data-approve-id="${id}" data-approve-doc="${docId}">승인</button><button class="btn-del" data-reject-id="${id}" data-reject-doc="${docId}">반려</button></div>`;
     list.appendChild(div);
   }
 }
@@ -845,6 +896,10 @@ function openBookingModal(id,start){
   document.getElementById("booking-date").value=getViewDate();
   document.getElementById("booking-user").value=appState.currentUser.name;
   document.getElementById("booking-recurring").checked=false;
+  const purposeSelect=document.getElementById("booking-purpose");
+  if(purposeSelect && !purposeSelect.value && purposeList.length){
+    purposeSelect.value=purposeList[0].key;
+  }
   const autoClean=document.getElementById("booking-autoclean");
   if(autoClean) autoClean.checked=false;
 }
@@ -967,7 +1022,7 @@ function openApprovalModal(id,docId){
   document.getElementById("approval-text").textContent=`${booking.user}님의 예약 요청을 처리합니다.`;
   const autoCleanText = booking.autoClean ? "예" : "아니오";
   document.getElementById("approval-detail").innerHTML=
-    `날짜: ${booking.date}<br />장비: ${id}<br />시간: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}<br />목적: ${statusMeta[booking.purpose].label}<br />자동 소독: ${autoCleanText}`;
+    `날짜: ${booking.date}<br />장비: ${id}<br />시간: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}<br />목적: ${getPurposeMeta(booking.purpose).label}<br />자동 소독: ${autoCleanText}`;
   const reasonEl = document.getElementById("reject-reason");
   if(reasonEl) reasonEl.value = "";
 }
@@ -1135,6 +1190,72 @@ function renderLocationTable(){
   }
 }
 
+function renderPurposeTable(){
+  const tbody=document.getElementById("purpose-table-body");
+  if(!tbody) return;
+  tbody.innerHTML="";
+  for(const purpose of purposeList){
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${purpose.key}</td><td>${purpose.label}</td><td><button class="btn-edit" data-edit-purpose="${purpose.key}">수정</button><button class="btn-del" data-del-purpose="${purpose.key}">삭제</button></td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function openPurposeModal(mode,key){
+  const modal=document.getElementById("purpose-modal");
+  if(!modal) return;
+  modal.style.display="flex";
+  const title=document.getElementById("purpose-modal-title");
+  const original=document.getElementById("purpose-original-key");
+  const keyInput=document.getElementById("purpose-key");
+  const labelInput=document.getElementById("purpose-label");
+  if(mode==="create"){
+    if(title) title.textContent="가동 목적 등록";
+    if(original) original.value="";
+    if(keyInput){ keyInput.value=""; keyInput.disabled=false; }
+    if(labelInput) labelInput.value="";
+    return;
+  }
+  const existing=purposeList.find(p=>p.key===key);
+  if(!existing) return;
+  if(title) title.textContent="가동 목적 수정";
+  if(original) original.value=existing.key;
+  if(keyInput){ keyInput.value=existing.key; keyInput.disabled=true; }
+  if(labelInput) labelInput.value=existing.label;
+}
+
+function isPurposeUsed(key){
+  return bscIds.some(id => (bookings[id]||[]).some(b=>b.purpose===key));
+}
+
+async function savePurpose(){
+  const original=document.getElementById("purpose-original-key")?.value || "";
+  const key=document.getElementById("purpose-key")?.value.trim() || "";
+  const label=document.getElementById("purpose-label")?.value.trim() || "";
+  if(!key || !label){alert("코드와 표시명을 입력하세요.");return;}
+  if(!original){
+    if(purposeList.some(p=>p.key===key)){alert("이미 존재하는 코드입니다.");return;}
+    purposeList=[...purposeList,{key,label}];
+  }else{
+    const idx=purposeList.findIndex(p=>p.key===original);
+    if(idx>-1) purposeList[idx]={key:original,label};
+  }
+  closeModal("purpose-modal");
+  await saveConfig();
+  renderAll();
+}
+
+async function deletePurpose(key){
+  if(isPurposeUsed(key)){
+    alert("해당 목적이 예약에 사용 중이어서 삭제할 수 없습니다.");
+    return;
+  }
+  if(!confirm(`${key} 목적을 삭제하시겠습니까?`)) return;
+  purposeList=purposeList.filter(p=>p.key!==key);
+  await saveConfig();
+  renderAll();
+}
+
 function openUserModal(mode,uid){
   const modal=document.getElementById("user-modal");
   if(!modal) return;
@@ -1262,8 +1383,10 @@ function bindEvents(){
   on("btn-save-user","click",saveUser);
   on("btn-create-machine","click",()=>openMachineModal("create"));
   on("btn-create-location","click",()=>openLocationModal("create"));
+  on("btn-create-purpose","click",()=>openPurposeModal("create"));
   on("btn-save-machine","click",saveMachine);
   on("btn-save-location","click",saveLocation);
+  on("btn-save-purpose","click",savePurpose);
   on("btn-print","click",printReport);
   document.addEventListener("click",e=>{
     const editId=e.target.getAttribute("data-edit-user"); if(editId) openUserModal("edit",editId);
@@ -1273,6 +1396,8 @@ function bindEvents(){
     const delMachine=e.target.getAttribute("data-del-machine"); if(delMachine) deleteMachine(delMachine);
     const editLocation=e.target.getAttribute("data-edit-location"); if(editLocation) openLocationModal("edit",editLocation);
     const delLocation=e.target.getAttribute("data-del-location"); if(delLocation) deleteLocation(delLocation);
+    const editPurpose=e.target.getAttribute("data-edit-purpose"); if(editPurpose) openPurposeModal("edit",editPurpose);
+    const delPurpose=e.target.getAttribute("data-del-purpose"); if(delPurpose) deletePurpose(delPurpose);
     const approveId=e.target.getAttribute("data-approve-id");
     const approveDoc=e.target.getAttribute("data-approve-doc");
     if(approveId && approveDoc){openApprovalModal(approveId,approveDoc);}
