@@ -24,7 +24,8 @@
 body {
   margin: 0;
   padding: 16px;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   background: var(--bg-color);
   color: var(--text-color);
   font-family: "Pretendard", "Malgun Gothic", sans-serif;
@@ -311,7 +312,8 @@ body.login-page {
   border-radius: 8px;
   background: linear-gradient(160deg, #ffffff 0%, #f7f9fb 100%);
   position: relative;
-  overflow: hidden;
+  overflow-y: scroll;
+  overflow-x: hidden;
   min-height: 160px;
 }
 
@@ -321,7 +323,7 @@ body.login-page {
   flex-direction: column;
   gap: 6px;
   padding: 6px;
-  overflow: auto;
+  overflow: visible;
 }
 
 .location-group {
@@ -553,7 +555,8 @@ body.login-page {
 .timeline-body {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow-y: scroll;
+  overflow-x: hidden;
   position: relative;
 }
 
