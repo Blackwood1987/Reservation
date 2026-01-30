@@ -163,12 +163,14 @@ body.login-page {
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
+  overflow: auto;
 }
 
 .view-section {
   display: none;
   flex: 1;
   min-height: 0;
+  overflow: auto;
 }
 
 .view-section.active {
@@ -198,6 +200,25 @@ body.login-page {
   flex-direction: column;
   gap: 18px;
   min-height: 0;
+}
+
+.map-card {
+  flex: 1.15;
+  min-height: 300px;
+}
+
+.timeline-card {
+  flex: 1;
+  min-height: 260px;
+}
+
+.chart-card {
+  min-height: 240px;
+}
+
+.status-card {
+  flex: 1;
+  min-height: 260px;
 }
 
 .card {
@@ -240,7 +261,8 @@ body.login-page {
 }
 
 .map-card {
-  flex: 2;
+  flex: 1.2;
+  min-height: 300px;
   padding: 0 0 14px;
   overflow: hidden;
 }
@@ -381,7 +403,7 @@ body.login-page {
 
 .timeline-card {
   flex: 1;
-  min-height: 200px;
+  min-height: 260px;
 }
 
 .time-controller {
