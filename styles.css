@@ -178,6 +178,17 @@ body.login-page {
   display: flex;
 }
 
+#view-reservation {
+  flex-direction: column;
+  overflow: auto;
+  padding-bottom: 12px;
+}
+
+#view-reservation .reservation-card {
+  flex: 1;
+  min-height: 0;
+}
+
 .dashboard-layout {
   display: flex;
   gap: 14px;
