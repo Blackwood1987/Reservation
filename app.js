@@ -104,13 +104,6 @@ function renderPurposeOptions(machineId){
   sel.innerHTML=options.map(p=>`<option value="${p.key}">${p.label}</option>`).join("");
   if(current && options.some(p=>p.key===current)) sel.value=current;
 }
-function renderPurposeOptions(){
-  const sel=document.getElementById("booking-purpose");
-  if(!sel) return;
-  const current=sel.value;
-  sel.innerHTML=purposeList.map(p=>`<option value="${p.key}">${p.label}</option>`).join("");
-  if(current && purposeList.some(p=>p.key===current)) sel.value=current;
-}
 function renderLocationOptions(){
   const sel=document.getElementById("machine-location");
   if(!sel) return;
