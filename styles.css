@@ -210,6 +210,7 @@ body.login-page {
 .timeline-card {
   flex: 1.35;
   min-height: 340px;
+  overflow: auto;
 }
 
 .chart-card {
@@ -812,7 +813,7 @@ body.login-page {
 }
 
 .col-machine {
-  width: 96px;
+  width: 140px;
   background: #f8f9fa;
   font-weight: 900;
   text-align: center;
@@ -821,6 +822,8 @@ body.login-page {
   position: sticky;
   left: 0;
   z-index: 2;
+  font-size: 12px;
+  padding: 6px 8px;
 }
 
 .booking-block {
