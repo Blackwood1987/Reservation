@@ -47,6 +47,7 @@ const appState = {
   currentUser:null,currentView:"dashboard",currentHour:9,
   currentDate:todayISO(),currentYear:new Date().getFullYear(),
   currentMonth:new Date().getMonth()+1,dragPayload:null,
+  statsYear:new Date().getFullYear(),statsMonth:new Date().getMonth()+1,
   isResizing:false,resizeStartX:0,resizeOriginDuration:0,resizeTarget:null,
   bookingTarget:{id:null,start:9},deleteTarget:null,
   isLiveMode:true,dayModalDate:null,dashboardSidePanel:"status",
@@ -264,8 +265,10 @@ function getBookingQueryRange(){
   const safeCurrent = Number.isNaN(currentDate.getTime()) ? new Date() : currentDate;
   const monthStart = new Date(appState.currentYear, appState.currentMonth-1, 1);
   const monthEnd = new Date(appState.currentYear, appState.currentMonth, 0);
-  const startBase = new Date(Math.min(safeCurrent.getTime(), monthStart.getTime()));
-  const endBase = new Date(Math.max(safeCurrent.getTime(), monthEnd.getTime()));
+  const statsStart = new Date(appState.statsYear, appState.statsMonth-1, 1);
+  const statsEnd = new Date(appState.statsYear, appState.statsMonth, 0);
+  const startBase = new Date(Math.min(safeCurrent.getTime(), monthStart.getTime(), statsStart.getTime()));
+  const endBase = new Date(Math.max(safeCurrent.getTime(), monthEnd.getTime(), statsEnd.getTime()));
   startBase.setDate(startBase.getDate()-7);
   endBase.setDate(endBase.getDate()+7);
   return { from: dateToISO(startBase), to: dateToISO(endBase) };
@@ -896,6 +899,22 @@ function changeMonth(delta){
   if(appState.currentMonth<1){appState.currentMonth=12;appState.currentYear-=1;}
   subscribeBookings();
   renderCalendar();
+  renderStats();
+}
+
+function shiftStatsMonth(delta){
+  const next=new Date(appState.statsYear, appState.statsMonth-1+delta, 1);
+  appState.statsYear=next.getFullYear();
+  appState.statsMonth=next.getMonth()+1;
+  subscribeBookings();
+  renderStats();
+}
+
+function resetStatsMonthToCurrent(){
+  const now=new Date();
+  appState.statsYear=now.getFullYear();
+  appState.statsMonth=now.getMonth()+1;
+  subscribeBookings();
   renderStats();
 }
 
@@ -2107,19 +2126,115 @@ async function refreshAuditHistory(force=false){
 }
 
 function renderStats(){
-  const monthKey=`${appState.currentYear}-${String(appState.currentMonth).padStart(2,"0")}`;
-  const totals={process:0,maint:0,clean:0};
+  const monthKey=`${appState.statsYear}-${String(appState.statsMonth).padStart(2,"0")}`;
+  const monthLabel=`${appState.statsYear}. ${String(appState.statsMonth).padStart(2,"0")}`;
+  const monthDays=new Date(appState.statsYear, appState.statsMonth, 0).getDate();
+  const rows=[];
+  const machineHours={};
+  const locationStats=Object.fromEntries(locations.map(loc=>[loc,{count:0,hours:0,machines:0}]));
+  const purposeHours=Object.fromEntries(purposeList.map(p=>[p.key,0]));
+  let totalHours=0;
+
   for(const id of bscIds){
+    machineHours[id]=0;
+    const loc=getMachineLocation(id);
+    if(!locationStats[loc]) locationStats[loc]={count:0,hours:0,machines:0};
+    locationStats[loc].machines+=1;
     for(const booking of bookings[id]){
       if(!booking.date.startsWith(monthKey)) continue;
-      if(booking.purpose==="process") totals.process+=booking.duration;
-      if(booking.purpose==="maint") totals.maint+=booking.duration;
-      if(booking.purpose==="clean") totals.clean+=booking.duration;
+      rows.push({ id, ...booking });
+      totalHours+=booking.duration;
+      machineHours[id]+=booking.duration;
+      locationStats[loc].count+=1;
+      locationStats[loc].hours+=booking.duration;
+      if(purposeHours[booking.purpose]===undefined) purposeHours[booking.purpose]=0;
+      purposeHours[booking.purpose]+=booking.duration;
     }
   }
-  document.getElementById("stat-process").textContent=`${totals.process.toFixed(1)} h`;
-  document.getElementById("stat-maint").textContent=`${totals.maint.toFixed(1)} h`;
-  document.getElementById("stat-clean").textContent=`${totals.clean.toFixed(1)} h`;
+
+  const totalCount=rows.length;
+  const capacityHours=bscIds.length*monthDays*9;
+  const utilization=capacityHours>0 ? (totalHours/capacityHours)*100 : 0;
+  const avgDuration=totalCount>0 ? totalHours/totalCount : 0;
+
+  const processHours=purposeHours.process||0;
+  const maintHours=purposeHours.maint||0;
+  const cleanHours=purposeHours.clean||0;
+
+  const processEl=document.getElementById("stat-process");
+  const maintEl=document.getElementById("stat-maint");
+  const cleanEl=document.getElementById("stat-clean");
+  if(processEl) processEl.textContent=`${processHours.toFixed(1)} h`;
+  if(maintEl) maintEl.textContent=`${maintHours.toFixed(1)} h`;
+  if(cleanEl) cleanEl.textContent=`${cleanHours.toFixed(1)} h`;
+
+  const monthLabelEl=document.getElementById("stats-month-label");
+  if(monthLabelEl) monthLabelEl.textContent=monthLabel;
+  const capacityNote=document.getElementById("stats-capacity-note");
+  if(capacityNote){
+    capacityNote.textContent=`가동률 기준 용량: ${bscIds.length}대 × ${monthDays}일 × 9시간 = ${capacityHours.toFixed(1)}시간`;
+  }
+
+  const kpiList=document.getElementById("stats-kpi-list");
+  if(kpiList){
+    kpiList.innerHTML=
+      `<div class="stats-kpi-item"><span class="stats-kpi-label">총 예약 건수</span><span class="stats-kpi-value">${totalCount}건</span></div>`+
+      `<div class="stats-kpi-item"><span class="stats-kpi-label">총 사용 시간</span><span class="stats-kpi-value">${totalHours.toFixed(1)}h</span></div>`+
+      `<div class="stats-kpi-item"><span class="stats-kpi-label">평균 예약 시간</span><span class="stats-kpi-value">${avgDuration.toFixed(2)}h</span></div>`+
+      `<div class="stats-kpi-item"><span class="stats-kpi-label">설비 가동률</span><span class="stats-kpi-value">${utilization.toFixed(1)}%</span></div>`;
+  }
+
+  const purposeBars=document.getElementById("stats-purpose-bars");
+  if(purposeBars){
+    const purposeRows=purposeList.map(p=>{
+      const hours=purposeHours[p.key]||0;
+      const percent=totalHours>0?(hours/totalHours)*100:0;
+      const meta=getPurposeMeta(p.key);
+      return { label:meta.label, hours, percent, color:meta.color };
+    }).sort((a,b)=>b.hours-a.hours);
+    if(!purposeRows.some(row=>row.hours>0)){
+      purposeBars.innerHTML='<div class="stats-empty">선택 월 예약 데이터가 없습니다.</div>';
+    }else{
+      purposeBars.innerHTML=purposeRows.filter(row=>row.hours>0).map(row=>
+        `<div class="stats-purpose-row">
+          <span class="stats-purpose-name">${row.label}</span>
+          <div class="stats-purpose-track"><span class="stats-purpose-fill" style="width:${row.percent.toFixed(1)}%;background:${row.color};"></span></div>
+          <span class="stats-purpose-meta">${row.hours.toFixed(1)}h (${row.percent.toFixed(1)}%)</span>
+        </div>`
+      ).join("");
+    }
+  }
+
+  const locationBody=document.getElementById("stats-location-body");
+  if(locationBody){
+    const locRows=Object.entries(locationStats)
+      .map(([loc,val])=>({ loc, ...val }))
+      .sort((a,b)=>b.hours-a.hours || b.count-a.count || a.loc.localeCompare(b.loc));
+    locationBody.innerHTML=locRows.map(row=>
+      `<tr>
+        <td>${row.loc}</td>
+        <td>${row.machines}대</td>
+        <td>${row.count}건</td>
+        <td>${row.hours.toFixed(1)}h</td>
+      </tr>`
+    ).join("");
+  }
+
+  const topMachinesEl=document.getElementById("stats-top-machines");
+  if(topMachinesEl){
+    const topRows=Object.entries(machineHours)
+      .map(([id,hours])=>({id,hours}))
+      .sort((a,b)=>b.hours-a.hours||a.id.localeCompare(b.id))
+      .slice(0,5)
+      .filter(row=>row.hours>0);
+    if(topRows.length===0){
+      topMachinesEl.innerHTML='<li class="stats-empty">선택 월 예약 데이터가 없습니다.</li>';
+    }else{
+      topMachinesEl.innerHTML=topRows.map(row=>
+        `<li><span>${row.id}</span><span class="stats-top-hours">${row.hours.toFixed(1)}h</span></li>`
+      ).join("");
+    }
+  }
 }
 function openBookingModal(id,start){
   if(!can("create")){showToast("예약 생성 권한이 없습니다.","warn");return;}
@@ -2767,6 +2882,9 @@ function bindEvents(){
   on("btn-save-location","click",saveLocation);
   on("btn-save-purpose","click",savePurpose);
   on("btn-print","click",printReport);
+  on("btn-stats-prev","click",()=>shiftStatsMonth(-1));
+  on("btn-stats-next","click",()=>shiftStatsMonth(1));
+  on("btn-stats-current","click",resetStatsMonthToCurrent);
   on("btn-export-audit-csv","click",exportAuditHistoryCsv);
   on("btn-export-activity-json","click",exportAdminActivityJson);
   on("btn-refresh-audit-history","click",()=>refreshAuditHistory(true));

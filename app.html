@@ -6,7 +6,7 @@
     <title>장비 예약 관리 시스템 (데모)</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="stylesheet" href="styles.css?v=20260129-37" />
+    <link rel="stylesheet" href="styles.css?v=20260129-38" />
   </head>
   <body>
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
@@ -338,8 +338,14 @@
             <section id="admin-stats" class="admin-section">
               <div class="card-header">
                 <h3 class="card-title">운영 통계 (데모)</h3>
-                <div class="card-meta">서버 연동 전 자리표시자</div>
+                <div class="stats-controls">
+                  <button id="btn-stats-prev" class="nav-btn" type="button">◀</button>
+                  <span id="stats-month-label" class="stats-month-label"></span>
+                  <button id="btn-stats-next" class="nav-btn" type="button">▶</button>
+                  <button id="btn-stats-current" class="btn-today" type="button">현재 월</button>
+                </div>
               </div>
+              <p id="stats-capacity-note" class="stats-capacity-note"></p>
               <div class="stats-grid">
                 <div class="stat-card process">
                   <strong>공정 가동</strong>
@@ -356,6 +362,36 @@
                   <div class="stat-value" id="stat-clean">-</div>
                   <span>선택 월 누적 시간</span>
                 </div>
+              </div>
+              <div class="admin-stats-layout">
+                <section class="stats-panel">
+                  <h4>월간 요약</h4>
+                  <div id="stats-kpi-list" class="stats-kpi-list"></div>
+                </section>
+                <section class="stats-panel">
+                  <h4>목적별 사용 비율</h4>
+                  <div id="stats-purpose-bars" class="stats-purpose-bars"></div>
+                </section>
+                <section class="stats-panel">
+                  <h4>장소별 현황</h4>
+                  <div class="admin-table-wrap">
+                    <table class="user-table">
+                      <thead>
+                        <tr>
+                          <th>장소</th>
+                          <th>장비 수</th>
+                          <th>예약 건수</th>
+                          <th>사용 시간</th>
+                        </tr>
+                      </thead>
+                      <tbody id="stats-location-body"></tbody>
+                    </table>
+                  </div>
+                </section>
+                <section class="stats-panel">
+                  <h4>상위 사용 장비</h4>
+                  <ol id="stats-top-machines" class="stats-top-machines"></ol>
+                </section>
               </div>
             </section>
           </article>
@@ -555,7 +591,7 @@
       </div>
     </div>
 
-    <script type="module" src="app.js?v=20260129-37"></script>
+    <script type="module" src="app.js?v=20260129-38"></script>
   </body>
 </html>
 
