@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>장비 예약 관리 시스템 (데모)</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-    <link rel="stylesheet" href="styles.css?v=20260129-31" />
+    <link rel="stylesheet" href="styles.css?v=20260129-32" />
   </head>
   <body>
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
@@ -33,6 +33,11 @@
       <section id="view-dashboard" class="view-section active" aria-labelledby="dashboard-title">
         <div class="dashboard-summary" id="dashboard-summary" aria-label="대시보드 요약"></div>
         <div class="dashboard-legend" id="dashboard-legend" aria-label="상태 범례"></div>
+        <div class="dashboard-mobile-tabs" id="dashboard-mobile-tabs" role="tablist" aria-label="모바일 대시보드 보기">
+          <button class="mobile-view-btn active" data-mobile-view="summary" type="button" role="tab" aria-selected="true">요약</button>
+          <button class="mobile-view-btn" data-mobile-view="map" type="button" role="tab" aria-selected="false">룸맵</button>
+          <button class="mobile-view-btn" data-mobile-view="timeline" type="button" role="tab" aria-selected="false">타임라인</button>
+        </div>
         <div class="dashboard-layout">
           <div class="left-panel">
             <article class="card map-card">
@@ -527,7 +532,7 @@
       </div>
     </div>
 
-    <script type="module" src="app.js?v=20260129-31"></script>
+    <script type="module" src="app.js?v=20260129-32"></script>
   </body>
 </html>
 
