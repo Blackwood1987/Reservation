@@ -295,6 +295,10 @@ body.login-page {
   box-shadow: var(--shadow-soft);
 }
 
+.dashboard-mobile-tabs.worker-hidden {
+  display: none !important;
+}
+
 .left-panel {
   flex: 2;
   display: flex;
@@ -975,6 +979,13 @@ body.login-page {
   margin-top: 2px;
 }
 
+.status-next {
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #4f6780;
+}
+
 .status-badge {
   padding: 5px 10px;
   border-radius: 999px;
@@ -1390,6 +1401,53 @@ body.role-worker .resize-handle {
   color: #7f8c8d;
 }
 
+.mobile-machine-brief {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 10px;
+}
+
+.mobile-machine-brief span {
+  color: #708395;
+  font-weight: 700;
+}
+
+.mobile-machine-brief strong {
+  flex: 1;
+  text-align: right;
+  color: #2f4458;
+  font-weight: 800;
+}
+
+.mobile-machine-count {
+  margin-bottom: 6px;
+  font-size: 10px;
+  color: #607182;
+  font-weight: 800;
+}
+
+.mobile-availability {
+  margin-bottom: 6px;
+  padding: 5px 7px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.mobile-availability.free {
+  background: #e9f9ef;
+  color: #1d7f46;
+  border: 1px solid #c6edd5;
+}
+
+.mobile-availability.busy {
+  background: #fff5e8;
+  color: #9a5d19;
+  border: 1px solid #f1d9b7;
+}
+
 .mobile-booking-list {
   display: flex;
   flex-direction: column;
@@ -1428,6 +1486,14 @@ body.role-worker .resize-handle {
   border-radius: 6px;
   padding: 6px;
   text-align: center;
+}
+
+.mobile-booking-more {
+  margin-top: 5px;
+  font-size: 10px;
+  color: #7c8ea0;
+  font-weight: 800;
+  text-align: right;
 }
 
 .mobile-add-booking {
@@ -2684,6 +2750,17 @@ body.role-worker .resize-handle {
     display: none;
   }
 
+  #view-dashboard.worker-mobile-compact .dashboard-summary,
+  #view-dashboard.worker-mobile-compact .dashboard-legend,
+  #view-dashboard.worker-mobile-compact .dashboard-side-tabs,
+  #view-dashboard.worker-mobile-compact #side-panel-chart {
+    display: none;
+  }
+
+  #view-dashboard.worker-mobile-compact .right-panel {
+    display: block;
+  }
+
   .time-controller {
     grid-template-columns: 1fr;
     align-items: stretch;
@@ -2696,6 +2773,24 @@ body.role-worker .resize-handle {
   .schedule-toolbar {
     grid-template-columns: 1fr;
     align-items: stretch;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 10px;
+    background: #f8fbfd;
+    border: 1px solid #e3eaf0;
+  }
+
+  .schedule-filter span {
+    font-size: 10px;
+  }
+
+  .schedule-filter input,
+  .schedule-filter select {
+    min-height: 36px;
+  }
+
+  .schedule-filter-check {
+    padding-top: 2px;
   }
 
   #view-reservation .table-wrapper {

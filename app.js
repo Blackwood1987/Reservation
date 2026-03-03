@@ -369,6 +369,14 @@ function isWorkerUser(user=appState.currentUser){
   return !!user && user.role==="worker";
 }
 
+function isWorkerLikeUser(user=appState.currentUser){
+  return !!user && (user.role==="worker" || user.role==="guest");
+}
+
+function isWorkerMobileMode(){
+  return isMobileViewport() && isWorkerLikeUser();
+}
+
 function canDragBooking(booking){
   const user=appState.currentUser;
   if(!user || !booking) return false;
@@ -673,11 +681,29 @@ function renderDashboardMobileView(){
   const section=document.getElementById("view-dashboard");
   if(!section) return;
   const isMobile=isMobileViewport();
+  const workerMobile=isMobile && isWorkerLikeUser();
   section.classList.remove("mobile-view-summary","mobile-view-map","mobile-view-timeline");
-  if(isMobile){
+  section.classList.toggle("worker-mobile-compact",workerMobile);
+  if(workerMobile && appState.mobileDashboardView==="summary"){
+    appState.mobileDashboardView="map";
+  }
+  if(workerMobile){
+    appState.dashboardSidePanel="status";
+    renderDashboardSidePanel();
+  }else if(isMobile){
     section.classList.add(`mobile-view-${appState.mobileDashboardView}`);
   }
+  const mobileTabs=document.getElementById("dashboard-mobile-tabs");
+  if(mobileTabs){
+    mobileTabs.classList.toggle("worker-hidden",workerMobile);
+  }
   document.querySelectorAll(".mobile-view-btn").forEach(btn=>{
+    const isSummaryBtn=btn.dataset.mobileView==="summary";
+    btn.hidden=workerMobile && isSummaryBtn;
+    if(btn.hidden){
+      btn.setAttribute("aria-selected","false");
+      return;
+    }
     const isActive=btn.dataset.mobileView===appState.mobileDashboardView;
     btn.classList.toggle("active",isActive);
     btn.setAttribute("aria-selected",isActive?"true":"false");
@@ -1226,6 +1252,36 @@ function getBookingTooltipText(booking){
   if(!booking) return "";
   return `예약자: ${booking.user}\n사용시간: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}`;
 }
+
+function isMachineBusyAt(id,date,hour){
+  return getBookingsForDate(id,date).some(booking=>booking.start<=hour && hour<(booking.start+booking.duration));
+}
+
+function formatWaitText(diffHour){
+  const rounded=Math.max(0,Math.round(diffHour*2)/2);
+  if(rounded===0) return "지금";
+  const minutes=Math.round(rounded*60);
+  if(minutes<60) return `${minutes}분 후`;
+  const h=Math.floor(minutes/60);
+  const m=minutes%60;
+  if(m===0) return `${h}시간 후`;
+  return `${h}시간 ${m}분 후`;
+}
+
+function getMachineAvailabilityHint(id,date,referenceHour){
+  const hour=clampHour(referenceHour);
+  if(!isMachineBusyAt(id,date,hour)){
+    if(date===todayISO()) return { busy:false, text:"지금 사용 가능" };
+    return { busy:false, text:`${formatTime(hour)}부터 사용 가능` };
+  }
+  const nextStart=findFirstAvailableStart(id,date,hour+0.5);
+  if(nextStart===null){
+    return { busy:true, text:"당일 추가 사용 가능 시간이 없습니다." };
+  }
+  const wait=Math.max(0,nextStart-hour);
+  return { busy:true, text:`${formatTime(nextStart)}부터 가능 (${formatWaitText(wait)})` };
+}
+
 function createTimelineIndicator(type){
   const indicator=document.createElement("div");
   indicator.className=`time-indicator ${type}`;
@@ -1404,12 +1460,16 @@ function renderTimeline(container,date){
 }
 function renderStatusList(){
   const list=document.getElementById("status-list");list.innerHTML="";
+  const showAvailabilityHint=isWorkerMobileMode();
+  const statusDate=getViewDate();
+  const statusHour=appState.currentHour;
   for(const id of bscIds){
     const booking=getCurrentBooking(id);
     const meta=getStatusMeta(booking);
+    const availability=showAvailabilityHint ? getMachineAvailabilityHint(id,statusDate,statusHour) : null;
     const item=document.createElement("div");item.className="status-item";item.style.borderLeftColor=meta.color;
     item.dataset.machineId=id;
-    item.innerHTML=`<div class="status-icon" style="color:${meta.color}">●</div><div class="status-info"><div class="status-id">${id}</div><div class="status-text">${meta.text}</div></div><div class="status-badge" style="background:${meta.color}">${meta.label}</div>`;
+    item.innerHTML=`<div class="status-icon" style="color:${meta.color}">●</div><div class="status-info"><div class="status-id">${id}</div><div class="status-text">${meta.text}</div>${availability?`<div class="status-next">${availability.text}</div>`:""}</div><div class="status-badge" style="background:${meta.color}">${meta.label}</div>`;
     item.addEventListener("mouseenter",()=>setMachineFocus(id,true));
     item.addEventListener("mouseleave",()=>setMachineFocus(null,false));
     list.appendChild(item);
@@ -1471,6 +1531,16 @@ function renderScheduleFilterControls(){
     locationSelect.innerHTML=options.join("");
     locationSelect.value=locations.includes(current)?current:"all";
   }
+  const isCompactMobile=isMobileViewport();
+  const machineSearch=document.getElementById("schedule-machine-search");
+  const machineFilter=machineSearch?.closest(".schedule-filter");
+  const resetBtn=document.getElementById("btn-schedule-filter-reset");
+  if(machineFilter) machineFilter.hidden=isCompactMobile;
+  if(resetBtn) resetBtn.hidden=isCompactMobile;
+  if(machineSearch){
+    machineSearch.disabled=isCompactMobile;
+    if(isCompactMobile) machineSearch.value="";
+  }
   const myOnly=document.getElementById("schedule-my-only");
   if(myOnly){
     const isGuest=appState.currentUser?.role==="guest";
@@ -1482,7 +1552,7 @@ function renderScheduleFilterControls(){
 function getScheduleFilterState(){
   return {
     location: document.getElementById("schedule-location-filter")?.value || "all",
-    keyword: (document.getElementById("schedule-machine-search")?.value || "").trim().toLowerCase(),
+    keyword: isMobileViewport() ? "" : (document.getElementById("schedule-machine-search")?.value || "").trim().toLowerCase(),
     mineOnly: !!document.getElementById("schedule-my-only")?.checked
   };
 }
@@ -1563,17 +1633,29 @@ function renderScheduleMobile(date,groups){
     section.innerHTML=`<h4 class="mobile-location-title">${group.location} <span>${group.ids.length}대</span></h4>`;
     const list=document.createElement("div");
     list.className="mobile-machine-list";
+    const referenceHour=date===todayISO() ? getNowHour() : 9;
     for(const id of group.ids){
       const bookingsForDay=getBookingsForDate(id,date).sort((a,b)=>a.start-b.start);
       const card=document.createElement("article");
       card.className="mobile-machine-card";
+      const availability=getMachineAvailabilityHint(id,date,referenceHour);
+      const activeBooking=bookingsForDay.find(b=>b.start<=referenceHour && referenceHour<(b.start+b.duration));
+      const nextBooking=bookingsForDay.find(b=>b.start>referenceHour) || null;
+      const currentText=activeBooking
+        ? `${activeBooking.user} · ${formatTime(activeBooking.start)}-${formatTime(activeBooking.start+activeBooking.duration)}`
+        : "현재 가동 없음";
+      const nextText=nextBooking
+        ? `${nextBooking.user} · ${formatTime(nextBooking.start)}-${formatTime(nextBooking.start+nextBooking.duration)}`
+        : "다음 예약 없음";
       const bookingRows=bookingsForDay.length
-        ? bookingsForDay.map(b=>{
+        ? bookingsForDay.slice(0,2).map(b=>{
             const purpose=b.user==="System"?"소독":getPurposeMeta(b.purpose).label;
             return `<div class="mobile-booking-row"><span>${formatTime(b.start)}-${formatTime(b.start+b.duration)}</span><strong>${b.user}</strong><em>${purpose}</em></div>`;
           }).join("")
         : '<div class="mobile-booking-empty">예약 없음</div>';
-      card.innerHTML=`<div class="mobile-machine-head"><strong>${id}</strong><span>${getMachineMgmtNo(id)||"-"}</span></div><div class="mobile-booking-list">${bookingRows}</div>`;
+      const moreCount=Math.max(0, bookingsForDay.length-2);
+      const moreText=moreCount>0 ? `<div class="mobile-booking-more">외 ${moreCount}건</div>` : "";
+      card.innerHTML=`<div class="mobile-machine-head"><strong>${id}</strong><span>${getMachineMgmtNo(id)||"-"}</span></div><div class="mobile-availability ${availability.busy?"busy":"free"}">${availability.text}</div><div class="mobile-machine-brief"><span>현재</span><strong>${currentText}</strong></div><div class="mobile-machine-brief"><span>다음</span><strong>${nextText}</strong></div><div class="mobile-machine-count">예약 ${bookingsForDay.length}건</div><div class="mobile-booking-list">${bookingRows}</div>${moreText}`;
       if(can("create")){
         const nextStart=findFirstAvailableStart(id,date,getMinReservableHour(date));
         const addBtn=document.createElement("button");
@@ -1860,7 +1942,8 @@ function renderCalendarMobile(dayEntries){
     const item=document.createElement("button");
     item.type="button";
     item.className=`calendar-mobile-item ${isToday?"today":""}`.trim();
-    item.innerHTML=`<div class="calendar-mobile-head"><strong>${dateKey.replace(/-/g,". ")}</strong><span class="util-value ${summary.utilClass}">${summary.utilization}%</span></div><div class="calendar-mobile-meta"><span>예약 ${summary.total}건</span><span class="${summary.pending>0?"pending-text":""}">대기 ${summary.pending}건</span><span>피크 ${summary.peakLabel}</span></div>`;
+    const pendingText=summary.pending>0 ? `<span class="pending-text">대기 ${summary.pending}건</span>` : "";
+    item.innerHTML=`<div class="calendar-mobile-head"><strong>${dateKey.replace(/-/g,". ")}</strong><span class="util-value ${summary.utilClass}">${summary.utilization}%</span></div><div class="calendar-mobile-meta"><span>예약 ${summary.total}건</span><span>가동률 ${summary.utilization}%</span>${pendingText}</div>`;
     item.addEventListener("click",()=>openDayModal(dateKey));
     container.appendChild(item);
   }
