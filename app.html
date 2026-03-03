@@ -6,7 +6,7 @@
     <title>장비 예약 관리 시스템 (데모)</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="stylesheet" href="styles.css?v=20260129-42" />
+    <link rel="stylesheet" href="styles.css?v=20260129-43" />
   </head>
   <body>
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
@@ -31,6 +31,45 @@
     </header>
 
     <main class="app-main">
+      <section id="mobile-shell" class="mobile-shell" aria-label="모바일 운영 화면">
+        <div class="mobile-shell-top">
+          <button id="btn-mobile-menu" class="mobile-icon-btn" type="button" aria-label="메뉴 열기">☰</button>
+          <h3 id="mobile-pane-title" class="mobile-pane-title">대시보드</h3>
+          <button id="btn-mobile-center-reserve-top" class="mobile-top-reserve" type="button">예약</button>
+        </div>
+
+        <div id="mobile-drawer" class="mobile-drawer" hidden>
+          <button class="mobile-nav-btn active" type="button" data-mobile-pane="dashboard">대시보드</button>
+          <button class="mobile-nav-btn" type="button" data-mobile-pane="reservation">예약 관리</button>
+        </div>
+
+        <div class="mobile-shell-body">
+          <nav id="mobile-nav-rail" class="mobile-nav-rail" aria-label="모바일 메뉴">
+            <button class="mobile-nav-btn active" type="button" data-mobile-pane="dashboard">대시보드</button>
+            <button class="mobile-nav-btn" type="button" data-mobile-pane="reservation">예약 관리</button>
+          </nav>
+
+          <div class="mobile-pane-wrap">
+            <section id="mobile-dashboard-pane" class="mobile-pane active" aria-label="모바일 대시보드">
+              <div class="mobile-chart-wrap">
+                <svg id="mobile-dashboard-donut" viewBox="0 0 220 220" class="mobile-dashboard-donut" aria-label="가동 분석"></svg>
+                <button id="btn-mobile-center-reserve" class="mobile-center-reserve" type="button">예약하기</button>
+              </div>
+            </section>
+
+            <section id="mobile-reservation-pane" class="mobile-pane" aria-label="모바일 예약관리">
+              <div class="mobile-chart-wrap chrono">
+                <svg id="mobile-chrono" viewBox="0 0 240 240" class="mobile-chrono" aria-label="예약 크로노그래프"></svg>
+              </div>
+            </section>
+          </div>
+
+          <aside id="mobile-legend-rail" class="mobile-legend-rail" aria-label="상태 범례"></aside>
+        </div>
+
+        <div id="mobile-legend-bottom" class="mobile-legend-bottom" aria-label="상태 범례"></div>
+      </section>
+
       <section id="view-dashboard" class="view-section active" aria-labelledby="dashboard-title">
         <div class="dashboard-summary" id="dashboard-summary" aria-label="대시보드 요약"></div>
         <div class="dashboard-legend" id="dashboard-legend" aria-label="상태 범례"></div>
@@ -471,6 +510,20 @@
       </div>
     </div>
 
+    <div id="mobile-reserve-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="mobile-reserve-title">
+      <div class="modal">
+        <h3 id="mobile-reserve-title" class="modal-title">빠른 예약</h3>
+        <p id="mobile-reserve-step-label" class="modal-sub"></p>
+        <div id="mobile-reserve-body"></div>
+        <div class="btn-group">
+          <button id="btn-mobile-reserve-back" class="btn btn-cancel" type="button">이전</button>
+          <button id="btn-mobile-reserve-cancel" class="btn btn-cancel" type="button">취소</button>
+          <button id="btn-mobile-reserve-next" class="btn btn-save" type="button">다음</button>
+          <button id="btn-mobile-reserve-submit" class="btn btn-save" type="button">예약 확정</button>
+        </div>
+      </div>
+    </div>
+
     <div id="user-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
       <div class="modal">
         <h3 id="user-modal-title" class="modal-title">계정 생성</h3>
@@ -591,7 +644,7 @@
       </div>
     </div>
 
-    <script type="module" src="app.js?v=20260129-42"></script>
+    <script type="module" src="app.js?v=20260129-43"></script>
   </body>
 </html>
 

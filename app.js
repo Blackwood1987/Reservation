@@ -51,7 +51,9 @@ const appState = {
   isResizing:false,resizeStartX:0,resizeOriginDuration:0,resizeTarget:null,
   bookingTarget:{id:null,start:9},deleteTarget:null,
   isLiveMode:true,dayModalDate:null,dashboardSidePanel:"status",
-  focusMachineId:null,mobileDashboardView:"summary",adminCompact:false
+  focusMachineId:null,mobileDashboardView:"summary",adminCompact:false,
+  mobile:{activePane:"dashboard",layoutMode:"drawer",drawerOpen:false,canReserveNow:false},
+  reserveWizard:null
 };
 
 let users = [];
@@ -644,7 +646,13 @@ async function logout(){
 }
 
 function switchView(view){
+  if(isMobileViewport() && view==="calendar"){
+    view="dashboard";
+  }
   if(view==="admin"&&!can("admin")){alert("접근 권한이 없습니다.");return;}
+  if(view!=="dashboard" && view!=="reservation"){
+    closeReserveWizard();
+  }
   if(view!=="dashboard") clearMachineFocusState();
   appState.currentView=view;
   document.querySelectorAll(".tab-btn").forEach(btn=>btn.classList.toggle("active",btn.dataset.view===view));
@@ -652,6 +660,7 @@ function switchView(view){
   if(view==="calendar") renderCalendar();
   if(view==="admin") renderAdmin();
   if(view==="dashboard") renderDashboardMobileView();
+  renderMobileShell();
 }
 
 function renderDashboardSidePanel(){
@@ -675,6 +684,291 @@ function setDashboardSidePanel(panel){
 
 function isMobileViewport(){
   return window.matchMedia("(max-width: 820px)").matches;
+}
+
+function isMobileShellMode(){
+  return isMobileViewport() && (appState.currentView==="dashboard" || appState.currentView==="reservation");
+}
+
+function getMobileLayoutMode(){
+  return window.matchMedia("(max-width: 429px)").matches ? "drawer" : "rail";
+}
+
+function getDashboardLegendItems(){
+  const items=[{key:"free", label:statusMeta.free.label, color:statusMeta.free.color}];
+  purposeList.forEach(p=>{
+    const meta=getPurposeMeta(p.key);
+    items.push({key:p.key, label:meta.label, color:meta.color});
+  });
+  items.push({key:"pending", label:statusMeta.pending.label, color:statusMeta.pending.color});
+  items.push({key:"system", label:statusMeta.system.label, color:statusMeta.system.color});
+  const seen=new Set();
+  return items.filter(item=>{
+    if(seen.has(item.key)) return false;
+    seen.add(item.key);
+    return true;
+  });
+}
+
+function hasAnyReservableSlot(date,duration=0.5){
+  for(const id of bscIds){
+    const minHour=getMinReservableHour(date);
+    for(let h=minHour; h<18; h+=0.5){
+      if(h+duration>18) continue;
+      if(!isOverlap(id,date,h,duration)) return true;
+    }
+  }
+  return false;
+}
+
+function setMobilePane(pane, syncView=true){
+  const nextPane = pane==="reservation" ? "reservation" : "dashboard";
+  appState.mobile.activePane=nextPane;
+  if(syncView && appState.currentView!==nextPane){
+    switchView(nextPane);
+    return;
+  }
+  renderMobileShell();
+}
+
+function toggleMobileDrawer(forceOpen){
+  if(appState.mobile.layoutMode!=="drawer") return;
+  if(typeof forceOpen==="boolean") appState.mobile.drawerOpen=forceOpen;
+  else appState.mobile.drawerOpen=!appState.mobile.drawerOpen;
+  renderMobileShell();
+}
+
+function createSvgNode(tag, attrs={}){
+  const node=document.createElementNS("http://www.w3.org/2000/svg",tag);
+  Object.entries(attrs).forEach(([key,val])=>node.setAttribute(key,String(val)));
+  return node;
+}
+
+function polarToCartesian(cx, cy, r, angleDeg){
+  const rad=(angleDeg-90)*(Math.PI/180);
+  return { x: cx+r*Math.cos(rad), y: cy+r*Math.sin(rad) };
+}
+
+function describeArcPath(cx, cy, r, startAngle, endAngle){
+  const start=polarToCartesian(cx, cy, r, endAngle);
+  const end=polarToCartesian(cx, cy, r, startAngle);
+  const largeArc=(endAngle-startAngle)<=180 ? "0" : "1";
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 0 ${end.x} ${end.y}`;
+}
+
+function getReservableLocationsByTime(date,time,duration=0.5){
+  return locations.map(loc=>{
+    const count=bscIds.filter(id=>
+      getMachineLocation(id)===loc &&
+      !isOverlap(id,date,time,duration)
+    ).length;
+    return { location:loc, count };
+  }).filter(item=>item.count>0).sort((a,b)=>b.count-a.count||a.location.localeCompare(b.location));
+}
+
+function getReservableMachinesByTime(date,time,duration,location){
+  return bscIds
+    .filter(id=>getMachineLocation(id)===location && !isOverlap(id,date,time,duration))
+    .map(id=>({ id, mgmtNo:getMachineMgmtNo(id) || "-" }));
+}
+
+function computeSlotStateForChronograph(date,slotStart){
+  const slotEnd=slotStart+0.5;
+  const purposeCounts={ process:0, maint:0, em:0, clean:0, other:0, pending:0, system:0 };
+  let activeCount=0;
+  for(const id of bscIds){
+    const booking=getBookingsForDate(id,date).find(b=>b.start<slotEnd && slotStart<(b.start+b.duration));
+    if(!booking) continue;
+    activeCount+=1;
+    if(booking.status==="pending"){
+      purposeCounts.pending+=1;
+      continue;
+    }
+    if(booking.user==="System"){
+      purposeCounts.system+=1;
+      continue;
+    }
+    const key=purposeCounts[booking.purpose]!==undefined ? booking.purpose : "other";
+    purposeCounts[key]+=1;
+  }
+  if(activeCount===0){
+    return { key:"free", color:statusMeta.free.color, label:statusMeta.free.label };
+  }
+  const priority=["process","maint","em","clean","other","pending","system"];
+  let bestKey="other";
+  let bestCount=-1;
+  priority.forEach(key=>{
+    const count=purposeCounts[key];
+    if(count>bestCount){
+      bestCount=count;
+      bestKey=key;
+    }
+  });
+  if(bestKey==="pending"){
+    return { key:bestKey, color:statusMeta.pending.color, label:statusMeta.pending.label };
+  }
+  if(bestKey==="system"){
+    return { key:bestKey, color:statusMeta.system.color, label:statusMeta.system.label };
+  }
+  const meta=getPurposeMeta(bestKey);
+  return { key:bestKey, color:meta.color, label:meta.label };
+}
+
+function renderMobileLegend(){
+  const items=getDashboardLegendItems();
+  const html=items.map(item=>`<span class="mobile-legend-item"><span class="mobile-legend-dot" style="background:${item.color}"></span>${item.label}</span>`).join("");
+  const rail=document.getElementById("mobile-legend-rail");
+  const bottom=document.getElementById("mobile-legend-bottom");
+  if(rail) rail.innerHTML=html;
+  if(bottom) bottom.innerHTML=html;
+}
+
+function renderMobileDashboardDial(){
+  const svg=document.getElementById("mobile-dashboard-donut");
+  if(!svg) return;
+  svg.innerHTML="";
+  const stats=getDashboardSummaryStats();
+  const total=Math.max(1,stats.total);
+  const percent=Math.round((stats.running/total)*100);
+  const cx=110;
+  const cy=110;
+  const r=74;
+  const track=createSvgNode("circle",{ cx, cy, r, fill:"none", stroke:"#e4edf4", "stroke-width":"22" });
+  const progress=createSvgNode("circle",{
+    cx, cy, r, fill:"none", stroke:"var(--status-process)", "stroke-width":"22",
+    "stroke-linecap":"round", transform:`rotate(-90 ${cx} ${cy})`,
+    "stroke-dasharray":`${(2*Math.PI*r)*(percent/100)} ${(2*Math.PI*r)}`,
+    "stroke-dashoffset":"0"
+  });
+  const label=createSvgNode("text",{ x:cx, y:cy-6, "text-anchor":"middle", "font-size":"26", "font-weight":"900", fill:"#243748" });
+  label.textContent=`${percent}%`;
+  const sub=createSvgNode("text",{ x:cx, y:cy+16, "text-anchor":"middle", "font-size":"11", "font-weight":"800", fill:"#607286" });
+  sub.textContent=`가동 ${stats.running}/${stats.total}`;
+  svg.appendChild(track);
+  svg.appendChild(progress);
+  svg.appendChild(label);
+  svg.appendChild(sub);
+
+  const canReserve=can("create") && hasAnyReservableSlot(getViewDate(),0.5);
+  appState.mobile.canReserveNow=canReserve;
+  const reserveText=!can("create") ? "읽기 전용" : (canReserve ? "예약하기" : "예약 불가능");
+  const centerBtn=document.getElementById("btn-mobile-center-reserve");
+  const topBtn=document.getElementById("btn-mobile-center-reserve-top");
+  [centerBtn,topBtn].forEach(btn=>{
+    if(!btn) return;
+    btn.textContent=reserveText;
+    btn.disabled=!canReserve;
+  });
+}
+
+function renderMobileChronograph270(){
+  const svg=document.getElementById("mobile-chrono");
+  if(!svg) return;
+  svg.innerHTML="";
+  const date=getViewDate();
+  const cx=120;
+  const cy=130;
+  const radius=84;
+  const startDeg=135;
+  const sweepDeg=270;
+  const slots=18;
+  const slotSweep=sweepDeg/slots;
+
+  const track=createSvgNode("path",{
+    d:describeArcPath(cx,cy,radius,startDeg,startDeg+sweepDeg),
+    fill:"none",
+    stroke:"#e4edf4",
+    "stroke-width":"20",
+    "stroke-linecap":"round"
+  });
+  svg.appendChild(track);
+
+  for(let i=0;i<slots;i+=1){
+    const slotStart=9+i*0.5;
+    const segStart=startDeg + i*slotSweep + 0.9;
+    const segEnd=segStart + slotSweep - 1.8;
+    const slotState=computeSlotStateForChronograph(date,slotStart);
+    const path=createSvgNode("path",{
+      d:describeArcPath(cx,cy,radius,segStart,segEnd),
+      fill:"none",
+      stroke:slotState.color,
+      "stroke-width":"18",
+      "stroke-linecap":"round",
+      class:"mobile-chrono-hit"
+    });
+    path.addEventListener("click",()=>openReserveWizard("chronograph",slotStart));
+    path.setAttribute("title",`${formatTime(slotStart)}~${formatTime(slotStart+0.5)} · ${slotState.label}`);
+    svg.appendChild(path);
+  }
+
+  [9,12,15,18].forEach(hour=>{
+    const ratio=(hour-9)/9;
+    const angle=startDeg + ratio*sweepDeg;
+    const pos=polarToCartesian(cx,cy,radius+25,angle);
+    const text=createSvgNode("text",{ x:pos.x, y:pos.y+4, "text-anchor":"middle", class:"mobile-chrono-label" });
+    text.textContent=String(hour).padStart(2,"0");
+    svg.appendChild(text);
+  });
+
+  const nowHour=getNowHour();
+  if(date===todayISO() && nowHour>=9 && nowHour<=18){
+    const ratio=(nowHour-9)/9;
+    const angle=startDeg + ratio*sweepDeg;
+    const inner=polarToCartesian(cx,cy,radius-20,angle);
+    const outer=polarToCartesian(cx,cy,radius+8,angle);
+    const line=createSvgNode("line",{
+      x1:inner.x, y1:inner.y, x2:outer.x, y2:outer.y,
+      stroke:"#c0392b", "stroke-width":"2.4"
+    });
+    const dot=createSvgNode("circle",{ cx:outer.x, cy:outer.y, r:"3.5", fill:"#c0392b" });
+    svg.appendChild(line);
+    svg.appendChild(dot);
+    const label=createSvgNode("text",{ x:cx, y:cy+8, "text-anchor":"middle", class:"mobile-chrono-now-label" });
+    label.textContent=`현재 ${formatTime(nowHour)}`;
+    svg.appendChild(label);
+  }
+}
+
+function renderMobileShell(){
+  if(isMobileViewport() && appState.currentView==="calendar"){
+    switchView("dashboard");
+    return;
+  }
+  const calendarTab=document.querySelector('.tab-btn[data-view="calendar"]');
+  if(calendarTab) calendarTab.hidden=isMobileViewport();
+
+  const active=isMobileShellMode();
+  document.body.classList.toggle("mobile-shell-active",active);
+  if(!active){
+    document.body.classList.remove("mobile-layout-drawer","mobile-layout-rail","mobile-drawer-open");
+    return;
+  }
+
+  appState.mobile.layoutMode=getMobileLayoutMode();
+  if(appState.currentView==="reservation") appState.mobile.activePane="reservation";
+  if(appState.currentView==="dashboard") appState.mobile.activePane="dashboard";
+  if(appState.mobile.layoutMode==="rail") appState.mobile.drawerOpen=false;
+
+  const title=document.getElementById("mobile-pane-title");
+  if(title) title.textContent=appState.mobile.activePane==="reservation" ? "예약 관리" : "대시보드";
+
+  document.body.classList.toggle("mobile-layout-drawer",appState.mobile.layoutMode==="drawer");
+  document.body.classList.toggle("mobile-layout-rail",appState.mobile.layoutMode==="rail");
+  document.body.classList.toggle("mobile-drawer-open",appState.mobile.layoutMode==="drawer" && appState.mobile.drawerOpen);
+
+  const drawer=document.getElementById("mobile-drawer");
+  if(drawer) drawer.hidden=!(appState.mobile.layoutMode==="drawer" && appState.mobile.drawerOpen);
+
+  document.querySelectorAll("[data-mobile-pane]").forEach(btn=>{
+    btn.classList.toggle("active",btn.dataset.mobilePane===appState.mobile.activePane);
+  });
+  document.querySelectorAll(".mobile-pane").forEach(pane=>{
+    pane.classList.toggle("active",pane.id===`mobile-${appState.mobile.activePane}-pane`);
+  });
+
+  renderMobileLegend();
+  renderMobileDashboardDial();
+  renderMobileChronograph270();
 }
 
 function renderDashboardMobileView(){
@@ -1076,10 +1370,12 @@ function startClockTicker(){
       const slider=document.getElementById("time-slider");
       if(slider) slider.value=String(appState.currentHour);
       renderDashboard();
+      renderMobileShell();
       return;
     }
     updateTimelineIndicators(document.getElementById("timeline-body"));
     updateTimelineIndicators(document.getElementById("day-timeline"));
+    renderMobileShell();
   },10000);
 }
 
@@ -1091,6 +1387,7 @@ function renderAll(){
   renderSchedule();
   renderCalendar();
   renderAdmin();
+  renderMobileShell();
 }
 
 function getDashboardSummaryStats(){
@@ -1133,21 +1430,7 @@ function renderDashboardSummary(){
 function renderDashboardLegend(){
   const container=document.getElementById("dashboard-legend");
   if(!container) return;
-  const items=[];
-  items.push({key:"free", label:statusMeta.free.label, color:statusMeta.free.color});
-  purposeList.forEach(p=>{
-    const meta=getPurposeMeta(p.key);
-    items.push({key:p.key, label:meta.label, color:meta.color});
-  });
-  items.push({key:"pending", label:statusMeta.pending.label, color:statusMeta.pending.color});
-  items.push({key:"system", label:statusMeta.system.label, color:statusMeta.system.color});
-  const seen=new Set();
-  container.innerHTML=items
-    .filter(item=>{
-      if(seen.has(item.key)) return false;
-      seen.add(item.key);
-      return true;
-    })
+  container.innerHTML=getDashboardLegendItems()
     .map(item=>`<span class="legend-chip"><span class="legend-swatch" style="background:${item.color}"></span>${item.label}</span>`)
     .join("");
 }
@@ -1173,6 +1456,7 @@ function renderDashboard(){
   renderChart();
   rebuildFocusCache();
   applyMachineFocus();
+  renderMobileShell();
 }
 
 function renderTimeLabels(){
@@ -2422,6 +2706,227 @@ function renderStats(){
     }
   }
 }
+
+function getReserveWizardSteps(source){
+  return source==="chronograph"
+    ? ["timePurpose","location","machine","confirm"]
+    : ["location","machine","timePurpose","confirm"];
+}
+
+function closeReserveWizard(){
+  appState.reserveWizard=null;
+  const modal=document.getElementById("mobile-reserve-modal");
+  if(modal) modal.style.display="none";
+}
+
+function openReserveWizard(source="dashboard",presetTime=null){
+  if(!can("create")){
+    showToast("예약 권한이 없습니다.","warn");
+    return;
+  }
+  const date=getViewDate();
+  const minHour=getMinReservableHour(date);
+  let baseTime=presetTime===null ? minHour : clampHour(snapToHalfHour(presetTime));
+  if(date===todayISO() && baseTime<minHour) baseTime=minHour;
+  const steps=getReserveWizardSteps(source);
+  appState.reserveWizard={
+    source,
+    steps,
+    stepIndex:0,
+    fields:{
+      date,
+      time:baseTime,
+      duration:0.5,
+      purpose:(purposeList[0]?.key || "process"),
+      location:"",
+      machineId:"",
+      autoClean:false
+    }
+  };
+  const modal=document.getElementById("mobile-reserve-modal");
+  if(modal) modal.style.display="flex";
+  renderReserveWizardStep();
+}
+
+function renderReserveWizardStep(){
+  const state=appState.reserveWizard;
+  if(!state) return;
+  const step=state.steps[state.stepIndex];
+  const fields=state.fields;
+  const body=document.getElementById("mobile-reserve-body");
+  const label=document.getElementById("mobile-reserve-step-label");
+  const btnBack=document.getElementById("btn-mobile-reserve-back");
+  const btnNext=document.getElementById("btn-mobile-reserve-next");
+  const btnSubmit=document.getElementById("btn-mobile-reserve-submit");
+  if(!body || !label || !btnBack || !btnNext || !btnSubmit) return;
+
+  btnBack.style.display=state.stepIndex===0 ? "none" : "inline-flex";
+  const isConfirm=step==="confirm";
+  btnNext.style.display=isConfirm ? "none" : "inline-flex";
+  btnSubmit.style.display=isConfirm ? "inline-flex" : "none";
+
+  if(step==="timePurpose"){
+    label.textContent=state.source==="chronograph" ? "1/4 시간·목적 선택 (시간 자동 입력됨)" : "3/4 시간·목적 선택";
+    const minHour=getMinReservableHour(fields.date);
+    if(fields.time<minHour && fields.date===todayISO()) fields.time=minHour;
+    const timeOptions=[];
+    for(let h=9; h<18; h+=0.5){
+      if(fields.date===todayISO() && h<minHour) continue;
+      timeOptions.push(`<option value="${h}">${formatTime(h)}</option>`);
+    }
+    const durationOptions=[
+      { value:0.5, label:"30분" },
+      { value:1, label:"1시간" },
+      { value:1.5, label:"1시간 30분" },
+      { value:2, label:"2시간" },
+      { value:3, label:"3시간" },
+      { value:4, label:"4시간" }
+    ];
+    const purposeOptions=(fields.machineId ? getPurposesForMachine(fields.machineId) : purposeList);
+    if(purposeOptions.length && !purposeOptions.some(p=>p.key===fields.purpose)) fields.purpose=purposeOptions[0].key;
+    body.innerHTML=`<div class="mobile-field-grid">
+      <div class="form-group"><label for="wizard-date">날짜</label><input id="wizard-date" type="date" value="${fields.date}" /></div>
+      <div class="form-group"><label for="wizard-time">시작 시간</label><select id="wizard-time">${timeOptions.join("")}</select></div>
+      <div class="form-group"><label for="wizard-duration">소요 시간</label><select id="wizard-duration">${durationOptions.map(opt=>`<option value="${opt.value}">${opt.label}</option>`).join("")}</select></div>
+      <div class="form-group"><label for="wizard-purpose">목적</label><select id="wizard-purpose">${purposeOptions.map(opt=>`<option value="${opt.key}">${opt.label}</option>`).join("")}</select></div>
+    </div>`;
+    const dateInput=document.getElementById("wizard-date");
+    const timeSel=document.getElementById("wizard-time");
+    const durationSel=document.getElementById("wizard-duration");
+    const purposeSel=document.getElementById("wizard-purpose");
+    if(timeSel) timeSel.value=String(fields.time);
+    if(durationSel) durationSel.value=String(fields.duration);
+    if(purposeSel) purposeSel.value=String(fields.purpose);
+    dateInput?.addEventListener("change",()=>{ fields.date=dateInput.value || todayISO(); renderReserveWizardStep(); });
+    timeSel?.addEventListener("change",()=>{ fields.time=Number(timeSel.value); });
+    durationSel?.addEventListener("change",()=>{ fields.duration=Number(durationSel.value); });
+    purposeSel?.addEventListener("change",()=>{ fields.purpose=purposeSel.value; });
+    return;
+  }
+
+  if(step==="location"){
+    label.textContent=state.source==="chronograph" ? "2/4 장소 선택" : "1/4 장소 선택";
+    const list=getReservableLocationsByTime(fields.date,fields.time,fields.duration);
+    if(!list.length){
+      body.innerHTML='<div class="mobile-warn-text">선택한 시간에 예약 가능한 장소가 없습니다. 시간을 먼저 변경해주세요.</div>';
+      return;
+    }
+    if(!fields.location || !list.some(item=>item.location===fields.location)) fields.location=list[0].location;
+    body.innerHTML=`<div class="mobile-choice-grid">${list.map(item=>`<button type="button" class="mobile-choice-btn ${fields.location===item.location?"active":""}" data-wizard-location="${item.location}">${item.location} <span style="float:right;color:#607286">${item.count}대 가능</span></button>`).join("")}</div>`;
+    body.querySelectorAll("[data-wizard-location]").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        fields.location=btn.dataset.wizardLocation || "";
+        fields.machineId="";
+        renderReserveWizardStep();
+      });
+    });
+    return;
+  }
+
+  if(step==="machine"){
+    label.textContent=state.source==="chronograph" ? "3/4 장비 선택" : "2/4 장비 선택";
+    const machineList=getReservableMachinesByTime(fields.date,fields.time,fields.duration,fields.location);
+    if(!machineList.length){
+      body.innerHTML='<div class="mobile-warn-text">해당 시간/장소에 예약 가능한 장비가 없습니다. 이전 단계에서 다시 선택해주세요.</div>';
+      return;
+    }
+    if(!fields.machineId || !machineList.some(item=>item.id===fields.machineId)) fields.machineId=machineList[0].id;
+    body.innerHTML=`<div class="mobile-choice-grid">${machineList.map(item=>`<button type="button" class="mobile-choice-btn ${fields.machineId===item.id?"active":""}" data-wizard-machine="${item.id}">${item.id}<span style="float:right;color:#607286">${item.mgmtNo}</span></button>`).join("")}</div>`;
+    body.querySelectorAll("[data-wizard-machine]").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        fields.machineId=btn.dataset.wizardMachine || "";
+        const allowed=getPurposesForMachine(fields.machineId);
+        if(allowed.length && !allowed.some(item=>item.key===fields.purpose)) fields.purpose=allowed[0].key;
+        renderReserveWizardStep();
+      });
+    });
+    return;
+  }
+
+  label.textContent="4/4 예약 확인";
+  body.innerHTML=`<div class="mobile-summary-box">
+    <div>날짜: <strong>${fields.date}</strong></div>
+    <div>시간: <strong>${formatTime(fields.time)} ~ ${formatTime(fields.time+fields.duration)}</strong></div>
+    <div>장소: <strong>${fields.location || "-"}</strong></div>
+    <div>장비: <strong>${fields.machineId || "-"}</strong></div>
+    <div>목적: <strong>${getPurposeMeta(fields.purpose).label}</strong></div>
+  </div>`;
+}
+
+function handleReserveWizardBack(){
+  const state=appState.reserveWizard;
+  if(!state) return;
+  if(state.stepIndex===0) return;
+  state.stepIndex-=1;
+  renderReserveWizardStep();
+}
+
+function handleReserveWizardNext(){
+  const state=appState.reserveWizard;
+  if(!state) return;
+  const step=state.steps[state.stepIndex];
+  const fields=state.fields;
+  if(step==="timePurpose"){
+    if(!fields.date){ showToast("날짜를 선택해주세요.","warn"); return; }
+    if(fields.time<9 || fields.time+fields.duration>18){ showToast("운영 시간(09:00~18:00)을 벗어났습니다.","warn"); return; }
+    if(fields.date===todayISO()){
+      const minHour=getMinReservableHour(fields.date);
+      if(fields.time<minHour){ showToast(`오늘 예약은 ${formatTime(minHour)} 이후로 가능합니다.`,"warn"); return; }
+    }
+  }
+  if(step==="location" && !fields.location){
+    showToast("장소를 선택해주세요.","warn");
+    return;
+  }
+  if(step==="machine" && !fields.machineId){
+    showToast("장비를 선택해주세요.","warn");
+    return;
+  }
+  if(state.stepIndex>=state.steps.length-1) return;
+  state.stepIndex+=1;
+  renderReserveWizardStep();
+}
+
+async function submitReserveWizard(){
+  const state=appState.reserveWizard;
+  if(!state) return;
+  const { date, time, duration, purpose, machineId } = state.fields;
+  if(!machineId){ showToast("장비를 선택해주세요.","warn"); return; }
+  if(time<9 || time+duration>18){ showToast("운영 시간(09:00~18:00)을 벗어났습니다.","warn"); return; }
+  if(isOverlap(machineId,date,time,duration)){
+    showToast("선택 시간에 이미 예약이 있습니다. 시간을 다시 확인해주세요.","warn");
+    const idx=state.steps.indexOf("timePurpose");
+    if(idx>=0){ state.stepIndex=idx; renderReserveWizardStep(); }
+    return;
+  }
+  const allowedPurposes=getPurposesForMachine(machineId);
+  if(allowedPurposes.length && !allowedPurposes.some(item=>item.key===purpose)){
+    showToast("선택한 목적은 해당 장비에서 사용할 수 없습니다.","warn");
+    return;
+  }
+  try{
+    await createBookingDoc({
+      machineId,
+      user: appState.currentUser.name,
+      userId: appState.currentUser.id || appState.currentUser.name,
+      createdBy: appState.currentUser.uid || null,
+      date,
+      start: time,
+      duration,
+      purpose,
+      status: "confirmed",
+      autoClean: false
+    });
+    addAdminActivity("모바일 예약 등록", `${machineId} ${date} ${formatTime(time)}-${formatTime(time+duration)}`);
+    closeReserveWizard();
+    appState.mobile.drawerOpen=false;
+    switchView("dashboard");
+    showToast("예약이 등록되었습니다.");
+  }catch(error){
+    reportAsyncError("submitReserveWizard", error, "모바일 예약 저장에 실패했습니다.");
+  }
+}
+
 function openBookingModal(id,start){
   if(!can("create")){showToast("예약 생성 권한이 없습니다.","warn");return;}
   appState.bookingTarget={id,start};
@@ -3055,6 +3560,13 @@ function bindEvents(){
   document.querySelectorAll("[data-month-delta]").forEach(btn=>btn.addEventListener("click",()=>changeMonth(Number(btn.dataset.monthDelta))));
   on("time-slider","input",e=>updateTimeFromSlider(e.target.value));
   on("btn-live","click",()=>resetToNow());
+  on("btn-mobile-menu","click",()=>toggleMobileDrawer());
+  on("btn-mobile-center-reserve","click",()=>openReserveWizard("dashboard"));
+  on("btn-mobile-center-reserve-top","click",()=>openReserveWizard("dashboard"));
+  on("btn-mobile-reserve-back","click",handleReserveWizardBack);
+  on("btn-mobile-reserve-next","click",handleReserveWizardNext);
+  on("btn-mobile-reserve-submit","click",submitReserveWizard);
+  on("btn-mobile-reserve-cancel","click",closeReserveWizard);
   on("btn-save-booking","click",confirmBooking);
   on("btn-confirm-delete","click",confirmDelete);
   document.querySelectorAll("[data-close-modal]").forEach(btn=>btn.addEventListener("click",()=>closeModal(btn.dataset.closeModal)));
@@ -3091,6 +3603,9 @@ function bindEvents(){
   document.querySelectorAll(".mobile-view-btn").forEach(btn=>{
     btn.addEventListener("click",()=>setDashboardMobileView(btn.dataset.mobileView));
   });
+  document.querySelectorAll("[data-mobile-pane]").forEach(btn=>{
+    btn.addEventListener("click",()=>setMobilePane(btn.dataset.mobilePane,true));
+  });
   ["timeline-body","day-timeline"].forEach(id=>{
     const el=document.getElementById(id);
     if(!el) return;
@@ -3110,14 +3625,25 @@ function bindEvents(){
     const editPurpose=e.target.getAttribute("data-edit-purpose"); if(editPurpose) openPurposeModal("edit",editPurpose);
     const delPurpose=e.target.getAttribute("data-del-purpose"); if(delPurpose) deletePurpose(delPurpose);
     const adminView=e.target.closest(".admin-btn"); if(adminView&&adminView.dataset.adminView) switchAdminView(adminView.dataset.adminView);
+    if(appState.mobile.layoutMode==="drawer" && appState.mobile.drawerOpen){
+      const clickedDrawer=e.target.closest("#mobile-drawer");
+      const clickedMenuBtn=e.target.closest("#btn-mobile-menu");
+      if(!clickedDrawer && !clickedMenuBtn){
+        appState.mobile.drawerOpen=false;
+        renderMobileShell();
+      }
+    }
   });
   document.addEventListener("mouseup",handleResizeEnd);
   window.addEventListener("resize",()=>{
+    appState.mobile.layoutMode=getMobileLayoutMode();
+    if(appState.mobile.layoutMode==="rail") appState.mobile.drawerOpen=false;
     updateTimelineIndicators(document.getElementById("timeline-body"));
     updateTimelineIndicators(document.getElementById("day-timeline"));
     renderDashboardMobileView();
     rebuildFocusCache();
     applyMachineFocus();
+    renderMobileShell();
   });
 }
 
