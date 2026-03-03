@@ -15,6 +15,12 @@
 
   --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.06);
   --shadow-pop: 0 10px 30px rgba(0, 0, 0, 0.18);
+
+  --map-tile-min-h: 72px;
+  --map-tile-pad: 8px 10px;
+  --map-id-size: 16px;
+  --map-meta-size: 11px;
+  --map-time-size: 10px;
 }
 
 * {
@@ -491,13 +497,13 @@ body.login-page {
   border-radius: 8px;
   background: #ecf0f1;
   border: 2px solid transparent;
-  padding: 8px 10px;
+  padding: var(--map-tile-pad);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   cursor: pointer;
   transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, opacity 0.12s ease;
-  min-height: 72px;
+  min-height: var(--map-tile-min-h);
 }
 
 .machine-tile:hover {
@@ -527,21 +533,21 @@ body.login-page {
 
 .machine-id {
   font-weight: 800;
-  font-size: clamp(14px, 1.1vw, 17px);
+  font-size: var(--map-id-size);
   color: #ffffff;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
   line-height: 1.2;
 }
 
 .machine-meta {
-  font-size: clamp(10px, 0.75vw, 12px);
+  font-size: var(--map-meta-size);
   font-weight: 700;
   color: rgba(255, 255, 255, 0.92);
   line-height: 1.2;
 }
 
 .machine-time {
-  font-size: clamp(9px, 0.7vw, 11px);
+  font-size: var(--map-time-size);
   color: rgba(255, 255, 255, 0.82);
   line-height: 1.2;
 }
@@ -1403,7 +1409,7 @@ body.role-worker .resize-handle {
 
 .mobile-machine-brief {
   display: flex;
-  justify-content: space-between;
+  align-items: flex-start;
   gap: 8px;
   margin-bottom: 4px;
   font-size: 10px;
@@ -1412,13 +1418,16 @@ body.role-worker .resize-handle {
 .mobile-machine-brief span {
   color: #708395;
   font-weight: 700;
+  min-width: 38px;
 }
 
 .mobile-machine-brief strong {
   flex: 1;
-  text-align: right;
+  text-align: left;
   color: #2f4458;
   font-weight: 800;
+  line-height: 1.35;
+  word-break: keep-all;
 }
 
 .mobile-machine-count {
@@ -1426,6 +1435,7 @@ body.role-worker .resize-handle {
   font-size: 10px;
   color: #607182;
   font-weight: 800;
+  line-height: 1.35;
 }
 
 .mobile-availability {
@@ -1709,6 +1719,12 @@ body.role-worker .resize-handle {
   padding: 10px;
   text-align: left;
   cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.calendar-mobile-item:hover {
+  border-color: #3498db;
+  box-shadow: 0 4px 12px rgba(31, 45, 61, 0.08);
 }
 
 .calendar-mobile-item.today {
@@ -1728,10 +1744,16 @@ body.role-worker .resize-handle {
   color: #243447;
 }
 
+.calendar-mobile-count {
+  font-size: 11px;
+  font-weight: 900;
+  color: #2f5f92;
+}
+
 .calendar-mobile-meta {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
   font-size: 10px;
   color: #5c6f82;
   font-weight: 800;
@@ -2661,6 +2683,14 @@ body.role-worker .resize-handle {
     overflow: auto;
   }
 
+  :root {
+    --map-tile-min-h: 56px;
+    --map-tile-pad: 6px 8px;
+    --map-id-size: 13px;
+    --map-meta-size: 10px;
+    --map-time-size: 10px;
+  }
+
   .app-header {
     flex-direction: column;
     align-items: stretch;
@@ -2676,6 +2706,8 @@ body.role-worker .resize-handle {
     width: 100%;
     overflow: auto;
     justify-content: flex-start;
+    flex-wrap: nowrap;
+    scrollbar-width: thin;
   }
 
   .user-profile {
@@ -2757,6 +2789,10 @@ body.role-worker .resize-handle {
     display: none;
   }
 
+  #view-dashboard.worker-mobile-compact .timeline-card {
+    display: none;
+  }
+
   #view-dashboard.worker-mobile-compact .right-panel {
     display: block;
   }
@@ -2801,6 +2837,29 @@ body.role-worker .resize-handle {
     display: flex;
   }
 
+  #view-dashboard.worker-mobile-compact .map-card .card-sub,
+  #view-dashboard.worker-mobile-compact .timeline-card .card-meta {
+    display: none;
+  }
+
+  #view-dashboard.worker-mobile-compact .map-wrapper {
+    padding: 6px;
+  }
+
+  #view-dashboard.worker-mobile-compact .location-group {
+    margin-bottom: 6px;
+    padding: 8px;
+  }
+
+  #view-dashboard.worker-mobile-compact .location-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  #view-dashboard.worker-mobile-compact .machine-time {
+    display: none;
+  }
+
   #view-calendar .calendar-grid {
     display: none;
   }
@@ -2813,6 +2872,23 @@ body.role-worker .resize-handle {
     flex-direction: column;
     align-items: stretch;
   }
+
+  .admin-layout .admin-sidebar {
+    overflow-x: auto;
+    gap: 6px;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+  }
+
+  .admin-layout .admin-sidebar .admin-btn {
+    flex: 0 0 auto;
+    min-width: 130px;
+    padding: 10px;
+  }
+
+  .admin-layout .admin-sidebar .admin-btn span {
+    display: none;
+  }
 }
 
 
@@ -2823,6 +2899,14 @@ body.role-worker .resize-handle {
 @media (max-width: 600px) {
   body {
     padding: 6px;
+  }
+
+  :root {
+    --map-tile-min-h: 52px;
+    --map-tile-pad: 6px;
+    --map-id-size: 12px;
+    --map-meta-size: 10px;
+    --map-time-size: 9px;
   }
 
   .app-title {
@@ -2843,17 +2927,17 @@ body.role-worker .resize-handle {
   }
 
   .machine-tile {
-    min-height: 64px;
-    padding: 8px;
+    min-height: var(--map-tile-min-h);
+    padding: var(--map-tile-pad);
   }
 
   .machine-id {
-    font-size: 13px;
+    font-size: var(--map-id-size);
   }
 
   .machine-meta,
   .machine-time {
-    font-size: 10px;
+    font-size: var(--map-meta-size);
   }
 
   .location-grid {

@@ -684,10 +684,8 @@ function renderDashboardMobileView(){
   const workerMobile=isMobile && isWorkerLikeUser();
   section.classList.remove("mobile-view-summary","mobile-view-map","mobile-view-timeline");
   section.classList.toggle("worker-mobile-compact",workerMobile);
-  if(workerMobile && appState.mobileDashboardView==="summary"){
-    appState.mobileDashboardView="map";
-  }
   if(workerMobile){
+    appState.mobileDashboardView="map";
     appState.dashboardSidePanel="status";
     renderDashboardSidePanel();
   }else if(isMobile){
@@ -1642,20 +1640,15 @@ function renderScheduleMobile(date,groups){
       const activeBooking=bookingsForDay.find(b=>b.start<=referenceHour && referenceHour<(b.start+b.duration));
       const nextBooking=bookingsForDay.find(b=>b.start>referenceHour) || null;
       const currentText=activeBooking
-        ? `${activeBooking.user} · ${formatTime(activeBooking.start)}-${formatTime(activeBooking.start+activeBooking.duration)}`
+        ? `${formatTime(activeBooking.start)}-${formatTime(activeBooking.start+activeBooking.duration)} · ${activeBooking.user}`
         : "현재 가동 없음";
       const nextText=nextBooking
-        ? `${nextBooking.user} · ${formatTime(nextBooking.start)}-${formatTime(nextBooking.start+nextBooking.duration)}`
+        ? `${formatTime(nextBooking.start)} 시작 · ${nextBooking.user}`
         : "다음 예약 없음";
-      const bookingRows=bookingsForDay.length
-        ? bookingsForDay.slice(0,2).map(b=>{
-            const purpose=b.user==="System"?"소독":getPurposeMeta(b.purpose).label;
-            return `<div class="mobile-booking-row"><span>${formatTime(b.start)}-${formatTime(b.start+b.duration)}</span><strong>${b.user}</strong><em>${purpose}</em></div>`;
-          }).join("")
-        : '<div class="mobile-booking-empty">예약 없음</div>';
-      const moreCount=Math.max(0, bookingsForDay.length-2);
-      const moreText=moreCount>0 ? `<div class="mobile-booking-more">외 ${moreCount}건</div>` : "";
-      card.innerHTML=`<div class="mobile-machine-head"><strong>${id}</strong><span>${getMachineMgmtNo(id)||"-"}</span></div><div class="mobile-availability ${availability.busy?"busy":"free"}">${availability.text}</div><div class="mobile-machine-brief"><span>현재</span><strong>${currentText}</strong></div><div class="mobile-machine-brief"><span>다음</span><strong>${nextText}</strong></div><div class="mobile-machine-count">예약 ${bookingsForDay.length}건</div><div class="mobile-booking-list">${bookingRows}</div>${moreText}`;
+      const windowText=bookingsForDay.length
+        ? `${formatTime(bookingsForDay[0].start)}-${formatTime(bookingsForDay[bookingsForDay.length-1].start+bookingsForDay[bookingsForDay.length-1].duration)}`
+        : "예약 없음";
+      card.innerHTML=`<div class="mobile-machine-head"><strong>${id}</strong><span>${getMachineMgmtNo(id)||"-"}</span></div><div class="mobile-availability ${availability.busy?"busy":"free"}">${availability.text}</div><div class="mobile-machine-brief"><span>현재</span><strong>${currentText}</strong></div><div class="mobile-machine-brief"><span>다음</span><strong>${nextText}</strong></div><div class="mobile-machine-count">오늘 예약 ${bookingsForDay.length}건 · 운영 ${windowText}</div>`;
       if(can("create")){
         const nextStart=findFirstAvailableStart(id,date,getMinReservableHour(date));
         const addBtn=document.createElement("button");
@@ -1913,6 +1906,7 @@ function getDayBookings(date){
 
 function computeDaySummary(date){
   const dayBookings=getDayBookings(date).filter(b=>b.user!=="System");
+  const sorted=[...dayBookings].sort((a,b)=>a.start-b.start);
   const total=dayBookings.length;
   const pending=dayBookings.filter(b=>b.status==="pending").length;
   const usedSlots=dayBookings.reduce((sum,b)=>sum+(b.duration/0.5),0);
@@ -1926,24 +1920,34 @@ function computeDaySummary(date){
   const peak=slotUsage.reduce((best,item)=>item.count>best.count?item:best,{h:9,count:0});
   const peakLabel=peak.count>0 ? `${formatTime(peak.h)}-${formatTime(peak.h+1)}` : "없음";
   const utilClass=utilization>75?"util-high":utilization>40?"util-mid":"util-low";
-  return { total, pending, utilization, peakLabel, utilClass };
+  const firstStart=sorted.length ? sorted[0].start : null;
+  const lastEnd=sorted.length ? Math.max(...sorted.map(item=>item.start+item.duration)) : null;
+  return { total, pending, utilization, peakLabel, utilClass, firstStart, lastEnd };
 }
 
 function renderCalendarMobile(dayEntries){
   const container=document.getElementById("calendar-mobile");
   if(!container) return;
   container.innerHTML="";
-  if(dayEntries.length===0){
+  const isCompactWorker=isWorkerMobileMode();
+  const mobileEntries=isCompactWorker
+    ? dayEntries.filter(entry=>entry.isToday || entry.summary.total>0)
+    : dayEntries;
+  if(mobileEntries.length===0){
     container.innerHTML='<div class="calendar-mobile-empty">표시할 날짜가 없습니다.</div>';
     return;
   }
-  for(const entry of dayEntries){
-    const { dateKey, day, summary, isToday } = entry;
+  for(const entry of mobileEntries){
+    const { dateKey, summary, isToday } = entry;
     const item=document.createElement("button");
     item.type="button";
     item.className=`calendar-mobile-item ${isToday?"today":""}`.trim();
+    const rangeText=(summary.firstStart===null || summary.lastEnd===null)
+      ? "예약 없음"
+      : `${formatTime(summary.firstStart)}-${formatTime(summary.lastEnd)}`;
+    const utilText=isCompactWorker ? "" : `<span>가동률 ${summary.utilization}%</span>`;
     const pendingText=summary.pending>0 ? `<span class="pending-text">대기 ${summary.pending}건</span>` : "";
-    item.innerHTML=`<div class="calendar-mobile-head"><strong>${dateKey.replace(/-/g,". ")}</strong><span class="util-value ${summary.utilClass}">${summary.utilization}%</span></div><div class="calendar-mobile-meta"><span>예약 ${summary.total}건</span><span>가동률 ${summary.utilization}%</span>${pendingText}</div>`;
+    item.innerHTML=`<div class="calendar-mobile-head"><strong>${dateKey.replace(/-/g,". ")}</strong><span class="calendar-mobile-count">예약 ${summary.total}건</span></div><div class="calendar-mobile-meta"><span>운영 시간대 ${rangeText}</span>${utilText}${pendingText}</div>`;
     item.addEventListener("click",()=>openDayModal(dateKey));
     container.appendChild(item);
   }
