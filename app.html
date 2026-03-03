@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>장비 예약 관리 시스템 (데모)</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-    <link rel="stylesheet" href="styles.css?v=20260129-30" />
+    <link rel="stylesheet" href="styles.css?v=20260129-31" />
   </head>
   <body>
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
@@ -31,6 +31,8 @@
 
     <main class="app-main">
       <section id="view-dashboard" class="view-section active" aria-labelledby="dashboard-title">
+        <div class="dashboard-summary" id="dashboard-summary" aria-label="대시보드 요약"></div>
+        <div class="dashboard-legend" id="dashboard-legend" aria-label="상태 범례"></div>
         <div class="dashboard-layout">
           <div class="left-panel">
             <article class="card map-card">
@@ -69,7 +71,12 @@
           </div>
 
           <aside class="right-panel">
-            <article class="card chart-card">
+            <div class="dashboard-side-tabs" role="tablist" aria-label="우측 패널 전환">
+              <button class="side-tab-btn" data-side-panel="status" type="button" role="tab" aria-selected="true">장비 상태</button>
+              <button class="side-tab-btn" data-side-panel="chart" type="button" role="tab" aria-selected="false">가동 분석</button>
+            </div>
+
+            <article class="card chart-card side-panel-card" id="side-panel-chart">
               <div class="card-header">
                 <h3 class="card-title">가동 분석</h3>
                 <div class="card-meta" id="chart-date-label"></div>
@@ -80,7 +87,7 @@
               <div id="chart-legend" class="chart-legend"></div>
             </article>
 
-            <article class="card status-card">
+            <article class="card status-card side-panel-card" id="side-panel-status">
               <div class="card-header">
                 <h3 class="card-title">장비 상태 목록</h3>
                 <div class="card-meta" id="status-date-label"></div>
@@ -520,7 +527,7 @@
       </div>
     </div>
 
-    <script type="module" src="app.js?v=20260129-30"></script>
+    <script type="module" src="app.js?v=20260129-31"></script>
   </body>
 </html>
 

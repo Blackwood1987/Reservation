@@ -49,7 +49,7 @@ const appState = {
   currentMonth:new Date().getMonth()+1,dragPayload:null,
   isResizing:false,resizeStartX:0,resizeOriginDuration:0,resizeTarget:null,
   bookingTarget:{id:null,start:9},approvalTarget:null,deleteTarget:null,
-  isLiveMode:true,dayModalDate:null
+  isLiveMode:true,dayModalDate:null,dashboardSidePanel:"status"
 };
 
 let users = [];
@@ -552,6 +552,25 @@ function switchView(view){
   if(view==="admin") renderAdmin();
 }
 
+function renderDashboardSidePanel(){
+  const activePanel=appState.dashboardSidePanel==="chart" ? "chart" : "status";
+  document.querySelectorAll(".side-tab-btn").forEach(btn=>{
+    const selected=btn.dataset.sidePanel===activePanel;
+    btn.classList.toggle("active",selected);
+    btn.setAttribute("aria-selected",selected?"true":"false");
+  });
+  const chartPanel=document.getElementById("side-panel-chart");
+  const statusPanel=document.getElementById("side-panel-status");
+  if(chartPanel) chartPanel.classList.toggle("is-hidden",activePanel!=="chart");
+  if(statusPanel) statusPanel.classList.toggle("is-hidden",activePanel!=="status");
+}
+
+function setDashboardSidePanel(panel){
+  if(panel!=="chart" && panel!=="status") return;
+  appState.dashboardSidePanel=panel;
+  renderDashboardSidePanel();
+}
+
 function switchAdminView(view){
   document.querySelectorAll(".admin-btn").forEach(btn=>btn.classList.toggle("active",btn.dataset.adminView===view));
   document.querySelectorAll(".admin-section").forEach(sec=>sec.classList.toggle("active",sec.id===`admin-${view}`));
@@ -639,6 +658,65 @@ function renderAll(){
   renderAdmin();
 }
 
+function getDashboardSummaryStats(){
+  const date=getViewDate();
+  const currentHour=appState.currentHour;
+  let running=0;
+  let upcoming=0;
+  for(const id of bscIds){
+    const active=getCurrentBooking(id);
+    if(active && active.status==="confirmed" && active.user!=="System"){
+      running+=1;
+    }
+    const nextBookings=getBookingsForDate(id,date).filter(b=>
+      b.status==="confirmed" &&
+      b.user!=="System" &&
+      b.start>currentHour
+    );
+    upcoming+=nextBookings.length;
+  }
+  const issues=getPendingBookings(date).length;
+  return {
+    total:bscIds.length,
+    running,
+    upcoming,
+    issues
+  };
+}
+
+function renderDashboardSummary(){
+  const container=document.getElementById("dashboard-summary");
+  if(!container) return;
+  const stats=getDashboardSummaryStats();
+  container.innerHTML=
+    `<div class="summary-item"><div class="summary-label">전체 장비</div><div class="summary-value">${stats.total}</div><div class="summary-sub">등록 장비 수</div></div>`+
+    `<div class="summary-item"><div class="summary-label">가동중</div><div class="summary-value">${stats.running}</div><div class="summary-sub">현재 시각 기준</div></div>`+
+    `<div class="summary-item"><div class="summary-label">예약 예정</div><div class="summary-value">${stats.upcoming}</div><div class="summary-sub">${formatDateLabel(getViewDate())}</div></div>`+
+    `<div class="summary-item"><div class="summary-label">이슈</div><div class="summary-value">${stats.issues}</div><div class="summary-sub">승인 대기 건수</div></div>`;
+}
+
+function renderDashboardLegend(){
+  const container=document.getElementById("dashboard-legend");
+  if(!container) return;
+  const items=[];
+  items.push({key:"free", label:statusMeta.free.label, color:statusMeta.free.color});
+  purposeList.forEach(p=>{
+    const meta=getPurposeMeta(p.key);
+    items.push({key:p.key, label:meta.label, color:meta.color});
+  });
+  items.push({key:"pending", label:statusMeta.pending.label, color:statusMeta.pending.color});
+  items.push({key:"system", label:statusMeta.system.label, color:statusMeta.system.color});
+  const seen=new Set();
+  container.innerHTML=items
+    .filter(item=>{
+      if(seen.has(item.key)) return false;
+      seen.add(item.key);
+      return true;
+    })
+    .map(item=>`<span class="legend-chip"><span class="legend-swatch" style="background:${item.color}"></span>${item.label}</span>`)
+    .join("");
+}
+
 function renderDateLabels(){
   const label=formatDateLabel(getViewDate());
   document.getElementById("reservation-date-label").textContent=label;
@@ -648,6 +726,9 @@ function renderDateLabels(){
 }
 
 function renderDashboard(){
+  renderDashboardSummary();
+  renderDashboardLegend();
+  renderDashboardSidePanel();
   renderTimeLabels();
   renderMap();
   renderTimeline(document.getElementById("timeline-body"),getViewDate());
@@ -2184,6 +2265,9 @@ function bindEvents(){
   on("schedule-my-only","change",renderSchedule);
   on("btn-schedule-filter-reset","click",resetScheduleFilters);
   on("purpose-all","change",(e)=>setPurposeAll(e.target.checked));
+  document.querySelectorAll(".side-tab-btn").forEach(btn=>{
+    btn.addEventListener("click",()=>setDashboardSidePanel(btn.dataset.sidePanel));
+  });
   ["timeline-body","day-timeline"].forEach(id=>{
     const el=document.getElementById(id);
     if(!el) return;
