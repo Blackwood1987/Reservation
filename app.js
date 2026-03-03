@@ -48,7 +48,7 @@ const appState = {
   currentDate:todayISO(),currentYear:new Date().getFullYear(),
   currentMonth:new Date().getMonth()+1,dragPayload:null,
   isResizing:false,resizeStartX:0,resizeOriginDuration:0,resizeTarget:null,
-  bookingTarget:{id:null,start:9},approvalTarget:null,deleteTarget:null,
+  bookingTarget:{id:null,start:9},deleteTarget:null,
   isLiveMode:true,dayModalDate:null,dashboardSidePanel:"status",
   focusMachineId:null,mobileDashboardView:"summary",adminCompact:false
 };
@@ -68,6 +68,10 @@ let usersFetchedAt = 0;
 let usersFetchPromise = null;
 const adminFilters = {};
 let adminToolbarView = "users";
+let auditHistoryRows = [];
+let auditHistoryDate = "";
+let auditHistoryLoading = false;
+const adminActivityKey = "reservation_admin_activity";
 
 
 
@@ -273,7 +277,8 @@ function renderAfterBookingsChange(){
   renderSchedule();
   renderCalendar();
   if(appState.currentView==="admin" && can("admin")){
-    renderPendingList();
+    refreshAuditHistory();
+    renderAdminActivity();
     renderStats();
     renderMachineTable();
   }
@@ -408,6 +413,79 @@ function reportAsyncError(context, error, fallbackMessage){
     return;
   }
   showToast(fallbackMessage || "요청 처리 중 오류가 발생했습니다.","warn");
+}
+
+function getReportDateValue(){
+  const reportDate=document.getElementById("report-date");
+  return (reportDate && reportDate.value) ? reportDate.value : getViewDate();
+}
+
+function mapStatusLabel(status){
+  if(status==="deleted") return "삭제";
+  if(status==="rejected") return "반려";
+  if(status==="pending") return "대기";
+  return "확정";
+}
+
+function mapStatusClass(status){
+  if(status==="deleted") return "status-deleted";
+  if(status==="rejected") return "status-rejected";
+  if(status==="pending") return "status-pending";
+  return "status-confirmed";
+}
+
+function addAdminActivity(action, detail=""){
+  if(!isManagerUser()) return;
+  try{
+    const actor=appState.currentUser?.id || appState.currentUser?.name || "admin";
+    const timestamp=new Date().toISOString();
+    const nextItem={ action, detail, actor, timestamp };
+    const existingRaw=localStorage.getItem(adminActivityKey);
+    const existing=existingRaw ? JSON.parse(existingRaw) : [];
+    const rows=Array.isArray(existing) ? existing : [];
+    rows.unshift(nextItem);
+    const sliced=rows.slice(0,80);
+    localStorage.setItem(adminActivityKey, JSON.stringify(sliced));
+  }catch(error){
+    console.warn("[addAdminActivity]", error);
+  }
+  renderAdminActivity();
+}
+
+function readAdminActivity(){
+  try{
+    const raw=localStorage.getItem(adminActivityKey);
+    if(!raw) return [];
+    const parsed=JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  }catch(error){
+    return [];
+  }
+}
+
+function formatActivityTime(iso){
+  const date=new Date(iso);
+  if(Number.isNaN(date.getTime())) return iso || "-";
+  const y=date.getFullYear();
+  const m=String(date.getMonth()+1).padStart(2,"0");
+  const d=String(date.getDate()).padStart(2,"0");
+  const h=String(date.getHours()).padStart(2,"0");
+  const min=String(date.getMinutes()).padStart(2,"0");
+  return `${y}.${m}.${d} ${h}:${min}`;
+}
+
+function renderAdminActivity(){
+  const container=document.getElementById("admin-activity-list");
+  if(!container) return;
+  const rows=readAdminActivity();
+  if(rows.length===0){
+    container.innerHTML='<div class="activity-empty">최근 기록이 없습니다.</div>';
+    return;
+  }
+  container.innerHTML=rows.slice(0,20).map(row=>{
+    const detail=row.detail ? `<span>${row.detail}</span>` : "";
+    return `<div class="activity-item"><strong>${row.action}</strong>${detail}<span>${formatActivityTime(row.timestamp)} · ${row.actor}</span></div>`;
+  }).join("");
 }
 
 
@@ -692,16 +770,18 @@ function getAdminFilterConfig(view){
       ]
     },
     audit:{
-      placeholder:"장비/작업자/목적/날짜 검색",
+      placeholder:"장비/작업자/목적/사유 검색",
       statuses:[
         {value:"all",label:"전체"},
-        {value:"autoclean",label:"자동소독 포함"},
-        {value:"manual",label:"자동소독 없음"}
+        {value:"confirmed",label:"확정"},
+        {value:"deleted",label:"삭제"},
+        {value:"rejected",label:"반려"}
       ],
       sorts:[
         {value:"default",label:"시간 오름차순"},
         {value:"time-desc",label:"시간 내림차순"},
-        {value:"user-asc",label:"작업자 오름차순"}
+        {value:"user-asc",label:"작업자 오름차순"},
+        {value:"machine-asc",label:"장비 오름차순"}
       ]
     }
   };
@@ -782,7 +862,11 @@ function renderActiveAdminSection(view=getActiveAdminView()){
   if(view==="locations"){renderLocationTable(); return;}
   if(view==="machines"){renderMachineTable(); return;}
   if(view==="purposes"){renderPurposeTable(); return;}
-  if(view==="audit"){renderPendingList(); return;}
+  if(view==="audit"){
+    refreshAuditHistory();
+    renderAdminActivity();
+    return;
+  }
   if(view==="stats"){renderStats(); return;}
 }
 
@@ -1003,7 +1087,7 @@ function handleTileClick(id){
   const booking=getCurrentBooking(id);
   if(!booking){alert(`[${id}] 현재 사용 가능합니다.\n\n예약 신청은 '예약 관리' 탭에서 진행하세요.`);return;}
   if(booking.status==="pending"){
-    alert(`[승인 대기]\n신청자: ${booking.user}\n시간: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}\n\n승인은 '관리 > 승인 및 보고'에서 가능합니다.`);
+    alert(`[승인 대기]\n신청자: ${booking.user}\n시간: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}\n\n처리는 '관리 > 운영 이력 및 보고'에서 가능합니다.`);
     return;
   }
   const purpose=booking.user==="System"?"자동 소독":getPurposeMeta(booking.purpose).label;
@@ -1426,7 +1510,6 @@ function renderSchedule(){
           if(booking.status==="pending"){
             block.classList.add("pending");block.style.backgroundColor=statusMeta.pending.color;
             block.innerHTML=`<span>${booking.user} (대기)</span>`;
-            block.addEventListener("click",()=>openApprovalModal(id,booking.docId));
           }else if(booking.user==="System"){
             block.style.backgroundColor=statusMeta.system.color;block.innerHTML="<span>소독</span>";
           }else{
@@ -1772,7 +1855,8 @@ function renderAdmin(){
   renderLocationTable();
   renderMachineTable();
   renderPurposeTable();
-  renderPendingList();
+  refreshAuditHistory();
+  renderAdminActivity();
   renderStats();
   const reportDate=document.getElementById("report-date");
   if(reportDate && !reportDate.value){
@@ -1815,6 +1899,7 @@ async function approveUser(uid){
   try{
     await updateDoc(doc(db,"users",uid),{approved:true});
     await refreshUsersFromDb(true);
+    addAdminActivity("계정 승인", `uid: ${uid}`);
   }catch(error){
     reportAsyncError("approveUser", error, "계정 승인에 실패했습니다.");
   }
@@ -1849,31 +1934,175 @@ function renderUserTable(){
   }
 }
 
-function renderPendingList(){
-  const list=document.getElementById("pending-list");list.innerHTML="";
+function renderAuditHistory(){
+  const tbody=document.getElementById("audit-history-body");
+  if(!tbody) return;
+  renderAuditSummary(auditHistoryRows);
+  const rows=getFilteredAuditRows();
+  if(rows.length===0){
+    tbody.innerHTML='<tr><td colspan="6">조회된 운영 이력이 없습니다.</td></tr>';
+    return;
+  }
+  tbody.innerHTML=rows.map(row=>
+    `<tr>
+      <td>${row.machineId}</td>
+      <td>${row.user}</td>
+      <td>${row.purposeLabel}</td>
+      <td><span class="status-badge ${mapStatusClass(row.status)}">${row.statusLabel}</span></td>
+      <td>${formatTime(row.start)} - ${formatTime(row.start+row.duration)}</td>
+      <td>${row.reason || "-"}</td>
+    </tr>`
+  ).join("");
+}
+
+function getFilteredAuditRows(){
   const filter=getAdminFilterState("audit");
   const query=filter.query.toLowerCase();
-  let pending=getPendingBookings();
+  let rows=[...auditHistoryRows];
   if(query){
-    pending=pending.filter(item=>{
-      const b=item.booking;
-      const haystack=`${item.id} ${b.user} ${b.date} ${getPurposeMeta(b.purpose).label}`.toLowerCase();
+    rows=rows.filter(row=>{
+      const haystack=`${row.machineId} ${row.user} ${row.purposeLabel} ${row.reason} ${row.statusLabel}`.toLowerCase();
       return haystack.includes(query);
     });
   }
-  if(filter.status==="autoclean") pending=pending.filter(item=>!!item.booking.autoClean);
-  if(filter.status==="manual") pending=pending.filter(item=>!item.booking.autoClean);
-  if(filter.sort==="time-desc"){
-    pending.sort((a,b)=>b.booking.date.localeCompare(a.booking.date)||b.booking.start-a.booking.start);
-  }else if(filter.sort==="user-asc"){
-    pending.sort((a,b)=>a.booking.user.localeCompare(b.booking.user));
+  if(filter.status!=="all"){
+    rows=rows.filter(row=>row.status===filter.status);
   }
-  if(pending.length===0){const empty=document.createElement("div");empty.className="pending-item";empty.innerHTML='<strong>승인 대기 없음</strong><span class="pending-meta">현재 날짜에 대기 중인 요청이 없습니다.</span>';list.appendChild(empty);return;}
-  for(const item of pending){
-    const {id,docId,booking}=item;
-    const div=document.createElement("div");div.className="pending-item";
-    div.innerHTML=`<strong>${id} · ${booking.user}</strong><div class="pending-meta">${booking.date} · ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}</div><div class="pending-meta">목적: ${getPurposeMeta(booking.purpose).label}</div><div class="pending-actions"><button class="btn-edit" data-approve-id="${id}" data-approve-doc="${docId}">승인</button><button class="btn-del" data-reject-id="${id}" data-reject-doc="${docId}">반려</button></div>`;
-    list.appendChild(div);
+  if(filter.sort==="time-desc"){
+    rows.sort((a,b)=>b.start-a.start);
+  }else if(filter.sort==="user-asc"){
+    rows.sort((a,b)=>a.user.localeCompare(b.user));
+  }else if(filter.sort==="machine-asc"){
+    rows.sort((a,b)=>a.machineId.localeCompare(b.machineId)||a.start-b.start);
+  }else{
+    rows.sort((a,b)=>a.start-b.start);
+  }
+  return rows;
+}
+
+function renderAuditSummary(rows){
+  const container=document.getElementById("audit-summary");
+  if(!container) return;
+  const safeRows=Array.isArray(rows) ? rows : [];
+  const total=safeRows.length;
+  const confirmed=safeRows.filter(row=>row.status==="confirmed").length;
+  const deleted=safeRows.filter(row=>row.status==="deleted").length;
+  const rejected=safeRows.filter(row=>row.status==="rejected").length;
+  container.innerHTML=
+    `<span class="audit-summary-chip"><span class="audit-summary-dot" style="background:#3498db"></span>전체 ${total}건</span>`+
+    `<span class="audit-summary-chip"><span class="audit-summary-dot" style="background:#2ecc71"></span>확정 ${confirmed}건</span>`+
+    `<span class="audit-summary-chip"><span class="audit-summary-dot" style="background:#e74c3c"></span>삭제 ${deleted}건</span>`+
+    `<span class="audit-summary-chip"><span class="audit-summary-dot" style="background:#9b59b6"></span>반려 ${rejected}건</span>`;
+}
+
+function escapeCsvCell(value){
+  const text=String(value ?? "").replace(/\r?\n/g," ");
+  return `"${text.replace(/"/g,'""')}"`;
+}
+
+function downloadFile(filename, content, mimeType){
+  const blob=new Blob([content], { type: mimeType });
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement("a");
+  link.href=url;
+  link.download=filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),0);
+}
+
+async function exportAuditHistoryCsv(){
+  if(!can("admin")) return;
+  const date=getReportDateValue();
+  if(auditHistoryDate!==date){
+    await refreshAuditHistory(true);
+  }
+  const rows=[...auditHistoryRows].sort((a,b)=>a.machineId.localeCompare(b.machineId)||a.start-b.start);
+  if(rows.length===0){
+    showToast("백업할 운영 이력이 없습니다.","warn");
+    return;
+  }
+  const headers=["날짜","장비","작업자","목적","상태","시작","종료","사유"];
+  const body=rows.map(row=>[
+    date,
+    row.machineId,
+    row.user,
+    row.purposeLabel,
+    row.statusLabel,
+    formatTime(row.start),
+    formatTime(row.start+row.duration),
+    row.reason || "-"
+  ].map(escapeCsvCell).join(","));
+  const csv="\ufeff"+[headers.map(escapeCsvCell).join(","), ...body].join("\r\n");
+  downloadFile(`audit-history-${date}.csv`, csv, "text/csv;charset=utf-8");
+  showToast("운영 이력 CSV 백업을 저장했습니다.","success");
+  addAdminActivity("운영 이력 백업", `${date} ${rows.length}건`);
+}
+
+function exportAdminActivityJson(){
+  if(!can("admin")) return;
+  const rows=readAdminActivity();
+  if(rows.length===0){
+    showToast("백업할 관리자 작업 이력이 없습니다.","warn");
+    return;
+  }
+  const payload={
+    exportedAt:new Date().toISOString(),
+    exportedBy:appState.currentUser?.id || appState.currentUser?.name || "admin",
+    itemCount:rows.length,
+    items:rows
+  };
+  const json=JSON.stringify(payload, null, 2);
+  downloadFile(`admin-activity-${todayISO()}.json`, json, "application/json;charset=utf-8");
+  showToast("작업 이력 JSON 백업을 저장했습니다.","success");
+  addAdminActivity("작업 이력 백업", `${rows.length}건`);
+}
+
+async function refreshAuditHistory(force=false){
+  if(!can("admin")) return;
+  const date=getReportDateValue();
+  if(!force && auditHistoryDate===date){
+    renderAuditHistory();
+    return;
+  }
+  if(auditHistoryLoading) return;
+  auditHistoryLoading=true;
+  auditHistoryRows=[];
+  renderAuditSummary(auditHistoryRows);
+  const tbody=document.getElementById("audit-history-body");
+  if(tbody) tbody.innerHTML='<tr><td colspan="6">운영 이력을 불러오는 중...</td></tr>';
+  try{
+    const q=query(collection(db,"bookings"), where("date","==",date));
+    const snap=await getDocs(q);
+    const rows=snap.docs.map(docSnap=>{
+      const data=docSnap.data();
+      const status=data.status || "confirmed";
+      const reason=status==="deleted"
+        ? (data.deleteReason || "")
+        : status==="rejected"
+          ? (data.rejectReason || "")
+          : "";
+      return {
+        docId:docSnap.id,
+        machineId:data.machineId || "-",
+        user:data.user || "-",
+        purposeLabel:data.user==="System" ? "자동 소독" : getPurposeMeta(data.purpose).label,
+        status,
+        statusLabel:mapStatusLabel(status),
+        start:Number(data.start||0),
+        duration:Number(data.duration||0),
+        reason
+      };
+    });
+    auditHistoryRows=rows;
+    auditHistoryDate=date;
+    renderAuditHistory();
+  }catch(error){
+    reportAsyncError("refreshAuditHistory", error, "운영 이력을 불러오지 못했습니다.");
+    if(tbody) tbody.innerHTML='<tr><td colspan="6">운영 이력을 불러오지 못했습니다.</td></tr>';
+  }finally{
+    auditHistoryLoading=false;
   }
 }
 
@@ -1971,6 +2200,8 @@ async function confirmDelete(){
     closeModal("delete-modal");
     appState.deleteTarget = null;
     showToast("예약이 삭제되었습니다.","info");
+    addAdminActivity("예약 삭제", `${id} ${booking.user} ${booking.date} ${formatTime(booking.start)}~${formatTime(booking.start+booking.duration)}`);
+    refreshAuditHistory(true);
   }catch(error){
     reportAsyncError("confirmDelete", error, "예약 삭제에 실패했습니다.");
   }
@@ -2030,6 +2261,8 @@ async function confirmBooking(){
     if(success===0){showToast("모든 반복 예약이 중복으로 인해 실패했습니다.","warn");return;}
     showToast(status==="pending"?"예약 요청이 등록되었습니다.":"예약이 확정되었습니다.");
     if(recurring) showToast(`${success}건의 반복 예약이 등록되었습니다.`,"info");
+    addAdminActivity("예약 등록", `${appState.bookingTarget.id} ${date} ${formatTime(start)} ${success}건`);
+    refreshAuditHistory(true);
   }catch(error){
     reportAsyncError("confirmBooking", error, "예약 저장에 실패했습니다.");
   }
@@ -2058,61 +2291,6 @@ async function addSystemBuffer(id,date,bufferStart,ignoreDocId){
   });
 }
 
-function openApprovalModal(id,docId){
-  if(!can("approve")) return;
-  const booking=findBookingByDocId(id,docId);
-  if(!booking||booking.status!=="pending") return;
-  appState.approvalTarget={id,docId};
-  document.getElementById("approval-modal").style.display="flex";
-  document.getElementById("approval-text").textContent=`${booking.user}님의 예약 요청을 처리합니다.`;
-  const autoCleanText = booking.autoClean ? "예" : "아니오";
-  document.getElementById("approval-detail").innerHTML=
-    `날짜: ${booking.date}<br />장비: ${id}<br />시간: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}<br />목적: ${getPurposeMeta(booking.purpose).label}<br />자동 소독: ${autoCleanText}`;
-  const impactEl=document.getElementById("approval-impact");
-  if(impactEl){
-    const rejectEffect=booking.autoClean
-      ? "반려 시 예약이 취소되며 자동소독 예약은 생성되지 않습니다."
-      : "반려 시 예약만 취소됩니다.";
-    impactEl.textContent=`처리 영향: ${rejectEffect}`;
-  }
-  const reasonEl = document.getElementById("reject-reason");
-  if(reasonEl) reasonEl.value = "";
-}
-
-async function processApproval(action){
-  const target=appState.approvalTarget;if(!target) return;
-  try{
-    const {id,docId}=target;
-    const booking=findBookingByDocId(id,docId);
-    if(!booking) return;
-    if(action==="approve"){
-      await updateBookingDoc(docId,{status:"confirmed"});
-      if(booking.autoClean){
-        await addSystemBuffer(id,booking.date,booking.start+booking.duration,docId);
-      }
-      showToast("예약이 승인되었습니다.");
-    }else{
-      const reasonEl = document.getElementById("reject-reason");
-      const reason = reasonEl ? reasonEl.value.trim() : "";
-      if(!reason){
-        alert("반려 사유를 입력해주세요.");
-        return;
-      }
-      const rejectedBy = appState.currentUser?.uid || "system";
-      await updateBookingDoc(docId,{
-        status: "rejected",
-        rejectReason: reason,
-        rejectedBy,
-        rejectedAt: serverTimestamp()
-      });
-      showToast("예약이 반려되었습니다.","info");
-    }
-    closeModal("approval-modal");
-    appState.approvalTarget=null;
-  }catch(error){
-    reportAsyncError("processApproval", error, "승인/반려 처리에 실패했습니다.");
-  }
-}
 async function deleteMachine(id){
   if(!confirm(`장비 ${id}를 삭제하시겠습니까?`)) return;
   try{
@@ -2128,6 +2306,7 @@ async function deleteMachine(id){
     await saveConfig();
     ensureBookingBuckets();
     renderAll();
+    addAdminActivity("장비 삭제", id);
   }catch(error){
     reportAsyncError("deleteMachine", error, "장비 삭제에 실패했습니다.");
   }
@@ -2169,6 +2348,7 @@ async function saveMachine(){
     const nextDesc=document.getElementById("machine-desc")?.value.trim() || "";
     const nextLocation=document.getElementById("machine-location")?.value || locations[0];
     if(!nextId){alert("장비 ID를 입력하세요.");return;}
+    const isEdit=!!originalId;
     if(originalId){
       if(originalId!==nextId && bscIds.includes(nextId)){
         alert("이미 존재하는 장비 ID입니다.");
@@ -2208,6 +2388,7 @@ async function saveMachine(){
     await saveConfig();
     ensureBookingBuckets();
     renderAll();
+    addAdminActivity(isEdit ? "장비 수정" : "장비 등록", nextId);
   }catch(error){
     reportAsyncError("saveMachine", error, "장비 저장에 실패했습니다.");
   }
@@ -2415,6 +2596,7 @@ async function savePurpose(){
     closeModal("purpose-modal");
     await saveConfig();
     renderAll();
+    addAdminActivity(original ? "목적 수정" : "목적 등록", `${original || key} -> ${label}`);
   }catch(error){
     reportAsyncError("savePurpose", error, "가동 목적 저장에 실패했습니다.");
   }
@@ -2430,6 +2612,7 @@ async function deletePurpose(key){
     purposeList=purposeList.filter(p=>p.key!==key);
     await saveConfig();
     renderAll();
+    addAdminActivity("목적 삭제", key);
   }catch(error){
     reportAsyncError("deletePurpose", error, "가동 목적 삭제에 실패했습니다.");
   }
@@ -2476,6 +2659,7 @@ async function saveUser(){
     await updateDoc(doc(db,"users",uid),{name,role});
     closeModal("user-modal");
     await refreshUsersFromDb(true);
+    addAdminActivity("사용자 수정", `${id} (${role})`);
   }catch(error){
     reportAsyncError("saveUser", error, "사용자 저장에 실패했습니다.");
   }
@@ -2486,6 +2670,7 @@ async function deleteUser(uid){
     if(!confirm("정말 삭제하시겠습니까?")) return;
     await deleteDoc(doc(db,"users",uid));
     await refreshUsersFromDb(true);
+    addAdminActivity("사용자 삭제", `uid: ${uid}`);
   }catch(error){
     reportAsyncError("deleteUser", error, "사용자 삭제에 실패했습니다.");
   }
@@ -2513,6 +2698,7 @@ async function saveLocation(){
     const original=document.getElementById("location-original-name").value;
     const next=document.getElementById("location-name").value.trim();
     if(!next){alert("장소명을 입력하세요.");return;}
+    const isEdit=!!original;
     if(original){
       if(original!==next && locations.includes(next)){
         alert("이미 존재하는 장소입니다.");
@@ -2533,6 +2719,7 @@ async function saveLocation(){
     showToast("장소 목록이 갱신되었습니다.","info");
     await saveConfig();
     renderAll();
+    addAdminActivity(isEdit ? "장소 수정" : "장소 등록", `${original || "-"} -> ${next}`);
   }catch(error){
     reportAsyncError("saveLocation", error, "장소 저장에 실패했습니다.");
   }
@@ -2546,6 +2733,7 @@ async function deleteLocation(loc){
     locations=locations.filter(l=>l!==loc);
     await saveConfig();
     renderAll();
+    addAdminActivity("장소 삭제", loc);
   }catch(error){
     reportAsyncError("deleteLocation", error, "장소 삭제에 실패했습니다.");
   }
@@ -2567,8 +2755,6 @@ function bindEvents(){
   on("time-slider","input",e=>updateTimeFromSlider(e.target.value));
   on("btn-live","click",()=>resetToNow());
   on("btn-save-booking","click",confirmBooking);
-  on("btn-approve","click",()=>processApproval("approve"));
-  on("btn-reject","click",()=>processApproval("reject"));
   on("btn-confirm-delete","click",confirmDelete);
   document.querySelectorAll("[data-close-modal]").forEach(btn=>btn.addEventListener("click",()=>closeModal(btn.dataset.closeModal)));
   document.querySelectorAll("[data-day-action]").forEach(btn=>btn.addEventListener("click",()=>handleDayAction(btn.dataset.dayAction)));
@@ -2581,6 +2767,10 @@ function bindEvents(){
   on("btn-save-location","click",saveLocation);
   on("btn-save-purpose","click",savePurpose);
   on("btn-print","click",printReport);
+  on("btn-export-audit-csv","click",exportAuditHistoryCsv);
+  on("btn-export-activity-json","click",exportAdminActivityJson);
+  on("btn-refresh-audit-history","click",()=>refreshAuditHistory(true));
+  on("report-date","change",()=>{auditHistoryDate=""; refreshAuditHistory(true);});
   on("admin-search","input",applyAdminFilterInput);
   on("admin-status-filter","change",applyAdminFilterInput);
   on("admin-sort-filter","change",applyAdminFilterInput);
@@ -2615,12 +2805,6 @@ function bindEvents(){
     const delLocation=e.target.getAttribute("data-del-location"); if(delLocation) deleteLocation(delLocation);
     const editPurpose=e.target.getAttribute("data-edit-purpose"); if(editPurpose) openPurposeModal("edit",editPurpose);
     const delPurpose=e.target.getAttribute("data-del-purpose"); if(delPurpose) deletePurpose(delPurpose);
-    const approveId=e.target.getAttribute("data-approve-id");
-    const approveDoc=e.target.getAttribute("data-approve-doc");
-    if(approveId && approveDoc){openApprovalModal(approveId,approveDoc);}
-    const rejectId=e.target.getAttribute("data-reject-id");
-    const rejectDoc=e.target.getAttribute("data-reject-doc");
-    if(rejectId && rejectDoc){openApprovalModal(rejectId,rejectDoc);}
     const adminView=e.target.closest(".admin-btn"); if(adminView&&adminView.dataset.adminView) switchAdminView(adminView.dataset.adminView);
   });
   document.addEventListener("mouseup",handleResizeEnd);

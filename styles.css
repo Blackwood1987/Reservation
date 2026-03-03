@@ -985,6 +985,22 @@ body.login-page {
   text-align: center;
 }
 
+.status-confirmed {
+  background: #2ecc71;
+}
+
+.status-deleted {
+  background: #e74c3c;
+}
+
+.status-rejected {
+  background: #f39c12;
+}
+
+.status-pending {
+  background: #95a5a6;
+}
+
 .reservation-card,
 .calendar-card {
   width: 100%;
@@ -1824,39 +1840,109 @@ body.role-worker .resize-handle {
   margin-bottom: 6px;
 }
 
-.pending-list {
+.audit-header-actions {
   margin-top: 10px;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 220px;
+  justify-content: flex-end;
+}
+
+.audit-history-wrap {
+  margin-top: 10px;
+  border: 1px solid #e6edf3;
+  border-radius: 10px;
+  max-height: 280px;
   overflow: auto;
 }
 
-.pending-item {
-  border: 1px solid #eef1f2;
-  border-radius: 8px;
-  padding: 6px;
+.audit-summary {
+  margin-top: 10px;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.audit-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid #dce6ef;
   background: #ffffff;
-}
-
-.pending-item strong {
-  color: #2c3e50;
-}
-
-.pending-meta {
   font-size: 11px;
-  color: #666666;
+  font-weight: 800;
+  color: #34495e;
+}
+
+.audit-summary-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.audit-table th,
+.audit-table td {
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.audit-table td:last-child {
+  max-width: 260px;
+  white-space: normal;
+}
+
+.audit-subtitle {
+  margin: 14px 0 8px;
+  color: #2c3e50;
+  font-size: 13px;
+}
+
+.admin-activity-list {
+  border: 1px solid #e6edf3;
+  border-radius: 10px;
+  background: #ffffff;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.audit-backup-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.audit-backup-note {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: #6b7d8f;
   font-weight: 700;
 }
 
-.pending-actions {
+.activity-item {
+  padding: 7px 10px;
+  border-bottom: 1px solid #eef3f7;
+  font-size: 11px;
+  color: #516170;
   display: flex;
-  gap: 6px;
-  margin-top: 6px;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-item strong {
+  color: #2b3e50;
+  font-size: 12px;
+}
+
+.activity-empty {
+  padding: 12px 10px;
+  color: #7a8793;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .btn-audit-big {
@@ -2063,42 +2149,8 @@ body.role-worker .resize-handle {
   background: #2980b9;
 }
 
-.btn-approve {
-  background: #2ecc71;
-  color: #ffffff;
-  width: 100%;
-  margin-bottom: 6px;
-}
-
-.btn-approve:hover {
-  background: #27ae60;
-}
-
-.btn-reject {
-  background: #e74c3c;
-  color: #ffffff;
-  width: 100%;
-  margin-bottom: 6px;
-}
-
-.btn-reject:hover {
-  background: #c0392b;
-}
-
 .btn.full {
   width: 100%;
-}
-
-.approval-detail {
-  border: 1px solid #eef1f2;
-  border-radius: 8px;
-  padding: 6px;
-  font-size: 11px;
-  font-weight: 800;
-  color: #4d4d4d;
-  background: #f8f9fa;
-  margin-bottom: 8px;
-  line-height: 1.5;
 }
 
 .day-modal-header {
