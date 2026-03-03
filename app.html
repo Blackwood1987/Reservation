@@ -6,7 +6,7 @@
     <title>장비 예약 관리 시스템 (데모)</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="stylesheet" href="styles.css?v=20260129-43" />
+    <link rel="stylesheet" href="styles.css?v=20260129-45" />
   </head>
   <body>
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
@@ -52,8 +52,9 @@
           <div class="mobile-pane-wrap">
             <section id="mobile-dashboard-pane" class="mobile-pane active" aria-label="모바일 대시보드">
               <div class="mobile-chart-wrap">
+                <div id="mobile-donut-metric" class="mobile-donut-metric" aria-live="polite">가동률 --%</div>
                 <svg id="mobile-dashboard-donut" viewBox="0 0 220 220" class="mobile-dashboard-donut" aria-label="가동 분석"></svg>
-                <button id="btn-mobile-center-reserve" class="mobile-center-reserve" type="button">예약하기</button>
+                <button id="btn-mobile-center-reserve" class="mobile-center-reserve is-readonly" type="button" aria-label="읽기 전용"><span class="reserve-center-icon" aria-hidden="true">•</span></button>
               </div>
             </section>
 
@@ -631,7 +632,6 @@
         </div>
         <div class="day-quick-actions">
           <button class="btn btn-save" type="button" data-day-action="reservation">예약 관리로 이동</button>
-          <button class="btn btn-cancel" type="button" data-day-action="apply-date">해당 날짜 기준 적용</button>
           <button class="btn btn-save" type="button" data-day-action="print">리포트 인쇄</button>
         </div>
         <div class="day-modal-body">
@@ -644,7 +644,7 @@
       </div>
     </div>
 
-    <script type="module" src="app.js?v=20260129-43"></script>
+    <script type="module" src="app.js?v=20260129-45"></script>
   </body>
 </html>
 

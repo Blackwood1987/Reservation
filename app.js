@@ -840,25 +840,33 @@ function renderMobileDashboardDial(){
     "stroke-dasharray":`${(2*Math.PI*r)*(percent/100)} ${(2*Math.PI*r)}`,
     "stroke-dashoffset":"0"
   });
-  const label=createSvgNode("text",{ x:cx, y:cy-6, "text-anchor":"middle", "font-size":"26", "font-weight":"900", fill:"#243748" });
-  label.textContent=`${percent}%`;
-  const sub=createSvgNode("text",{ x:cx, y:cy+16, "text-anchor":"middle", "font-size":"11", "font-weight":"800", fill:"#607286" });
-  sub.textContent=`가동 ${stats.running}/${stats.total}`;
   svg.appendChild(track);
   svg.appendChild(progress);
-  svg.appendChild(label);
-  svg.appendChild(sub);
+
+  const metric=document.getElementById("mobile-donut-metric");
+  if(metric) metric.textContent=`가동률 ${percent}%`;
 
   const canReserve=can("create") && hasAnyReservableSlot(getViewDate(),0.5);
   appState.mobile.canReserveNow=canReserve;
-  const reserveText=!can("create") ? "읽기 전용" : (canReserve ? "예약하기" : "예약 불가능");
+  const reserveState=!can("create") ? "readonly" : (canReserve ? "available" : "unavailable");
+  const reserveLabel=reserveState==="available" ? "예약 가능" : (reserveState==="unavailable" ? "예약 불가능" : "읽기 전용");
+  const reserveIcon=reserveState==="available" ? "✓" : (reserveState==="unavailable" ? "!" : "•");
   const centerBtn=document.getElementById("btn-mobile-center-reserve");
   const topBtn=document.getElementById("btn-mobile-center-reserve-top");
-  [centerBtn,topBtn].forEach(btn=>{
-    if(!btn) return;
-    btn.textContent=reserveText;
-    btn.disabled=!canReserve;
-  });
+  if(centerBtn){
+    centerBtn.innerHTML=`<span class="reserve-center-icon" aria-hidden="true">${reserveIcon}</span>`;
+    centerBtn.classList.remove("is-available","is-unavailable","is-readonly");
+    centerBtn.classList.add(`is-${reserveState}`);
+    centerBtn.disabled=!canReserve;
+    centerBtn.title=reserveLabel;
+    centerBtn.setAttribute("aria-label",reserveLabel);
+  }
+  if(topBtn){
+    topBtn.textContent=reserveState==="available" ? "예약" : (reserveState==="unavailable" ? "불가" : "읽기");
+    topBtn.disabled=!canReserve;
+    topBtn.title=reserveLabel;
+    topBtn.setAttribute("aria-label",reserveLabel);
+  }
 }
 
 function renderMobileChronograph270(){
@@ -2303,11 +2311,6 @@ function applyDateContext(date){
 function handleDayAction(action){
   const date=appState.dayModalDate;
   if(!date) return;
-  if(action==="apply-date"){
-    applyDateContext(date);
-    showToast(`${date.replace(/-/g,". ")} 기준으로 적용했습니다.`,"info");
-    return;
-  }
   if(action==="reservation"){
     applyDateContext(date);
     switchView("reservation");
