@@ -492,7 +492,7 @@ body.login-page {
   flex-direction: column;
   justify-content: space-between;
   cursor: pointer;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, opacity 0.12s ease;
   min-height: 72px;
 }
 
@@ -505,7 +505,7 @@ body.login-page {
 #view-dashboard.focus-active .machine-tile.is-dimmed,
 #view-dashboard.focus-active .timeline-row.is-dimmed,
 #view-dashboard.focus-active .status-item.is-dimmed {
-  opacity: 0.42;
+  opacity: 0.7;
 }
 
 #view-dashboard.focus-active .machine-tile.is-focused {
@@ -2771,6 +2771,21 @@ body.role-worker .resize-handle {
 
   .login-card {
     padding: 28px 22px;
+  }
+}
+
+@media (hover: none) {
+  #view-dashboard.focus-active .machine-tile.is-dimmed,
+  #view-dashboard.focus-active .timeline-row.is-dimmed,
+  #view-dashboard.focus-active .status-item.is-dimmed {
+    opacity: 1;
+  }
+
+  #view-dashboard.focus-active .machine-tile.is-focused,
+  #view-dashboard.focus-active .timeline-row.is-focused .tl-track,
+  #view-dashboard.focus-active .status-item.is-focused {
+    box-shadow: none;
+    border-color: inherit;
   }
 }
 

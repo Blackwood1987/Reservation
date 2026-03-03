@@ -73,6 +73,14 @@ let auditHistoryRows = [];
 let auditHistoryDate = "";
 let auditHistoryLoading = false;
 const adminActivityKey = "reservation_admin_activity";
+const focusCache = {
+  section: null,
+  allNodes: [],
+  byMachine: new Map(),
+  activeId: null,
+  dimmed: false,
+  clearTimer: null
+};
 
 
 
@@ -629,6 +637,7 @@ async function logout(){
 
 function switchView(view){
   if(view==="admin"&&!can("admin")){alert("접근 권한이 없습니다.");return;}
+  if(view!=="dashboard") clearMachineFocusState();
   appState.currentView=view;
   document.querySelectorAll(".tab-btn").forEach(btn=>btn.classList.toggle("active",btn.dataset.view===view));
   document.querySelectorAll(".view-section").forEach(sec=>sec.classList.toggle("active",sec.id===`view-${view}`));
@@ -682,21 +691,110 @@ function setDashboardMobileView(view){
 }
 
 function applyMachineFocus(){
-  const section=document.getElementById("view-dashboard");
+  const section=focusCache.section || document.getElementById("view-dashboard");
   if(!section) return;
-  const focusId=appState.focusMachineId;
-  const targets=section.querySelectorAll("[data-machine-id]");
-  section.classList.toggle("focus-active",!!focusId);
-  targets.forEach(node=>{
-    const match=node.dataset.machineId===focusId;
-    node.classList.toggle("is-focused",!!focusId && match);
-    node.classList.toggle("is-dimmed",!!focusId && !match);
+  const nextId=appState.focusMachineId || null;
+  const prevId=focusCache.activeId;
+  if(!nextId){
+    section.classList.remove("focus-active");
+    if(focusCache.dimmed){
+      focusCache.allNodes.forEach(node=>node.classList.remove("is-dimmed"));
+      focusCache.dimmed=false;
+    }
+    if(prevId){
+      const prevNodes=focusCache.byMachine.get(prevId) || [];
+      prevNodes.forEach(node=>node.classList.remove("is-focused"));
+    }
+    focusCache.activeId=null;
+    return;
+  }
+  section.classList.add("focus-active");
+  if(!focusCache.dimmed){
+    focusCache.allNodes.forEach(node=>node.classList.add("is-dimmed"));
+    focusCache.dimmed=true;
+  }
+  if(prevId && prevId!==nextId){
+    const prevNodes=focusCache.byMachine.get(prevId) || [];
+    prevNodes.forEach(node=>{
+      node.classList.remove("is-focused");
+      node.classList.add("is-dimmed");
+    });
+  }
+  const nextNodes=focusCache.byMachine.get(nextId) || [];
+  nextNodes.forEach(node=>{
+    node.classList.add("is-focused");
+    node.classList.remove("is-dimmed");
   });
+  focusCache.activeId=nextId;
 }
 
-function setMachineFocus(machineId){
-  appState.focusMachineId=machineId||null;
-  applyMachineFocus();
+function rebuildFocusCache(){
+  const section=document.getElementById("view-dashboard");
+  focusCache.section=section || null;
+  focusCache.byMachine.clear();
+  if(!section){
+    focusCache.allNodes=[];
+    focusCache.activeId=null;
+    focusCache.dimmed=false;
+    return;
+  }
+  const nodes=Array.from(section.querySelectorAll("[data-machine-id]"));
+  focusCache.allNodes=nodes;
+  nodes.forEach(node=>{
+    const id=node.dataset.machineId;
+    if(!id) return;
+    if(!focusCache.byMachine.has(id)) focusCache.byMachine.set(id,[]);
+    focusCache.byMachine.get(id).push(node);
+  });
+  focusCache.dimmed=false;
+  if(focusCache.activeId && !focusCache.byMachine.has(focusCache.activeId)){
+    focusCache.activeId=null;
+  }
+}
+
+function setMachineFocusClearTimer(){
+  if(focusCache.clearTimer){
+    clearTimeout(focusCache.clearTimer);
+    focusCache.clearTimer=null;
+  }
+}
+
+function scheduleMachineFocusClear(){
+  setMachineFocusClearTimer();
+  focusCache.clearTimer=setTimeout(()=>{
+    focusCache.clearTimer=null;
+    setMachineFocus(null,true);
+  },80);
+}
+
+function setMachineFocus(machineId, immediate=false){
+  if(machineId){
+    setMachineFocusClearTimer();
+    appState.focusMachineId=machineId;
+    applyMachineFocus();
+    return;
+  }
+  if(immediate){
+    setMachineFocusClearTimer();
+    appState.focusMachineId=null;
+    applyMachineFocus();
+    return;
+  }
+  scheduleMachineFocusClear();
+}
+
+function clearMachineFocusState(){
+  setMachineFocus(null,true);
+  setMachineFocusClearTimer();
+  if(focusCache.section){
+    focusCache.section.classList.remove("focus-active");
+  }
+  focusCache.allNodes.forEach(node=>{
+    node.classList.remove("is-focused");
+    node.classList.remove("is-dimmed");
+  });
+  focusCache.activeId=null;
+  focusCache.dimmed=false;
 }
 
 function switchAdminView(view){
@@ -1049,6 +1147,7 @@ function renderDashboard(){
   renderTimeline(document.getElementById("timeline-body"),getViewDate());
   renderStatusList();
   renderChart();
+  rebuildFocusCache();
   applyMachineFocus();
 }
 
@@ -1082,8 +1181,8 @@ function renderMap(){
       const timeText=booking?`${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}`:"예약 없음";
       tile.innerHTML=`<div class="machine-id">${id}</div><div class="machine-meta">${meta.labelText}</div><div class="machine-time">${timeText}</div>`;
       tile.addEventListener("click",()=>handleTileClick(id));
-      tile.addEventListener("mouseenter",()=>setMachineFocus(id));
-      tile.addEventListener("mouseleave",()=>setMachineFocus(null));
+      tile.addEventListener("mouseenter",()=>setMachineFocus(id,true));
+      tile.addEventListener("mouseleave",()=>setMachineFocus(null,false));
       tile.addEventListener("mousemove",e=>showTooltip(e,id,booking));
       tile.addEventListener("mouseleave",hideTooltip);
       locGrid.appendChild(tile);
@@ -1290,8 +1389,8 @@ function renderTimeline(container,date){
       bar.textContent=booking.status==="pending"?`${booking.user} (대기)`:booking.user;
       track.appendChild(bar);
     }
-    row.addEventListener("mouseenter",()=>setMachineFocus(id));
-    row.addEventListener("mouseleave",()=>setMachineFocus(null));
+    row.addEventListener("mouseenter",()=>setMachineFocus(id,true));
+    row.addEventListener("mouseleave",()=>setMachineFocus(null,false));
     row.appendChild(label);row.appendChild(track);container.appendChild(row);
   }
   const selectedIndicator=createTimelineIndicator("selected");
@@ -1311,8 +1410,8 @@ function renderStatusList(){
     const item=document.createElement("div");item.className="status-item";item.style.borderLeftColor=meta.color;
     item.dataset.machineId=id;
     item.innerHTML=`<div class="status-icon" style="color:${meta.color}">●</div><div class="status-info"><div class="status-id">${id}</div><div class="status-text">${meta.text}</div></div><div class="status-badge" style="background:${meta.color}">${meta.label}</div>`;
-    item.addEventListener("mouseenter",()=>setMachineFocus(id));
-    item.addEventListener("mouseleave",()=>setMachineFocus(null));
+    item.addEventListener("mouseenter",()=>setMachineFocus(id,true));
+    item.addEventListener("mouseleave",()=>setMachineFocus(null,false));
     list.appendChild(item);
   }
 }
@@ -2930,6 +3029,7 @@ function bindEvents(){
     updateTimelineIndicators(document.getElementById("timeline-body"));
     updateTimelineIndicators(document.getElementById("day-timeline"));
     renderDashboardMobileView();
+    rebuildFocusCache();
     applyMachineFocus();
   });
 }
