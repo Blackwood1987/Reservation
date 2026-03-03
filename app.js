@@ -1,6 +1,6 @@
 ﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC3hAHfZFH6g4SjQbwdFIh-V61wezsoDnY",
@@ -48,7 +48,8 @@ const appState = {
   currentDate:todayISO(),currentYear:new Date().getFullYear(),
   currentMonth:new Date().getMonth()+1,dragPayload:null,
   isResizing:false,resizeStartX:0,resizeOriginDuration:0,resizeTarget:null,
-  bookingTarget:{id:null,start:9},approvalTarget:null,deleteTarget:null
+  bookingTarget:{id:null,start:9},approvalTarget:null,deleteTarget:null,
+  isLiveMode:true,dayModalDate:null
 };
 
 let users = [];
@@ -59,14 +60,28 @@ const demoAccounts = {
 const bookings = Object.fromEntries(bscIds.map(id=>[id,[]]));
 let bookingsUnsub = null;
 let configUnsub = null;
+let clockTicker = null;
 const configState = { loaded: false, exists: false };
+let bookingsQueryKey = "";
+let usersFetchedAt = 0;
+let usersFetchPromise = null;
 
 
 
 function todayISO(){return new Date().toISOString().slice(0,10);} 
-function formatTime(val){const h=Math.floor(val);const m=Math.round((val-h)*60);return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;}
+function formatTime(val){
+  const totalMinutes=Math.max(0,Math.round((Number(val)||0)*60));
+  const h=Math.floor(totalMinutes/60);
+  const m=totalMinutes%60;
+  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+}
 function formatDateLabel(iso){return iso.replace(/-/g,". ");}
 function clampHour(val){if(val<9) return 9; if(val>18) return 18; return val;}
+function snapToHalfHour(val){return Math.round((Number(val)||0)*2)/2;}
+function getNowHour(){
+  const now=new Date();
+  return clampHour(now.getHours()+now.getMinutes()/60+now.getSeconds()/3600);
+}
 function getViewDate(){return appState.currentDate;}
 function getMachineLocation(id){return machineLocations[id]||locations[0];}
 function getMachineMgmtNo(id){return machineMgmtNos[id]||"";}
@@ -197,15 +212,24 @@ function subscribeConfig(){
 async function ensureConfigDoc(){
   if(!can("admin")) return;
   if(configState.loaded && configState.exists) return;
-  const snap = await getDoc(configRef);
-  if(!snap.exists()){
-    await setDoc(configRef, buildConfigPayload());
+  try{
+    const snap = await getDoc(configRef);
+    if(!snap.exists()){
+      await setDoc(configRef, buildConfigPayload());
+    }
+  }catch(error){
+    reportAsyncError("ensureConfigDoc", error, "설정 초기화에 실패했습니다.");
   }
 }
 
 async function saveConfig(){
   if(!can("admin")) return;
-  await setDoc(configRef, buildConfigPayload(), { merge: true });
+  try{
+    await setDoc(configRef, buildConfigPayload(), { merge: true });
+  }catch(error){
+    reportAsyncError("saveConfig", error, "설정 저장에 실패했습니다.");
+    throw error;
+  }
 }
 
 function syncBookingsSnapshot(snapshot){
@@ -224,11 +248,48 @@ function syncBookingsSnapshot(snapshot){
   Object.assign(bookings,next);
 }
 
-function subscribeBookings(){
+function dateToISO(dateObj){
+  return dateObj.toISOString().slice(0,10);
+}
+
+function getBookingQueryRange(){
+  const currentDate = new Date(`${getViewDate()}T00:00:00`);
+  const safeCurrent = Number.isNaN(currentDate.getTime()) ? new Date() : currentDate;
+  const monthStart = new Date(appState.currentYear, appState.currentMonth-1, 1);
+  const monthEnd = new Date(appState.currentYear, appState.currentMonth, 0);
+  const startBase = new Date(Math.min(safeCurrent.getTime(), monthStart.getTime()));
+  const endBase = new Date(Math.max(safeCurrent.getTime(), monthEnd.getTime()));
+  startBase.setDate(startBase.getDate()-7);
+  endBase.setDate(endBase.getDate()+7);
+  return { from: dateToISO(startBase), to: dateToISO(endBase) };
+}
+
+function renderAfterBookingsChange(){
+  renderDateLabels();
+  renderDashboard();
+  renderSchedule();
+  renderCalendar();
+  if(appState.currentView==="admin" && can("admin")){
+    renderPendingList();
+    renderStats();
+    renderMachineTable();
+  }
+}
+
+function subscribeBookings(force=false){
+  const { from, to } = getBookingQueryRange();
+  const nextKey = `${from}:${to}`;
+  if(!force && bookingsUnsub && bookingsQueryKey===nextKey) return;
   if(bookingsUnsub) bookingsUnsub();
-  bookingsUnsub = onSnapshot(collection(db,"bookings"), snapshot=>{
+  bookingsQueryKey = nextKey;
+  const bookingsQuery = query(
+    collection(db,"bookings"),
+    where("date",">=",from),
+    where("date","<=",to)
+  );
+  bookingsUnsub = onSnapshot(bookingsQuery, snapshot=>{
     syncBookingsSnapshot(snapshot);
-    renderAll();
+    renderAfterBookingsChange();
   }, ()=> showToast("예약 동기화에 실패했습니다.","warn"));
 }
 
@@ -250,9 +311,18 @@ async function deleteBookingDoc(docId){
   return deleteDoc(doc(db,"bookings",docId));
 }
 
-function getBookingsForDate(id,date){return (bookings[id]||[]).filter(b=>b.date===date);} 
+function getBookingsForDate(id,date){return (bookings[id]||[]).filter(b=>b.date===date&&b.status!=="deleted");} 
 function findBookingByDocId(id, docId){return (bookings[id]||[]).find(b=>b.docId===docId);}  
 function getCurrentBooking(id){const date=getViewDate();const hour=appState.currentHour;return getBookingsForDate(id,date).find(b=>b.start<=hour&&hour<(b.start+b.duration));}
+
+function isBookingMine(booking,user=appState.currentUser){
+  if(!booking||!user) return false;
+  if(user.role==="guest") return false;
+  if(booking.createdBy && user.uid && booking.createdBy===user.uid) return true;
+  if(booking.userId && user.id && booking.userId===user.id) return true;
+  if(booking.user && user.name && booking.user===user.name) return true;
+  return false;
+}
 
 function getPendingBookings(date=getViewDate()){
   const pending=[];
@@ -272,6 +342,39 @@ function can(action){
   return false;
 }
 
+function isManagerUser(user=appState.currentUser){
+  return !!user && (user.role==="admin" || user.role==="supervisor");
+}
+
+function isWorkerUser(user=appState.currentUser){
+  return !!user && user.role==="worker";
+}
+
+function canDragBooking(booking){
+  const user=appState.currentUser;
+  if(!user || !booking) return false;
+  if(user.role==="guest") return false;
+  if(booking.user==="System") return false;
+  if(isManagerUser(user)) return true;
+  if(!isWorkerUser(user)) return false;
+  if(booking.createdBy && user.uid && booking.createdBy===user.uid) return true;
+  if(booking.userId && user.id && booking.userId===user.id) return true;
+  if(booking.user && user.name && booking.user===user.name) return true;
+  return false;
+}
+
+function canUseScheduleDrop(){
+  const user=appState.currentUser;
+  if(!user) return false;
+  if(user.role==="guest") return false;
+  return isManagerUser(user) || isWorkerUser(user);
+}
+
+function getMinReservableHour(date){
+  if(date!==todayISO()) return 9;
+  return clampHour(Math.ceil(getNowHour()*2)/2);
+}
+
 function canDeleteBooking(){
   return appState.currentUser?.role === "admin";
 }
@@ -286,18 +389,30 @@ function showToast(message,type="success"){
   setTimeout(()=>{toast.style.opacity="0";setTimeout(()=>toast.remove(),220);},2600);
 }
 
+function getErrorText(error){
+  if(!error) return "";
+  if(typeof error === "string") return error;
+  if(typeof error.message === "string" && error.message) return error.message;
+  if(typeof error.code === "string" && error.code) return error.code;
+  return "";
+}
+
+function reportAsyncError(context, error, fallbackMessage){
+  console.error(`[${context}]`, error);
+  const text=getErrorText(error).toLowerCase();
+  if(text.includes("network") || text.includes("unavailable") || text.includes("deadline-exceeded")){
+    showToast("네트워크 상태가 불안정합니다. 잠시 후 다시 시도해주세요.","warn");
+    return;
+  }
+  showToast(fallbackMessage || "요청 처리 중 오류가 발생했습니다.","warn");
+}
+
 
 
 function initStartTimes(){
   const select=document.getElementById("booking-start"); select.innerHTML="";
-  const now=new Date();
-  const today=todayISO();
   const viewDate=getViewDate();
-  let minHour=9;
-  if(viewDate === today){
-    minHour = now.getHours() + now.getMinutes()/60;
-    minHour = Math.max(9, Math.ceil(minHour*2)/2);
-  }
+  const minHour=getMinReservableHour(viewDate);
   for(let h=9;h<18;h+=0.5){
     const opt = document.createElement("option");
     opt.value = String(h);
@@ -380,7 +495,7 @@ function applyHeaderSession(user){
 async function applySession(user){
   applyHeaderSession(user);
   ensureBookingBuckets();
-  subscribeBookings();
+  subscribeBookings(true);
   await ensureConfigDoc();
   renderAll();
 }
@@ -388,7 +503,7 @@ async function applySession(user){
 function applyGuestSession(){
   applyHeaderSession({id:"guest", name:"게스트", role:"guest"});
   ensureBookingBuckets();
-  subscribeBookings();
+  subscribeBookings(true);
   renderAll();
 }
 
@@ -398,22 +513,27 @@ function initAuthListener(){
       applyGuestSession();
       return;
     }
-    const snap = await getDoc(doc(db,"users",user.uid));
-    if(!snap.exists()){
-      await signOut(auth);
-      alert("계정 정보를 찾을 수 없습니다.");
-      window.location.replace("index.html");
-      return;
+    try{
+      const snap = await getDoc(doc(db,"users",user.uid));
+      if(!snap.exists()){
+        await signOut(auth);
+        alert("계정 정보를 찾을 수 없습니다.");
+        window.location.replace("index.html");
+        return;
+      }
+      const data = snap.data();
+      if(!data.approved){
+        await signOut(auth);
+        alert("승인 대기 중입니다.");
+        window.location.replace("index.html");
+        return;
+      }
+      const role = String(data.role||"worker").trim().toLowerCase();
+      await applySession({uid:user.uid, id:data.id||user.email, name:data.name||user.email, role});
+    }catch(error){
+      reportAsyncError("initAuthListener", error, "로그인 세션 확인에 실패했습니다.");
+      applyGuestSession();
     }
-    const data = snap.data();
-    if(!data.approved){
-      await signOut(auth);
-      alert("승인 대기 중입니다.");
-      window.location.replace("index.html");
-      return;
-    }
-    const role = String(data.role||"worker").trim().toLowerCase();
-    await applySession({uid:user.uid, id:data.id||user.email, name:data.name||user.email, role});
   });
 }
 async function logout(){
@@ -442,6 +562,7 @@ function updateDate(delta){
   date.setDate(date.getDate()+delta);
   appState.currentDate=date.toISOString().slice(0,10);
   initStartTimes();
+  subscribeBookings();
   renderAll();
 }
 
@@ -452,6 +573,7 @@ function setToday(){
   appState.currentMonth=today.getMonth()+1;
   resetToNow();
   initStartTimes();
+  subscribeBookings();
   renderAll();
 }
 
@@ -459,18 +581,52 @@ function changeMonth(delta){
   appState.currentMonth+=delta;
   if(appState.currentMonth>12){appState.currentMonth=1;appState.currentYear+=1;}
   if(appState.currentMonth<1){appState.currentMonth=12;appState.currentYear-=1;}
+  subscribeBookings();
   renderCalendar();
   renderStats();
 }
 
-function updateTimeFromSlider(val){appState.currentHour=clampHour(Number(val));renderDashboard();}
-function resetToNow(){
-  const now=new Date();
-  let hour=now.getHours()+now.getMinutes()/60;
-  hour=Math.round(hour*2)/2;
-  appState.currentHour=clampHour(hour);
-  document.getElementById("time-slider").value=String(appState.currentHour);
+function updateTimeFromSlider(val){
+  appState.currentHour=clampHour(snapToHalfHour(val));
+  appState.isLiveMode=false;
+  syncLiveModeUI();
   renderDashboard();
+}
+function resetToNow(){
+  appState.currentHour=getNowHour();
+  appState.isLiveMode=true;
+  document.getElementById("time-slider").value=String(appState.currentHour);
+  syncLiveModeUI();
+  renderDashboard();
+}
+function syncLiveModeUI(){
+  const liveBtn=document.getElementById("btn-live");
+  if(!liveBtn) return;
+  if(appState.isLiveMode){
+    liveBtn.textContent="라이브 ON";
+    liveBtn.classList.add("active");
+    liveBtn.disabled=true;
+  }else{
+    liveBtn.textContent="라이브 복귀";
+    liveBtn.classList.remove("active");
+    liveBtn.disabled=false;
+  }
+}
+
+function startClockTicker(){
+  if(clockTicker) clearInterval(clockTicker);
+  clockTicker=setInterval(()=>{
+    if(!appState.currentUser) return;
+    if(appState.isLiveMode){
+      appState.currentHour=getNowHour();
+      const slider=document.getElementById("time-slider");
+      if(slider) slider.value=String(appState.currentHour);
+      renderDashboard();
+      return;
+    }
+    updateTimelineIndicators(document.getElementById("timeline-body"));
+    updateTimelineIndicators(document.getElementById("day-timeline"));
+  },10000);
 }
 
 function renderAll(){
@@ -501,8 +657,10 @@ function renderDashboard(){
 
 function renderTimeLabels(){
   const time=formatTime(appState.currentHour);
-  document.getElementById("map-time-label").textContent=`기준 시각: ${time}`;
+  const prefix=appState.isLiveMode ? "현재 시각" : "조회 시각";
+  document.getElementById("map-time-label").textContent=`${prefix}: ${time}`;
   document.getElementById("time-slider-label").textContent=time;
+  syncLiveModeUI();
 }
 function renderMap(){
   const grid=document.getElementById("map-grid");
@@ -565,13 +723,156 @@ function showTooltip(event,id,booking){
   tooltip.textContent=booking?`${id}: ${booking.user} · ${booking.status==="pending"?"승인 대기":getPurposeMeta(booking.purpose).label}`:`${id}: 사용 가능`;
 }
 function hideTooltip(){document.getElementById("map-tooltip").style.display="none";}
+function getBookingTooltipText(booking){
+  if(!booking) return "";
+  return `예약자: ${booking.user}\n사용시간: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}`;
+}
+function createTimelineIndicator(type){
+  const indicator=document.createElement("div");
+  indicator.className=`time-indicator ${type}`;
+  const label=document.createElement("span");
+  label.className="time-indicator-label";
+  indicator.appendChild(label);
+  return indicator;
+}
+
+function createTimelineShade(type){
+  const shade=document.createElement("div");
+  shade.className=`timeline-shade ${type}`;
+  return shade;
+}
+
+function getTimelineTrackMetrics(container){
+  if(!container) return null;
+  const firstTrack=container.querySelector(".tl-track");
+  if(!firstTrack) return null;
+  const start=firstTrack.offsetLeft;
+  const width=firstTrack.clientWidth;
+  return { start, width, end: start + width };
+}
+
+function setTimelineIndicatorPosition(container,selector,hour){
+  if(!container) return;
+  const indicator=container.querySelector(selector);
+  const metrics=getTimelineTrackMetrics(container);
+  if(!indicator||!metrics) return;
+  const ratio=(clampHour(hour)-9)/9;
+  const left=metrics.start+(metrics.width*ratio);
+  indicator.style.left=`${left}px`;
+}
+
+function updateTimelineShading(container){
+  if(!container) return;
+  const metrics=getTimelineTrackMetrics(container);
+  const pastShade=container.querySelector(".timeline-shade.past");
+  const futureShade=container.querySelector(".timeline-shade.future");
+  if(!metrics||!pastShade||!futureShade) return;
+  const ratio=(getNowHour()-9)/9;
+  const splitX=metrics.start+(metrics.width*ratio);
+  pastShade.style.left=`${metrics.start}px`;
+  pastShade.style.width=`${Math.max(0,splitX-metrics.start)}px`;
+  futureShade.style.left=`${splitX}px`;
+  futureShade.style.width=`${Math.max(0,metrics.end-splitX)}px`;
+}
+
+function resolveTimelineLabelCollisions(container){
+  if(!container) return;
+  const indicators=Array.from(container.querySelectorAll(".time-indicator:not(.hidden)"));
+  indicators.sort((a,b)=>parseFloat(a.style.left||"0")-parseFloat(b.style.left||"0"));
+  const laneLastRight=[];
+  indicators.forEach(indicator=>{
+    const label=indicator.querySelector(".time-indicator-label");
+    if(!label) return;
+    const centerX=parseFloat(indicator.style.left||"0");
+    const width=Math.max(42,label.offsetWidth||0);
+    let lane=0;
+    while(true){
+      const lastRight=laneLastRight[lane];
+      if(lastRight===undefined || (centerX-(width/2))>(lastRight+8)) break;
+      lane+=1;
+    }
+    label.style.top=`${2+(lane*15)}px`;
+    laneLastRight[lane]=centerX+(width/2);
+  });
+}
+
+function getTimelineHourFromPointer(container,clientX){
+  const metrics=getTimelineTrackMetrics(container);
+  if(!metrics) return null;
+  const rect=container.getBoundingClientRect();
+  const x=clientX-rect.left;
+  if(x<metrics.start||x>metrics.end) return null;
+  const ratio=(x-metrics.start)/metrics.width;
+  return clampHour(9+(ratio*9));
+}
+
+function setTimelineHoverIndicator(container,hour){
+  if(!container) return;
+  const hoverIndicator=container.querySelector(".time-indicator.hover");
+  if(!hoverIndicator) return;
+  if(hour===null){
+    hoverIndicator.classList.add("hidden");
+    resolveTimelineLabelCollisions(container);
+    return;
+  }
+  hoverIndicator.classList.remove("hidden");
+  setTimelineIndicatorPosition(container,".time-indicator.hover",hour);
+  const label=hoverIndicator.querySelector(".time-indicator-label");
+  if(label) label.textContent=`가이드 ${formatTime(hour)}`;
+  resolveTimelineLabelCollisions(container);
+}
+
+function handleTimelineHoverMove(event){
+  const container=event.currentTarget;
+  if(!container) return;
+  const hour=getTimelineHourFromPointer(container,event.clientX);
+  setTimelineHoverIndicator(container,hour);
+}
+
+function handleTimelineHoverLeave(event){
+  const container=event.currentTarget;
+  if(!container) return;
+  setTimelineHoverIndicator(container,null);
+}
+
+function handleTimelineSelectClick(event){
+  const container=event.currentTarget;
+  if(!container) return;
+  if(event.target.closest(".tl-bar")) return;
+  if(event.target.closest(".time-indicator-label")) return;
+  const hour=getTimelineHourFromPointer(container,event.clientX);
+  if(hour===null) return;
+  updateTimeFromSlider(hour);
+}
+
+function updateTimelineIndicators(container){
+  if(!container) return;
+  const nowHour=getNowHour();
+  const selectedHour=appState.currentHour;
+  const nowIndicator=container.querySelector(".time-indicator.now");
+  const selectedIndicator=container.querySelector(".time-indicator.selected");
+  updateTimelineShading(container);
+  if(nowIndicator){
+    setTimelineIndicatorPosition(container,".time-indicator.now",nowHour);
+    const nowLabel=nowIndicator.querySelector(".time-indicator-label");
+    if(nowLabel) nowLabel.textContent=`현재 ${formatTime(nowHour)}`;
+  }
+  if(selectedIndicator){
+    const showSelected=!appState.isLiveMode && Math.abs(selectedHour-nowHour)>=(1/120);
+    selectedIndicator.classList.toggle("hidden",!showSelected);
+    if(showSelected){
+      setTimelineIndicatorPosition(container,".time-indicator.selected",selectedHour);
+      const selectedLabel=selectedIndicator.querySelector(".time-indicator-label");
+      if(selectedLabel) selectedLabel.textContent=`조회 ${formatTime(selectedHour)}`;
+    }
+  }
+  resolveTimelineLabelCollisions(container);
+}
 
 function renderTimeline(container,date){
   container.innerHTML="";
-  const indicator=document.createElement("div");
-  indicator.className="time-indicator";
-  indicator.style.left=`${((appState.currentHour-9)/9)*100}%`;
-  container.appendChild(indicator);
+  container.appendChild(createTimelineShade("past"));
+  container.appendChild(createTimelineShade("future"));
   for(const id of bscIds){
     const row=document.createElement("div");row.className="timeline-row";
     const label=document.createElement("div");label.className="tl-label";label.textContent=id;
@@ -582,12 +883,21 @@ function renderTimeline(container,date){
       const width=(booking.duration/9)*100;const left=((booking.start-9)/9)*100;
       bar.className=`tl-bar ${booking.status==="pending"?"pending":""}`.trim();
       bar.style.width=`${width}%`;bar.style.left=`${left}%`;
+      bar.title=getBookingTooltipText(booking);
       if(booking.status!=="pending") bar.style.background=booking.user==="System"?statusMeta.system.color:getPurposeMeta(booking.purpose).color;
       bar.textContent=booking.status==="pending"?`${booking.user} (대기)`:booking.user;
       track.appendChild(bar);
     }
     row.appendChild(label);row.appendChild(track);container.appendChild(row);
   }
+  const selectedIndicator=createTimelineIndicator("selected");
+  const nowIndicator=createTimelineIndicator("now");
+  const hoverIndicator=createTimelineIndicator("hover");
+  hoverIndicator.classList.add("hidden");
+  container.appendChild(selectedIndicator);
+  container.appendChild(nowIndicator);
+  container.appendChild(hoverIndicator);
+  updateTimelineIndicators(container);
 }
 function renderStatusList(){
   const list=document.getElementById("status-list");list.innerHTML="";
@@ -647,12 +957,149 @@ function renderChart(){
   svg.appendChild(label);
 }
 
+function renderScheduleFilterControls(){
+  const locationSelect=document.getElementById("schedule-location-filter");
+  if(locationSelect){
+    const current=locationSelect.value||"all";
+    const options=['<option value="all">전체 장소</option>', ...locations.map(loc=>`<option value="${loc}">${loc}</option>`)];
+    locationSelect.innerHTML=options.join("");
+    locationSelect.value=locations.includes(current)?current:"all";
+  }
+  const myOnly=document.getElementById("schedule-my-only");
+  if(myOnly){
+    const isGuest=appState.currentUser?.role==="guest";
+    myOnly.disabled=isGuest;
+    if(isGuest) myOnly.checked=false;
+  }
+}
+
+function getScheduleFilterState(){
+  return {
+    location: document.getElementById("schedule-location-filter")?.value || "all",
+    keyword: (document.getElementById("schedule-machine-search")?.value || "").trim().toLowerCase(),
+    mineOnly: !!document.getElementById("schedule-my-only")?.checked
+  };
+}
+
+function resetScheduleFilters(){
+  const locationSelect=document.getElementById("schedule-location-filter");
+  const machineSearch=document.getElementById("schedule-machine-search");
+  const mineOnly=document.getElementById("schedule-my-only");
+  if(locationSelect) locationSelect.value="all";
+  if(machineSearch) machineSearch.value="";
+  if(mineOnly) mineOnly.checked=false;
+  renderSchedule();
+}
+
+function getFilteredScheduleGroups(date){
+  const filter=getScheduleFilterState();
+  const groups=[];
+  for(const loc of locations){
+    if(filter.location!=="all" && filter.location!==loc) continue;
+    const ids=bscIds.filter(id=>{
+      if(getMachineLocation(id)!==loc) return false;
+      const haystack=`${id} ${getMachineMgmtNo(id)} ${getMachineDesc(id)} ${loc}`.toLowerCase();
+      if(filter.keyword && !haystack.includes(filter.keyword)) return false;
+      if(filter.mineOnly){
+        const hasMine=getBookingsForDate(id,date).some(booking=>isBookingMine(booking));
+        if(!hasMine) return false;
+      }
+      return true;
+    });
+    if(ids.length>0) groups.push({ location: loc, ids });
+  }
+  return groups;
+}
+
+function getDropValidation(booking,targetMachineId,targetHour,docId){
+  if(!booking) return { ok:false, reason:"예약 정보를 찾을 수 없습니다." };
+  if(!canDragBooking(booking)) return { ok:false, reason:"본인 예약만 이동할 수 있습니다." };
+  if(targetHour<9 || targetHour+booking.duration>18){
+    return { ok:false, reason:"운영 시간(09:00~18:00)을 벗어납니다." };
+  }
+  if(isWorkerUser() && booking.date===todayISO()){
+    const minHour=getMinReservableHour(booking.date);
+    if(targetHour<minHour){
+      return { ok:false, reason:`오늘 예약은 ${formatTime(minHour)} 이후로만 이동할 수 있습니다.` };
+    }
+  }
+  if(isOverlap(targetMachineId,booking.date,targetHour,booking.duration,docId)){
+    return { ok:false, reason:"다른 예약과 시간이 겹칩니다." };
+  }
+  return { ok:true, reason:"이 위치로 이동 가능합니다." };
+}
+
+function clearDropCellState(td){
+  td.classList.remove("drag-hover","drag-hover-valid","drag-hover-invalid");
+  td.removeAttribute("data-drag-reason");
+  td.title="";
+}
+
+function findFirstAvailableStart(machineId,date,startHour){
+  const begin=Math.max(9,snapToHalfHour(startHour));
+  for(let h=begin; h<18; h+=0.5){
+    if(!isOverlap(machineId,date,h,0.5)) return h;
+  }
+  return null;
+}
+
+function renderScheduleMobile(date,groups){
+  const container=document.getElementById("schedule-mobile");
+  if(!container) return;
+  container.innerHTML="";
+  if(groups.length===0){
+    container.innerHTML='<div class="schedule-mobile-empty">조건에 맞는 장비가 없습니다.</div>';
+    return;
+  }
+  for(const group of groups){
+    const section=document.createElement("section");
+    section.className="mobile-location-section";
+    section.innerHTML=`<h4 class="mobile-location-title">${group.location} <span>${group.ids.length}대</span></h4>`;
+    const list=document.createElement("div");
+    list.className="mobile-machine-list";
+    for(const id of group.ids){
+      const bookingsForDay=getBookingsForDate(id,date).sort((a,b)=>a.start-b.start);
+      const card=document.createElement("article");
+      card.className="mobile-machine-card";
+      const bookingRows=bookingsForDay.length
+        ? bookingsForDay.map(b=>{
+            const purpose=b.user==="System"?"소독":getPurposeMeta(b.purpose).label;
+            return `<div class="mobile-booking-row"><span>${formatTime(b.start)}-${formatTime(b.start+b.duration)}</span><strong>${b.user}</strong><em>${purpose}</em></div>`;
+          }).join("")
+        : '<div class="mobile-booking-empty">예약 없음</div>';
+      card.innerHTML=`<div class="mobile-machine-head"><strong>${id}</strong><span>${getMachineMgmtNo(id)||"-"}</span></div><div class="mobile-booking-list">${bookingRows}</div>`;
+      if(can("create")){
+        const nextStart=findFirstAvailableStart(id,date,getMinReservableHour(date));
+        const addBtn=document.createElement("button");
+        addBtn.type="button";
+        addBtn.className="mobile-add-booking";
+        addBtn.textContent=nextStart===null?"예약 불가":"예약 추가";
+        addBtn.disabled=nextStart===null;
+        if(nextStart!==null) addBtn.addEventListener("click",()=>openBookingModal(id,nextStart));
+        card.appendChild(addBtn);
+      }
+      list.appendChild(card);
+    }
+    section.appendChild(list);
+    container.appendChild(section);
+  }
+}
+
 function renderSchedule(){
   const tbody=document.getElementById("schedule-body");tbody.innerHTML="";
   const date=getViewDate();
-  for(const loc of locations){
-    const ids=bscIds.filter(id=>getMachineLocation(id)===loc);
-    if(ids.length===0) continue;
+  renderScheduleFilterControls();
+  const groups=getFilteredScheduleGroups(date);
+  if(groups.length===0){
+    const tr=document.createElement("tr");
+    tr.innerHTML='<td colspan="19" class="schedule-empty">조건에 맞는 장비/예약이 없습니다.</td>';
+    tbody.appendChild(tr);
+    renderScheduleMobile(date,groups);
+    return;
+  }
+  for(const group of groups){
+    const loc=group.location;
+    const ids=group.ids;
     const locRow=document.createElement("tr");
     locRow.className="schedule-location-row";
     const locCell=document.createElement("td");
@@ -666,11 +1113,12 @@ function renderSchedule(){
       const nameTd=document.createElement("td");nameTd.className="col-machine";nameTd.textContent=id;tr.appendChild(nameTd);
       for(let i=0;i<18;i+=1){
         const hour=9+i*0.5;
-        const booking=(bookings[id]||[]).find(b=>b.date===date&&b.start===hour);
+        const booking=getBookingsForDate(id,date).find(b=>b.start===hour);
         if(booking){
           const td=document.createElement("td");td.style.padding="2px";
           const span=booking.duration/0.5;td.colSpan=span;
           const block=document.createElement("div");block.className="booking-block";
+          block.title=getBookingTooltipText(booking);
           if(booking.status==="pending"){
             block.classList.add("pending");block.style.backgroundColor=statusMeta.pending.color;
             block.innerHTML=`<span>${booking.user} (대기)</span>`;
@@ -693,12 +1141,13 @@ function renderSchedule(){
             });
             block.appendChild(delBtn);
           }
-          if(can("edit")&&booking.user!=="System"){
+          if(canDragBooking(booking)){
             block.draggable=true;
+            block.classList.add("can-drag");
             block.addEventListener("dragstart",e=>handleDragStart(e,id,booking.docId));
             block.addEventListener("dragend",handleDragEnd);
             const handle=block.querySelector(".resize-handle");
-            if(handle) handle.addEventListener("mousedown",e=>handleResizeStart(e,id,booking.docId,booking.duration));
+            if(handle && can("edit")) handle.addEventListener("mousedown",e=>handleResizeStart(e,id,booking.docId,booking.duration));
           }else{
             block.style.cursor="default";
             const handle=block.querySelector(".resize-handle");if(handle) handle.style.display="none";
@@ -706,10 +1155,26 @@ function renderSchedule(){
           td.appendChild(block);tr.appendChild(td);i+=span-1;continue;
         }
         const td=document.createElement("td");
-        if(can("edit")){
-          td.addEventListener("dragover",e=>{e.preventDefault();td.classList.add("drag-hover");});
-          td.addEventListener("dragleave",()=>td.classList.remove("drag-hover"));
-          td.addEventListener("drop",e=>{td.classList.remove("drag-hover");handleDrop(e,id,hour);});
+        if(canUseScheduleDrop()){
+          td.addEventListener("dragover",e=>{
+            e.preventDefault();
+            td.classList.add("drag-hover");
+            const payload=appState.dragPayload;
+            if(!payload?.booking){
+              clearDropCellState(td);
+              return;
+            }
+            const validation=getDropValidation(payload.booking,id,hour,payload.docId);
+            td.classList.toggle("drag-hover-valid",validation.ok);
+            td.classList.toggle("drag-hover-invalid",!validation.ok);
+            td.setAttribute("data-drag-reason",validation.reason);
+            td.title=validation.reason;
+          });
+          td.addEventListener("dragleave",()=>clearDropCellState(td));
+          td.addEventListener("drop",e=>{
+            clearDropCellState(td);
+            handleDrop(e,id,hour);
+          });
         }
         const empty=document.createElement("div");empty.className="empty-slot";
         if(can("create")){
@@ -722,9 +1187,16 @@ function renderSchedule(){
       tbody.appendChild(tr);
     }
   }
+  renderScheduleMobile(date,groups);
 }
 
 function handleDragStart(e,machineId,docId){
+  const booking=findBookingByDocId(machineId,docId);
+  if(!canDragBooking(booking)){
+    e.preventDefault();
+    return;
+  }
+  appState.dragPayload={ machineId, docId, booking };
   e.dataTransfer.setData("text", JSON.stringify({machineId,docId}));
   e.target.classList.add("dragging");
   document.body.classList.add("is-dragging");
@@ -733,22 +1205,46 @@ function handleDragStart(e,machineId,docId){
 function handleDragEnd(e){
   if(e?.target) e.target.classList.remove("dragging");
   document.body.classList.remove("is-dragging");
-  document.querySelectorAll(".drag-hover").forEach(el=>el.classList.remove("drag-hover"));
+  appState.dragPayload=null;
+  document.querySelectorAll(".schedule-table td.drag-hover, .schedule-table td.drag-hover-valid, .schedule-table td.drag-hover-invalid").forEach(el=>clearDropCellState(el));
 }
 
 async function handleDrop(e,targetMachineId,targetHour){
   e.preventDefault();
-  if(!can("edit")) return;
-  const payload=JSON.parse(e.dataTransfer.getData("text"));
-  const sourceMachineId=payload.machineId;
-  const docId=payload.docId;
-  const booking=findBookingByDocId(sourceMachineId,docId);
-  if(!booking) return;
-  if(targetHour+booking.duration>18 || isOverlap(targetMachineId,booking.date,targetHour,booking.duration,docId)){
-    alert("이동 불가");
-    return;
+  if(!canUseScheduleDrop()) return;
+  try{
+    const payloadRaw=e.dataTransfer.getData("text");
+    if(!payloadRaw){
+      showToast("드래그 정보가 비어 있습니다.","warn");
+      return;
+    }
+    let payload;
+    try{
+      payload=JSON.parse(payloadRaw);
+    }catch(parseError){
+      reportAsyncError("handleDrop:parse", parseError, "드래그 정보를 읽지 못했습니다.");
+      return;
+    }
+    if(!payload || typeof payload.machineId!=="string" || typeof payload.docId!=="string"){
+      showToast("유효하지 않은 드래그 데이터입니다.","warn");
+      return;
+    }
+    const sourceMachineId=payload.machineId;
+    const docId=payload.docId;
+    const booking=findBookingByDocId(sourceMachineId,docId);
+    const validation=getDropValidation(booking,targetMachineId,targetHour,docId);
+    if(!validation.ok){
+      showToast(validation.reason,"warn");
+      return;
+    }
+    const updates={start: targetHour};
+    if(targetMachineId!==sourceMachineId) updates.machineId=targetMachineId;
+    await updateBookingDoc(docId,updates);
+    const movedMachine = targetMachineId!==sourceMachineId;
+    showToast(movedMachine ? "예약 장비/시간을 변경했습니다." : "예약 시간을 변경했습니다.","success");
+  }catch(error){
+    reportAsyncError("handleDrop", error, "예약 이동에 실패했습니다.");
   }
-  await updateBookingDoc(docId,{machineId: targetMachineId, start: targetHour});
 }
 
 function handleResizeStart(event,id,docId,duration){
@@ -765,32 +1261,39 @@ async function handleResizeEnd(event){
   if(!appState.isResizing||!appState.resizeTarget) return;
   appState.isResizing=false;
   document.body.style.cursor="default";
-  const cell=document.querySelector(".schedule-table td");
-  const cellWidth=cell?cell.offsetWidth:40;
-  const diff=Math.round((event.clientX-appState.resizeStartX)/cellWidth)*0.5;
-  if(diff===0) return;
-  const {id,docId}=appState.resizeTarget;
-  const booking=findBookingByDocId(id,docId);
-  if(!booking) return;
-  const newDuration=appState.resizeOriginDuration+diff;
-  if(newDuration<0.5||booking.start+newDuration>18){
-    alert("변경할 수 없습니다.");
-    return;
+  try{
+    const cell=document.querySelector(".schedule-table td");
+    const cellWidth=cell?cell.offsetWidth:40;
+    const diff=Math.round((event.clientX-appState.resizeStartX)/cellWidth)*0.5;
+    if(diff===0) return;
+    const {id,docId}=appState.resizeTarget;
+    const booking=findBookingByDocId(id,docId);
+    if(!booking) return;
+    const newDuration=appState.resizeOriginDuration+diff;
+    if(newDuration<0.5||booking.start+newDuration>18){
+      showToast("운영 시간 범위를 벗어나 변경할 수 없습니다.","warn");
+      return;
+    }
+    if(isOverlap(id,booking.date,booking.start,newDuration,docId)){
+      showToast("다른 예약과 시간이 겹칩니다.","warn");
+      return;
+    }
+    await updateBookingDoc(docId,{duration:newDuration});
+    showToast("예약 시간을 조정했습니다.","success");
+  }catch(error){
+    reportAsyncError("handleResizeEnd", error, "예약 시간 조정에 실패했습니다.");
+  }finally{
+    appState.resizeTarget=null;
   }
-  if(isOverlap(id,booking.date,booking.start,newDuration,docId)){
-    alert("시간이 겹칩니다.");
-    return;
-  }
-  await updateBookingDoc(docId,{duration:newDuration});
 }
 
-function printReport(){
+function printReport(dateOverride){
   if(!can("print")){
     alert("권한이 없습니다.");
     return;
   }
   const dateInput=document.getElementById("report-date");
-  const date=(dateInput && dateInput.value) ? dateInput.value : getViewDate();
+  const date=dateOverride || ((dateInput && dateInput.value) ? dateInput.value : getViewDate());
   const rows=[];
   for(const id of bscIds){
     for(const booking of getBookingsForDate(id,date)){
@@ -811,28 +1314,84 @@ function printReport(){
   win.document.write(html);
   win.document.close();
 }
+function getDayBookings(date){
+  const rows=[];
+  for(const id of bscIds){
+    for(const booking of getBookingsForDate(id,date)){
+      rows.push({ id, ...booking });
+    }
+  }
+  return rows;
+}
+
+function computeDaySummary(date){
+  const dayBookings=getDayBookings(date).filter(b=>b.user!=="System");
+  const total=dayBookings.length;
+  const pending=dayBookings.filter(b=>b.status==="pending").length;
+  const usedSlots=dayBookings.reduce((sum,b)=>sum+(b.duration/0.5),0);
+  const totalSlots=bscIds.length*18;
+  const utilization=Math.min(100,Math.round((usedSlots/totalSlots)*100));
+  const slotUsage=[];
+  for(let h=9;h<18;h+=1){
+    const count=dayBookings.filter(b=>b.start<(h+1)&&(b.start+b.duration)>h).length;
+    slotUsage.push({ h, count });
+  }
+  const peak=slotUsage.reduce((best,item)=>item.count>best.count?item:best,{h:9,count:0});
+  const peakLabel=peak.count>0 ? `${formatTime(peak.h)}-${formatTime(peak.h+1)}` : "없음";
+  const utilClass=utilization>75?"util-high":utilization>40?"util-mid":"util-low";
+  return { total, pending, utilization, peakLabel, utilClass };
+}
+
+function renderCalendarMobile(dayEntries){
+  const container=document.getElementById("calendar-mobile");
+  if(!container) return;
+  container.innerHTML="";
+  if(dayEntries.length===0){
+    container.innerHTML='<div class="calendar-mobile-empty">표시할 날짜가 없습니다.</div>';
+    return;
+  }
+  for(const entry of dayEntries){
+    const { dateKey, day, summary, isToday } = entry;
+    const item=document.createElement("button");
+    item.type="button";
+    item.className=`calendar-mobile-item ${isToday?"today":""}`.trim();
+    item.innerHTML=`<div class="calendar-mobile-head"><strong>${dateKey.replace(/-/g,". ")}</strong><span class="util-value ${summary.utilClass}">${summary.utilization}%</span></div><div class="calendar-mobile-meta"><span>예약 ${summary.total}건</span><span class="${summary.pending>0?"pending-text":""}">대기 ${summary.pending}건</span><span>피크 ${summary.peakLabel}</span></div>`;
+    item.addEventListener("click",()=>openDayModal(dateKey));
+    container.appendChild(item);
+  }
+}
+
 function renderCalendar(){
   const grid=document.getElementById("calendar-grid");
+  const mobile=document.getElementById("calendar-mobile");
   const title=document.querySelector(".cal-title");
   title.textContent=`${appState.currentYear}. ${String(appState.currentMonth).padStart(2,"0")}`;
   grid.innerHTML="";
+  if(mobile) mobile.innerHTML="";
   const headers=["SUN","MON","TUE","WED","THU","FRI","SAT"];
   headers.forEach((h,idx)=>{const div=document.createElement("div");div.className="cal-header-cell";div.textContent=h;if(idx===0)div.style.color="#e74c3c";if(idx===6)div.style.color="#3498db";grid.appendChild(div);});
   const firstDay=new Date(appState.currentYear,appState.currentMonth-1,1).getDay();
   const daysInMonth=new Date(appState.currentYear,appState.currentMonth,0).getDate();
-  for(let i=0;i<firstDay;i+=1) grid.appendChild(document.createElement("div"));
+  for(let i=0;i<firstDay;i+=1){
+    const empty=document.createElement("div");
+    empty.className="cal-day-cell empty";
+    grid.appendChild(empty);
+  }
   const today=new Date();
   const todayKey=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+  const dayEntries=[];
   for(let d=1;d<=daysInMonth;d+=1){
     const key=`${appState.currentYear}-${String(appState.currentMonth).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
     const cell=document.createElement("button");cell.type="button";cell.className="cal-day-cell";
-    if(key===todayKey) cell.classList.add("today");
-    const util=computeUtilizationForDay(key);
-    const utilClass=util>70?"util-high":util>30?"util-mid":"util-low";
-    cell.innerHTML=`<div class="cal-day-num">${d}</div><div class="util-indicator"><span class="util-value ${utilClass}">${util}%</span><div class="util-bar-bg"><div class="util-bar-fill ${utilClass}" style="width:${util}%"></div></div></div>`;
+    const summary=computeDaySummary(key);
+    const isToday=key===todayKey;
+    if(isToday) cell.classList.add("today");
+    cell.innerHTML=`<div class="cal-day-head"><span class="cal-day-num">${d}</span>${summary.pending>0?'<span class="cal-pending-dot" title="승인 대기 예약 있음"></span>':''}</div><div class="cal-day-badges"><span class="cal-badge">예약 ${summary.total}건</span><span class="cal-badge ${summary.pending>0?"pending":""}">대기 ${summary.pending}건</span><span class="cal-badge">피크 ${summary.peakLabel}</span></div><div class="util-indicator"><span class="util-value ${summary.utilClass}">${summary.utilization}%</span><div class="util-bar-bg"><div class="util-bar-fill ${summary.utilClass}" style="width:${summary.utilization}%"></div></div></div>`;
     cell.addEventListener("click",()=>openDayModal(key));
     grid.appendChild(cell);
+    dayEntries.push({ dateKey:key, day:d, summary, isToday });
   }
+  renderCalendarMobile(dayEntries);
 }
 
 function computeUtilizationForDay(date){
@@ -842,9 +1401,48 @@ function computeUtilizationForDay(date){
 }
 
 function openDayModal(date){
+  appState.dayModalDate=date;
   document.getElementById("day-modal").style.display="flex";
   document.getElementById("day-modal-title").textContent=`${date.replace(/-/g,". ")} 상세 일정`;
+  const printBtn=document.querySelector('[data-day-action="print"]');
+  if(printBtn) printBtn.hidden=!can("print");
+  const reportDate=document.getElementById("report-date");
+  if(reportDate) reportDate.value=date;
   renderTimeline(document.getElementById("day-timeline"),date);
+}
+
+function applyDateContext(date){
+  if(!date) return;
+  appState.currentDate=date;
+  const parsed=new Date(date);
+  if(!Number.isNaN(parsed.getTime())){
+    appState.currentYear=parsed.getFullYear();
+    appState.currentMonth=parsed.getMonth()+1;
+  }
+  initStartTimes();
+  subscribeBookings();
+  renderAll();
+}
+
+function handleDayAction(action){
+  const date=appState.dayModalDate;
+  if(!date) return;
+  if(action==="apply-date"){
+    applyDateContext(date);
+    showToast(`${date.replace(/-/g,". ")} 기준으로 적용했습니다.`,"info");
+    return;
+  }
+  if(action==="reservation"){
+    applyDateContext(date);
+    switchView("reservation");
+    closeModal("day-modal");
+    showToast("예약 관리 화면으로 이동했습니다.","info");
+    return;
+  }
+  if(action==="print"){
+    if(!can("print")) return;
+    printReport(date);
+  }
 }
 
 function renderAdmin(){
@@ -877,15 +1475,44 @@ function renderAdmin(){
   }
 }
 
-async function refreshUsersFromDb(){
-  const snap = await getDocs(collection(db,"users"));
-  users = snap.docs.map(docSnap=>({uid: docSnap.id, ...docSnap.data()}));
-  renderUserTable();
+async function refreshUsersFromDb(force=false){
+  if(!can("admin")) return;
+  const now=Date.now();
+  if(!force && users.length && (now-usersFetchedAt)<30000){
+    renderUserTable();
+    return;
+  }
+  if(usersFetchPromise && !force){
+    try{
+      await usersFetchPromise;
+      renderUserTable();
+    }catch(error){
+      reportAsyncError("refreshUsersFromDb", error, "사용자 목록을 불러오지 못했습니다.");
+    }
+    return;
+  }
+  usersFetchPromise=(async ()=>{
+    const snap = await getDocs(collection(db,"users"));
+    users = snap.docs.map(docSnap=>({uid: docSnap.id, ...docSnap.data()}));
+    usersFetchedAt=Date.now();
+  })();
+  try{
+    await usersFetchPromise;
+    renderUserTable();
+  }catch(error){
+    reportAsyncError("refreshUsersFromDb", error, "사용자 목록을 불러오지 못했습니다.");
+  }finally{
+    usersFetchPromise=null;
+  }
 }
 
 async function approveUser(uid){
-  await updateDoc(doc(db,"users",uid),{approved:true});
-  await refreshUsersFromDb();
+  try{
+    await updateDoc(doc(db,"users",uid),{approved:true});
+    await refreshUsersFromDb(true);
+  }catch(error){
+    reportAsyncError("approveUser", error, "계정 승인에 실패했습니다.");
+  }
 }
 function renderUserTable(){
   const tbody=document.getElementById("user-table-body");
@@ -929,7 +1556,7 @@ function renderStats(){
   document.getElementById("stat-clean").textContent=`${totals.clean.toFixed(1)} h`;
 }
 function openBookingModal(id,start){
-  if(!can("create")){alert("권한이 없습니다.");return;}
+  if(!can("create")){showToast("예약 생성 권한이 없습니다.","warn");return;}
   appState.bookingTarget={id,start};
   document.getElementById("booking-modal").style.display="flex";
   document.getElementById("booking-sub").textContent=`${id} / ${formatTime(start)} 시작`;
@@ -946,10 +1573,14 @@ function openBookingModal(id,start){
   const autoClean=document.getElementById("booking-autoclean");
   if(autoClean) autoClean.checked=false;
 }
-function closeModal(id){document.getElementById(id).style.display="none";}
+function closeModal(id){
+  const modal=document.getElementById(id);
+  if(modal) modal.style.display="none";
+  if(id==="day-modal") appState.dayModalDate=null;
+}
 
 function openDeleteModal(id, docId){
-  if(!can("edit")){alert("권한이 없습니다.");return;}
+  if(!can("edit")){showToast("삭제 권한이 없습니다.","warn");return;}
   appState.deleteTarget = { id, docId };
   const reason = document.getElementById("delete-reason");
   if(reason) reason.value = "";
@@ -959,90 +1590,108 @@ function openDeleteModal(id, docId){
 async function confirmDelete(){
   const target = appState.deleteTarget;
   if(!target) return;
-  const reasonEl = document.getElementById("delete-reason");
-  const reason = reasonEl ? reasonEl.value.trim() : "";
-  if(!reason){
-    alert("삭제 사유를 입력해주세요.");
-    return;
-  }
-  const { id, docId } = target;
-  const booking = findBookingByDocId(id, docId);
-  if(!booking){ closeModal("delete-modal"); return; }
-  const deletedBy = appState.currentUser?.uid || "system";
-  await updateDoc(doc(db,"bookings",docId),{
-    status: "deleted",
-    deleteReason: reason,
-    deletedBy,
-    deletedAt: serverTimestamp()
-  });
-
-  if(booking.autoClean){
-    const bufferStart = booking.start + booking.duration;
-    const buffer = getBookingsForDate(id, booking.date).find(b=>b.user==="System" && b.start===bufferStart && b.duration===0.5);
-    if(buffer?.docId){
-      await updateDoc(doc(db,"bookings",buffer.docId),{
-        status: "deleted",
-        deleteReason: "연동 예약 삭제",
-        deletedBy,
-        deletedAt: serverTimestamp()
-      });
+  try{
+    const reasonEl = document.getElementById("delete-reason");
+    const reason = reasonEl ? reasonEl.value.trim() : "";
+    if(!reason){
+      showToast("삭제 사유를 입력해주세요.","warn");
+      return;
     }
+    const { id, docId } = target;
+    const booking = findBookingByDocId(id, docId);
+    if(!booking){ closeModal("delete-modal"); return; }
+    const deletedBy = appState.currentUser?.uid || "system";
+    await updateDoc(doc(db,"bookings",docId),{
+      status: "deleted",
+      deleteReason: reason,
+      deletedBy,
+      deletedAt: serverTimestamp()
+    });
+
+    if(booking.autoClean){
+      const bufferStart = booking.start + booking.duration;
+      const buffer = getBookingsForDate(id, booking.date).find(b=>b.user==="System" && b.start===bufferStart && b.duration===0.5);
+      if(buffer?.docId){
+        await updateDoc(doc(db,"bookings",buffer.docId),{
+          status: "deleted",
+          deleteReason: "연동 예약 삭제",
+          deletedBy,
+          deletedAt: serverTimestamp()
+        });
+      }
+    }
+    closeModal("delete-modal");
+    appState.deleteTarget = null;
+    showToast("예약이 삭제되었습니다.","info");
+  }catch(error){
+    reportAsyncError("confirmDelete", error, "예약 삭제에 실패했습니다.");
   }
-  closeModal("delete-modal");
-  appState.deleteTarget = null;
-  showToast("예약이 삭제되었습니다.","info");
 }
 
 async function confirmBooking(){
-  const user=document.getElementById("booking-user").value.trim();
-  const date=document.getElementById("booking-date").value;
-  const start=Number(document.getElementById("booking-start").value);
-  const duration=Number(document.getElementById("booking-duration").value);
-  const purpose=document.getElementById("booking-purpose").value;
-  const recurring=document.getElementById("booking-recurring").checked;
-  const autoClean=document.getElementById("booking-autoclean")?.checked || false;
-  if(!user||!date){alert("정보를 모두 입력해주세요.");return;}
-  if(start < 9 || start+duration>18){alert("운영 시간(09:00~18:00)을 초과합니다.");return;}
-  const allowedPurposes = getPurposesForMachine(appState.bookingTarget.id);
-  if(allowedPurposes.length && !allowedPurposes.some(p=>p.key===purpose)){
-    alert("선택한 목적은 해당 장비에 사용할 수 없습니다.");
-    return;
-  }
-  const status="confirmed";
-  const userId=appState.currentUser.id||appState.currentUser.name||user;
-  const weeks=recurring?4:1; let success=0;
-  for(let i=0;i<weeks;i+=1){
-    const dateObj=new Date(date);dateObj.setDate(dateObj.getDate()+i*7);
-    const targetDate=dateObj.toISOString().slice(0,10);
-    if(isOverlap(appState.bookingTarget.id,targetDate,start,duration)){
-      if(!recurring){alert("해당 날짜/시간에 예약이 중복됩니다.");return;}
-      continue;
+  try{
+    const user=document.getElementById("booking-user").value.trim();
+    const date=document.getElementById("booking-date").value;
+    const start=Number(document.getElementById("booking-start").value);
+    const duration=Number(document.getElementById("booking-duration").value);
+    const purpose=document.getElementById("booking-purpose").value;
+    const recurring=document.getElementById("booking-recurring").checked;
+    const autoClean=document.getElementById("booking-autoclean")?.checked || false;
+    if(!user||!date){showToast("정보를 모두 입력해주세요.","warn");return;}
+    if(start < 9 || start+duration>18){showToast("운영 시간(09:00~18:00)을 초과합니다.","warn");return;}
+    if(isWorkerUser() && date===todayISO()){
+      const minHour=getMinReservableHour(date);
+      if(start<minHour){
+        showToast(`오늘 예약은 ${formatTime(minHour)} 이후로만 등록할 수 있습니다.`,"warn");
+        return;
+      }
     }
-    await createBookingDoc({
-      machineId: appState.bookingTarget.id,
-      user,
-      userId,
-      createdBy: appState.currentUser.uid || null,
-      date: targetDate,
-      start,
-      duration,
-      purpose,
-      status,
-      autoClean
-    });
-    success+=1;
-    if(status==="confirmed" && autoClean){
-      await addSystemBuffer(appState.bookingTarget.id,targetDate,start+duration);
+    const allowedPurposes = getPurposesForMachine(appState.bookingTarget.id);
+    if(allowedPurposes.length && !allowedPurposes.some(p=>p.key===purpose)){
+      showToast("선택한 목적은 해당 장비에 사용할 수 없습니다.","warn");
+      return;
     }
+    const status="confirmed";
+    const userId=appState.currentUser.id||appState.currentUser.name||user;
+    const weeks=recurring?4:1; let success=0;
+    for(let i=0;i<weeks;i+=1){
+      const dateObj=new Date(date);dateObj.setDate(dateObj.getDate()+i*7);
+      const targetDate=dateObj.toISOString().slice(0,10);
+      if(isOverlap(appState.bookingTarget.id,targetDate,start,duration)){
+        if(!recurring){showToast("해당 날짜/시간에 예약이 중복됩니다.","warn");return;}
+        continue;
+      }
+      await createBookingDoc({
+        machineId: appState.bookingTarget.id,
+        user,
+        userId,
+        createdBy: appState.currentUser.uid || null,
+        date: targetDate,
+        start,
+        duration,
+        purpose,
+        status,
+        autoClean
+      });
+      success+=1;
+      if(status==="confirmed" && autoClean){
+        await addSystemBuffer(appState.bookingTarget.id,targetDate,start+duration);
+      }
+    }
+    closeModal("booking-modal");
+    if(success===0){showToast("모든 반복 예약이 중복으로 인해 실패했습니다.","warn");return;}
+    showToast(status==="pending"?"예약 요청이 등록되었습니다.":"예약이 확정되었습니다.");
+    if(recurring) showToast(`${success}건의 반복 예약이 등록되었습니다.`,"info");
+  }catch(error){
+    reportAsyncError("confirmBooking", error, "예약 저장에 실패했습니다.");
   }
-  closeModal("booking-modal");
-  if(success===0){alert("모든 반복 예약이 중복으로 인해 실패했습니다.");return;}
-  showToast(status==="pending"?"예약 요청이 등록되었습니다.":"예약이 확정되었습니다.");
-  if(recurring) showToast(`${success}건의 반복 예약이 등록되었습니다.`,"info");
 }
 
-function isOverlap(id,date,start,duration){
-  return getBookingsForDate(id,date).some(b=>start<b.start+b.duration&&start+duration>b.start);
+function isOverlap(id,date,start,duration,ignoreDocId){
+  return getBookingsForDate(id,date).some(b=>{
+    if(ignoreDocId && b.docId===ignoreDocId) return false;
+    return start<b.start+b.duration&&start+duration>b.start;
+  });
 }
 
 async function addSystemBuffer(id,date,bufferStart,ignoreDocId){
@@ -1077,46 +1726,56 @@ function openApprovalModal(id,docId){
 
 async function processApproval(action){
   const target=appState.approvalTarget;if(!target) return;
-  const {id,docId}=target;const booking=findBookingByDocId(id,docId);if(!booking) return;
-  if(action==="approve"){
-    await updateBookingDoc(docId,{status:"confirmed"});
-    if(booking.autoClean){
-      await addSystemBuffer(id,booking.date,booking.start+booking.duration,docId);
+  try{
+    const {id,docId}=target;
+    const booking=findBookingByDocId(id,docId);
+    if(!booking) return;
+    if(action==="approve"){
+      await updateBookingDoc(docId,{status:"confirmed"});
+      if(booking.autoClean){
+        await addSystemBuffer(id,booking.date,booking.start+booking.duration,docId);
+      }
+      showToast("예약이 승인되었습니다.");
+    }else{
+      const reasonEl = document.getElementById("reject-reason");
+      const reason = reasonEl ? reasonEl.value.trim() : "";
+      if(!reason){
+        alert("반려 사유를 입력해주세요.");
+        return;
+      }
+      const rejectedBy = appState.currentUser?.uid || "system";
+      await updateBookingDoc(docId,{
+        status: "rejected",
+        rejectReason: reason,
+        rejectedBy,
+        rejectedAt: serverTimestamp()
+      });
+      showToast("예약이 반려되었습니다.","info");
     }
-    showToast("예약이 승인되었습니다.");
-  }else{
-    const reasonEl = document.getElementById("reject-reason");
-    const reason = reasonEl ? reasonEl.value.trim() : "";
-    if(!reason){
-      alert("반려 사유를 입력해주세요.");
-      return;
-    }
-    const rejectedBy = appState.currentUser?.uid || "system";
-    await updateBookingDoc(docId,{
-      status: "rejected",
-      rejectReason: reason,
-      rejectedBy,
-      rejectedAt: serverTimestamp()
-    });
-    showToast("예약이 반려되었습니다.","info");
+    closeModal("approval-modal");
+    appState.approvalTarget=null;
+  }catch(error){
+    reportAsyncError("processApproval", error, "승인/반려 처리에 실패했습니다.");
   }
-  closeModal("approval-modal");
-  appState.approvalTarget=null;
 }
 async function deleteMachine(id){
   if(!confirm(`장비 ${id}를 삭제하시겠습니까?`)) return;
-  const existing=bookings[id]||[];
-  for(const booking of existing){
-    if(booking.docId) await deleteBookingDoc(booking.docId);
+  try{
+    const existing=bookings[id]||[];
+    for(const booking of existing){
+      if(booking.docId) await deleteBookingDoc(booking.docId);
+    }
+    bscIds=bscIds.filter(x=>x!==id);
+    delete bookings[id];
+    delete machineLocations[id];
+    delete machineMgmtNos[id];
+    delete machineDescs[id];
+    await saveConfig();
+    ensureBookingBuckets();
+    renderAll();
+  }catch(error){
+    reportAsyncError("deleteMachine", error, "장비 삭제에 실패했습니다.");
   }
-  bscIds=bscIds.filter(x=>x!==id);
-  delete bookings[id];
-  delete machineLocations[id];
-  delete machineMgmtNos[id];
-  delete machineDescs[id];
-  await saveConfig();
-  ensureBookingBuckets();
-  renderAll();
 }
 
 function openMachineModal(mode,id){
@@ -1148,51 +1807,55 @@ function openMachineModal(mode,id){
 }
 
 async function saveMachine(){
-  const originalId=document.getElementById("machine-original-id")?.value || "";
-  const nextId=document.getElementById("machine-id")?.value.trim() || "";
-  const nextMgmt=document.getElementById("machine-mgmt")?.value.trim() || "";
-  const nextDesc=document.getElementById("machine-desc")?.value.trim() || "";
-  const nextLocation=document.getElementById("machine-location")?.value || locations[0];
-  if(!nextId){alert("장비 ID를 입력하세요.");return;}
-  if(originalId){
-    if(originalId!==nextId && bscIds.includes(nextId)){
-      alert("이미 존재하는 장비 ID입니다.");
-      return;
-    }
-    if(originalId!==nextId){
-      bscIds=bscIds.map(mid=>mid===originalId?nextId:mid);
+  try{
+    const originalId=document.getElementById("machine-original-id")?.value || "";
+    const nextId=document.getElementById("machine-id")?.value.trim() || "";
+    const nextMgmt=document.getElementById("machine-mgmt")?.value.trim() || "";
+    const nextDesc=document.getElementById("machine-desc")?.value.trim() || "";
+    const nextLocation=document.getElementById("machine-location")?.value || locations[0];
+    if(!nextId){alert("장비 ID를 입력하세요.");return;}
+    if(originalId){
+      if(originalId!==nextId && bscIds.includes(nextId)){
+        alert("이미 존재하는 장비 ID입니다.");
+        return;
+      }
+      if(originalId!==nextId){
+        bscIds=bscIds.map(mid=>mid===originalId?nextId:mid);
+        machineLocations[nextId]=nextLocation;
+        machineMgmtNos[nextId]=nextMgmt;
+        machineDescs[nextId]=nextDesc;
+        delete machineLocations[originalId];
+        delete machineMgmtNos[originalId];
+        delete machineDescs[originalId];
+        const existing=bookings[originalId]||[];
+        for(const booking of existing){
+          if(booking.docId) await updateBookingDoc(booking.docId,{machineId: nextId});
+        }
+        delete bookings[originalId];
+      }else{
+        machineLocations[originalId]=nextLocation;
+        machineMgmtNos[originalId]=nextMgmt;
+        machineDescs[originalId]=nextDesc;
+      }
+    }else{
+      if(bscIds.includes(nextId)){
+        alert("이미 존재하는 장비 ID입니다.");
+        return;
+      }
+      bscIds=[...bscIds,nextId];
       machineLocations[nextId]=nextLocation;
       machineMgmtNos[nextId]=nextMgmt;
       machineDescs[nextId]=nextDesc;
-      delete machineLocations[originalId];
-      delete machineMgmtNos[originalId];
-      delete machineDescs[originalId];
-      const existing=bookings[originalId]||[];
-      for(const booking of existing){
-        if(booking.docId) await updateBookingDoc(booking.docId,{machineId: nextId});
-      }
-      delete bookings[originalId];
-    }else{
-      machineLocations[originalId]=nextLocation;
-      machineMgmtNos[originalId]=nextMgmt;
-      machineDescs[originalId]=nextDesc;
+      bookings[nextId]=[];
     }
-  }else{
-    if(bscIds.includes(nextId)){
-      alert("이미 존재하는 장비 ID입니다.");
-      return;
-    }
-    bscIds=[...bscIds,nextId];
-    machineLocations[nextId]=nextLocation;
-    machineMgmtNos[nextId]=nextMgmt;
-    machineDescs[nextId]=nextDesc;
-    bookings[nextId]=[];
+    closeModal("machine-modal");
+    showToast("장비 목록이 갱신되었습니다.","info");
+    await saveConfig();
+    ensureBookingBuckets();
+    renderAll();
+  }catch(error){
+    reportAsyncError("saveMachine", error, "장비 저장에 실패했습니다.");
   }
-  closeModal("machine-modal");
-  showToast("장비 목록이 갱신되었습니다.","info");
-  await saveConfig();
-  ensureBookingBuckets();
-  renderAll();
 }
 
 function renderMachineTable(){
@@ -1319,44 +1982,52 @@ function isPurposeUsed(key){
 }
 
 async function savePurpose(){
-  const original=document.getElementById("purpose-original-key")?.value || "";
-  const key=document.getElementById("purpose-key")?.value.trim() || "";
-  const label=document.getElementById("purpose-label")?.value.trim() || "";
-  const allToggle=document.getElementById("purpose-all");
-  const applyAll = allToggle ? allToggle.checked : true;
-  const selected = [];
-  const container=document.getElementById("purpose-machine-list");
-  if(container){
-    container.querySelectorAll("input[type='checkbox']").forEach(cb=>{
-      if(cb.checked) selected.push(cb.value);
-    });
+  try{
+    const original=document.getElementById("purpose-original-key")?.value || "";
+    const key=document.getElementById("purpose-key")?.value.trim() || "";
+    const label=document.getElementById("purpose-label")?.value.trim() || "";
+    const allToggle=document.getElementById("purpose-all");
+    const applyAll = allToggle ? allToggle.checked : true;
+    const selected = [];
+    const container=document.getElementById("purpose-machine-list");
+    if(container){
+      container.querySelectorAll("input[type='checkbox']").forEach(cb=>{
+        if(cb.checked) selected.push(cb.value);
+      });
+    }
+    if(!key || !label){alert("코드와 표시명을 입력하세요.");return;}
+    if(!applyAll && selected.length === 0){
+      alert("적용할 장비를 하나 이상 선택하세요.");
+      return;
+    }
+    if(!original){
+      if(purposeList.some(p=>p.key===key)){alert("이미 존재하는 코드입니다.");return;}
+      purposeList=[...purposeList,{key,label,machines: applyAll ? null : selected}];
+    }else{
+      const idx=purposeList.findIndex(p=>p.key===original);
+      if(idx>-1) purposeList[idx]={key:original,label,machines: applyAll ? null : selected};
+    }
+    closeModal("purpose-modal");
+    await saveConfig();
+    renderAll();
+  }catch(error){
+    reportAsyncError("savePurpose", error, "가동 목적 저장에 실패했습니다.");
   }
-  if(!key || !label){alert("코드와 표시명을 입력하세요.");return;}
-  if(!applyAll && selected.length === 0){
-    alert("적용할 장비를 하나 이상 선택하세요.");
-    return;
-  }
-  if(!original){
-    if(purposeList.some(p=>p.key===key)){alert("이미 존재하는 코드입니다.");return;}
-    purposeList=[...purposeList,{key,label,machines: applyAll ? null : selected}];
-  }else{
-    const idx=purposeList.findIndex(p=>p.key===original);
-    if(idx>-1) purposeList[idx]={key:original,label,machines: applyAll ? null : selected};
-  }
-  closeModal("purpose-modal");
-  await saveConfig();
-  renderAll();
 }
 
 async function deletePurpose(key){
-  if(isPurposeUsed(key)){
-    alert("해당 목적이 예약에 사용 중이어서 삭제할 수 없습니다.");
-    return;
+  try{
+    if(isPurposeUsed(key)){
+      alert("해당 목적이 예약에 사용 중이어서 삭제할 수 없습니다.");
+      return;
+    }
+    if(!confirm(`${key} 목적을 삭제하시겠습니까?`)) return;
+    purposeList=purposeList.filter(p=>p.key!==key);
+    await saveConfig();
+    renderAll();
+  }catch(error){
+    reportAsyncError("deletePurpose", error, "가동 목적 삭제에 실패했습니다.");
   }
-  if(!confirm(`${key} 목적을 삭제하시겠습니까?`)) return;
-  purposeList=purposeList.filter(p=>p.key!==key);
-  await saveConfig();
-  renderAll();
 }
 
 function openUserModal(mode,uid){
@@ -1389,25 +2060,33 @@ function openUserModal(mode,uid){
 }
 
 async function saveUser(){
-  const uid=document.getElementById("user-original-id")?.value || "";
-  const id=document.getElementById("user-id")?.value.trim() || "";
-  const name=document.getElementById("user-display-name")?.value.trim() || "";
-  const role=document.getElementById("user-role")?.value || "worker";
-  if(!id||!name){alert("정보를 모두 입력해주세요.");return;}
-  if(!uid){
-    alert("회원가입은 로그인 화면에서 진행합니다.");
+  try{
+    const uid=document.getElementById("user-original-id")?.value || "";
+    const id=document.getElementById("user-id")?.value.trim() || "";
+    const name=document.getElementById("user-display-name")?.value.trim() || "";
+    const role=document.getElementById("user-role")?.value || "worker";
+    if(!id||!name){alert("정보를 모두 입력해주세요.");return;}
+    if(!uid){
+      alert("회원가입은 로그인 화면에서 진행합니다.");
+      closeModal("user-modal");
+      return;
+    }
+    await updateDoc(doc(db,"users",uid),{name,role});
     closeModal("user-modal");
-    return;
+    await refreshUsersFromDb(true);
+  }catch(error){
+    reportAsyncError("saveUser", error, "사용자 저장에 실패했습니다.");
   }
-  await updateDoc(doc(db,"users",uid),{name,role});
-  closeModal("user-modal");
-  await refreshUsersFromDb();
 }
 
 async function deleteUser(uid){
-  if(!confirm("정말 삭제하시겠습니까?")) return;
-  await deleteDoc(doc(db,"users",uid));
-  await refreshUsersFromDb();
+  try{
+    if(!confirm("정말 삭제하시겠습니까?")) return;
+    await deleteDoc(doc(db,"users",uid));
+    await refreshUsersFromDb(true);
+  }catch(error){
+    reportAsyncError("deleteUser", error, "사용자 삭제에 실패했습니다.");
+  }
 }
 
 function openLocationModal(mode,loc){
@@ -1428,38 +2107,46 @@ function openLocationModal(mode,loc){
 }
 
 async function saveLocation(){
-  const original=document.getElementById("location-original-name").value;
-  const next=document.getElementById("location-name").value.trim();
-  if(!next){alert("장소명을 입력하세요.");return;}
-  if(original){
-    if(original!==next && locations.includes(next)){
-      alert("이미 존재하는 장소입니다.");
-      return;
+  try{
+    const original=document.getElementById("location-original-name").value;
+    const next=document.getElementById("location-name").value.trim();
+    if(!next){alert("장소명을 입력하세요.");return;}
+    if(original){
+      if(original!==next && locations.includes(next)){
+        alert("이미 존재하는 장소입니다.");
+        return;
+      }
+      locations=locations.map(l=>l===original?next:l);
+      for(const id of bscIds){
+        if(getMachineLocation(id)===original) machineLocations[id]=next;
+      }
+    }else{
+      if(locations.includes(next)){
+        alert("이미 존재하는 장소입니다.");
+        return;
+      }
+      locations=[...locations,next];
     }
-    locations=locations.map(l=>l===original?next:l);
-    for(const id of bscIds){
-      if(getMachineLocation(id)===original) machineLocations[id]=next;
-    }
-  }else{
-    if(locations.includes(next)){
-      alert("이미 존재하는 장소입니다.");
-      return;
-    }
-    locations=[...locations,next];
+    closeModal("location-modal");
+    showToast("장소 목록이 갱신되었습니다.","info");
+    await saveConfig();
+    renderAll();
+  }catch(error){
+    reportAsyncError("saveLocation", error, "장소 저장에 실패했습니다.");
   }
-  closeModal("location-modal");
-  showToast("장소 목록이 갱신되었습니다.","info");
-  await saveConfig();
-  renderAll();
 }
 
 async function deleteLocation(loc){
-  const used=bscIds.some(id=>getMachineLocation(id)===loc);
-  if(used){alert("장비가 배정된 장소는 삭제할 수 없습니다.");return;}
-  if(!confirm(`${loc}를 삭제하시겠습니까?`)) return;
-  locations=locations.filter(l=>l!==loc);
-  await saveConfig();
-  renderAll();
+  try{
+    const used=bscIds.some(id=>getMachineLocation(id)===loc);
+    if(used){alert("장비가 배정된 장소는 삭제할 수 없습니다.");return;}
+    if(!confirm(`${loc}를 삭제하시겠습니까?`)) return;
+    locations=locations.filter(l=>l!==loc);
+    await saveConfig();
+    renderAll();
+  }catch(error){
+    reportAsyncError("deleteLocation", error, "장소 삭제에 실패했습니다.");
+  }
 }
 
 function bindEvents(){
@@ -1476,12 +2163,13 @@ function bindEvents(){
   on("btn-today","click",setToday);
   document.querySelectorAll("[data-month-delta]").forEach(btn=>btn.addEventListener("click",()=>changeMonth(Number(btn.dataset.monthDelta))));
   on("time-slider","input",e=>updateTimeFromSlider(e.target.value));
-  on("btn-now","click",resetToNow);
+  on("btn-live","click",()=>resetToNow());
   on("btn-save-booking","click",confirmBooking);
   on("btn-approve","click",()=>processApproval("approve"));
   on("btn-reject","click",()=>processApproval("reject"));
   on("btn-confirm-delete","click",confirmDelete);
   document.querySelectorAll("[data-close-modal]").forEach(btn=>btn.addEventListener("click",()=>closeModal(btn.dataset.closeModal)));
+  document.querySelectorAll("[data-day-action]").forEach(btn=>btn.addEventListener("click",()=>handleDayAction(btn.dataset.dayAction)));
   on("btn-create-user","click",()=>refreshUsersFromDb());
   on("btn-save-user","click",saveUser);
   on("btn-create-machine","click",()=>openMachineModal("create"));
@@ -1491,7 +2179,19 @@ function bindEvents(){
   on("btn-save-location","click",saveLocation);
   on("btn-save-purpose","click",savePurpose);
   on("btn-print","click",printReport);
+  on("schedule-location-filter","change",renderSchedule);
+  on("schedule-machine-search","input",renderSchedule);
+  on("schedule-my-only","change",renderSchedule);
+  on("btn-schedule-filter-reset","click",resetScheduleFilters);
   on("purpose-all","change",(e)=>setPurposeAll(e.target.checked));
+  ["timeline-body","day-timeline"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.addEventListener("mousemove",handleTimelineHoverMove);
+    el.addEventListener("mouseleave",handleTimelineHoverLeave);
+    el.addEventListener("scroll",()=>updateTimelineIndicators(el));
+    if(id==="timeline-body") el.addEventListener("click",handleTimelineSelectClick);
+  });
   document.addEventListener("click",e=>{
     const editId=e.target.getAttribute("data-edit-user"); if(editId) openUserModal("edit",editId);
     const delId=e.target.getAttribute("data-del-user"); if(delId) deleteUser(delId);
@@ -1511,18 +2211,24 @@ function bindEvents(){
     const adminView=e.target.closest(".admin-btn"); if(adminView&&adminView.dataset.adminView) switchAdminView(adminView.dataset.adminView);
   });
   document.addEventListener("mouseup",handleResizeEnd);
+  window.addEventListener("resize",()=>{
+    updateTimelineIndicators(document.getElementById("timeline-body"));
+    updateTimelineIndicators(document.getElementById("day-timeline"));
+  });
 }
 
 function boot(){
   initStartTimes();
   initTimelineHours();
   bindEvents();
+  startClockTicker();
   subscribeConfig();
   const today=new Date();
   appState.currentYear=today.getFullYear();
   appState.currentMonth=today.getMonth()+1;
   ensureBookingBuckets();
   resetToNow();
+  syncLiveModeUI();
   renderAll();
   initAuthListener();
   }

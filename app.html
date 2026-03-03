@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>장비 예약 관리 시스템 (데모)</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260129-30" />
   </head>
   <body>
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
@@ -53,11 +53,11 @@
                 <div class="card-meta" id="timeline-date-label"></div>
               </div>
               <div class="time-controller">
-                <label class="time-label" for="time-slider">시간 조정 (30분 단위)</label>
-                <input id="time-slider" type="range" min="9" max="18" step="0.5" value="9" />
+                <label class="time-label" for="time-slider">가이드 클릭 이동 (30분 단위)</label>
+                <input id="time-slider" type="hidden" min="9" max="18" step="0.5" value="9" />
                 <div class="time-actions">
                   <span id="time-slider-label" class="time-value">09:00</span>
-                  <button id="btn-now" class="btn-time-reset" type="button">현재 시각</button>
+                  <button id="btn-live" class="btn-live-indicator active" type="button" disabled>라이브 ON</button>
                 </div>
               </div>
               <div class="timeline-header" aria-hidden="true">
@@ -102,6 +102,21 @@
               <button id="btn-today" class="btn-today" type="button">오늘</button>
             </div>
           </div>
+          <div class="schedule-toolbar" role="group" aria-label="예약 필터">
+            <label class="schedule-filter">
+              <span>장소</span>
+              <select id="schedule-location-filter"></select>
+            </label>
+            <label class="schedule-filter">
+              <span>장비 검색</span>
+              <input id="schedule-machine-search" type="text" placeholder="장비ID/관리번호/설명" />
+            </label>
+            <label class="schedule-filter schedule-filter-check">
+              <input id="schedule-my-only" type="checkbox" />
+              <span>내 예약만</span>
+            </label>
+            <button id="btn-schedule-filter-reset" class="btn-filter-reset" type="button">필터 초기화</button>
+          </div>
           <div class="table-wrapper">
             <table class="schedule-table" aria-describedby="reservation-title">
               <thead>
@@ -121,6 +136,7 @@
               <tbody id="schedule-body"></tbody>
             </table>
           </div>
+          <div id="schedule-mobile" class="schedule-mobile"></div>
         </article>
       </section>
 
@@ -132,6 +148,7 @@
             <button class="cal-nav-btn" data-month-delta="1" type="button">▶</button>
           </div>
           <div class="calendar-grid" id="calendar-grid" role="grid" aria-labelledby="calendar-title"></div>
+          <div id="calendar-mobile" class="calendar-mobile"></div>
         </article>
       </section>
 
@@ -488,6 +505,11 @@
           <h3 id="day-modal-title" class="modal-title">상세 일정</h3>
           <button class="icon-close" data-close-modal="day-modal" type="button" aria-label="닫기">&times;</button>
         </div>
+        <div class="day-quick-actions">
+          <button class="btn btn-save" type="button" data-day-action="reservation">예약 관리로 이동</button>
+          <button class="btn btn-cancel" type="button" data-day-action="apply-date">해당 날짜 기준 적용</button>
+          <button class="btn btn-save" type="button" data-day-action="print">리포트 인쇄</button>
+        </div>
         <div class="day-modal-body">
           <div class="timeline-header" aria-hidden="true">
             <div class="tl-label-spacer"></div>
@@ -498,7 +520,7 @@
       </div>
     </div>
 
-    <script type="module" src="app.js?v=20260129-18"></script>
+    <script type="module" src="app.js?v=20260129-30"></script>
   </body>
 </html>
 
