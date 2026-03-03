@@ -6,7 +6,7 @@
     <title>장비 예약 관리 시스템 (데모)</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="stylesheet" href="styles.css?v=20260129-33" />
+    <link rel="stylesheet" href="styles.css?v=20260129-34" />
   </head>
   <body>
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
@@ -196,41 +196,52 @@
 
           <article class="card admin-main">
             <div id="admin-title" class="sr-only">관리</div>
+            <div class="admin-toolbar" id="admin-toolbar" role="group" aria-label="관리 목록 필터">
+              <input id="admin-search" type="text" placeholder="검색어 입력" />
+              <select id="admin-status-filter"></select>
+              <select id="admin-sort-filter"></select>
+              <button id="btn-admin-filter-reset" class="btn btn-cancel" type="button">초기화</button>
+              <button id="btn-admin-compact" class="btn btn-save" type="button">행 간격 축소</button>
+            </div>
 
             <section id="admin-users" class="admin-section active">
               <div class="card-header">
                 <h3 class="card-title">사용자 계정 목록</h3>
                 <button id="btn-create-user" class="btn-time-reset success" type="button">&#xC0C8;&#xB85C;&#xACE0;&#xCE68;</button>
               </div>
-              <table class="user-table">
-                <thead>
-                  <tr>
-                    <th>&#xC774;&#xB984;</th>
-                    <th>&#xC544;&#xC774;&#xB514;</th>
-                    <th>&#xAD8C;&#xD55C;</th>
-                    <th>&#xC0C1;&#xD0DC;</th>
-                    <th>&#xAD00;&#xB9AC;</th>
-                  </tr>
-                </thead>
-                <tbody id="user-table-body"></tbody>
-              </table>
+              <div class="admin-table-wrap">
+                <table class="user-table">
+                  <thead>
+                    <tr>
+                      <th>&#xC774;&#xB984;</th>
+                      <th>&#xC544;&#xC774;&#xB514;</th>
+                      <th>&#xAD8C;&#xD55C;</th>
+                      <th>&#xC0C1;&#xD0DC;</th>
+                      <th>&#xAD00;&#xB9AC;</th>
+                    </tr>
+                  </thead>
+                  <tbody id="user-table-body"></tbody>
+                </table>
+              </div>
             </section>
 
-                        <section id="admin-locations" class="admin-section">
+            <section id="admin-locations" class="admin-section">
               <div class="card-header">
                 <h3 class="card-title">장소 목록</h3>
                 <button id="btn-create-location" class="btn-time-reset success" type="button">+ 장소 등록</button>
               </div>
-              <table class="user-table">
-                <thead>
-                  <tr>
-                    <th>&#xC7A5;&#xC18C;&#xBA85;</th>
-                    <th>&#xC7A5;&#xBE44; &#xC218;</th>
-                    <th>&#xAD00;&#xB9AC;</th>
-                  </tr>
-                </thead>
-                <tbody id="location-table-body"></tbody>
-              </table>
+              <div class="admin-table-wrap">
+                <table class="user-table">
+                  <thead>
+                    <tr>
+                      <th>&#xC7A5;&#xC18C;&#xBA85;</th>
+                      <th>&#xC7A5;&#xBE44; &#xC218;</th>
+                      <th>&#xAD00;&#xB9AC;</th>
+                    </tr>
+                  </thead>
+                  <tbody id="location-table-body"></tbody>
+                </table>
+              </div>
             </section>
 
             <section id="admin-machines" class="admin-section">
@@ -238,19 +249,21 @@
                 <h3 class="card-title">장비 목록</h3>
                 <button id="btn-create-machine" class="btn-time-reset success" type="button">+ 장비 등록</button>
               </div>
-              <table class="user-table">
-                <thead>
-                  <tr>
-                    <th>&#xC7A5;&#xBE44; ID</th>
-                    <th>&#xAD00;&#xB9AC;&#xBC88;&#xD638;</th>
-                    <th>&#xC7A5;&#xC18C;</th>
-                    <th>&#xC124;&#xBA85;</th>
-                    <th>&#xC608;&#xC57D; &#xC218;</th>
-                    <th>&#xAD00;&#xB9AC;</th>
-                  </tr>
-                </thead>
-                <tbody id="machine-table-body"></tbody>
-              </table>
+              <div class="admin-table-wrap">
+                <table class="user-table">
+                  <thead>
+                    <tr>
+                      <th>&#xC7A5;&#xBE44; ID</th>
+                      <th>&#xAD00;&#xB9AC;&#xBC88;&#xD638;</th>
+                      <th>&#xC7A5;&#xC18C;</th>
+                      <th>&#xC124;&#xBA85;</th>
+                      <th>&#xC608;&#xC57D; &#xC218;</th>
+                      <th>&#xAD00;&#xB9AC;</th>
+                    </tr>
+                  </thead>
+                  <tbody id="machine-table-body"></tbody>
+                </table>
+              </div>
             </section>
 
             <section id="admin-purposes" class="admin-section">
@@ -258,17 +271,19 @@
                 <h3 class="card-title">가동 목적 관리</h3>
                 <button id="btn-create-purpose" class="btn-time-reset success" type="button">+ 목적 등록</button>
               </div>
-              <table class="user-table">
-                <thead>
-                  <tr>
-                    <th>코드</th>
-                    <th>표시명</th>
-                    <th>적용 장비</th>
-                    <th>관리</th>
-                  </tr>
-                </thead>
-                <tbody id="purpose-table-body"></tbody>
-              </table>
+              <div class="admin-table-wrap">
+                <table class="user-table">
+                  <thead>
+                    <tr>
+                      <th>코드</th>
+                      <th>표시명</th>
+                      <th>적용 장비</th>
+                      <th>관리</th>
+                    </tr>
+                  </thead>
+                  <tbody id="purpose-table-body"></tbody>
+                </table>
+              </div>
             </section>
             <section id="admin-audit" class="admin-section">
               <div class="card-header">
@@ -384,6 +399,7 @@
         <h3 id="approval-title" class="modal-title">예약 승인 요청</h3>
         <p id="approval-text" class="modal-sub"></p>
         <div class="approval-detail" id="approval-detail"></div>
+        <div id="approval-impact" class="modal-impact"></div>
         <div class="form-group">
           <label for="reject-reason">반려 사유</label>
           <textarea id="reject-reason" rows="3" placeholder="예: 일정 변경, 정보 누락"></textarea>
@@ -398,6 +414,7 @@
       <div class="modal">
         <h3 id="delete-title" class="modal-title">예약 삭제</h3>
         <p class="modal-sub">삭제 사유를 입력해야 합니다.</p>
+        <div id="delete-impact" class="modal-impact"></div>
         <div class="form-group">
           <label for="delete-reason">삭제 사유</label>
           <textarea id="delete-reason" rows="3" placeholder="예: 일정 변경으로 취소"></textarea>
@@ -529,7 +546,7 @@
       </div>
     </div>
 
-    <script type="module" src="app.js?v=20260129-33"></script>
+    <script type="module" src="app.js?v=20260129-34"></script>
   </body>
 </html>
 

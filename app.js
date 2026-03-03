@@ -50,7 +50,7 @@ const appState = {
   isResizing:false,resizeStartX:0,resizeOriginDuration:0,resizeTarget:null,
   bookingTarget:{id:null,start:9},approvalTarget:null,deleteTarget:null,
   isLiveMode:true,dayModalDate:null,dashboardSidePanel:"status",
-  focusMachineId:null,mobileDashboardView:"summary"
+  focusMachineId:null,mobileDashboardView:"summary",adminCompact:false
 };
 
 let users = [];
@@ -66,6 +66,8 @@ const configState = { loaded: false, exists: false };
 let bookingsQueryKey = "";
 let usersFetchedAt = 0;
 let usersFetchPromise = null;
+const adminFilters = {};
+let adminToolbarView = "users";
 
 
 
@@ -619,6 +621,169 @@ function setMachineFocus(machineId){
 function switchAdminView(view){
   document.querySelectorAll(".admin-btn").forEach(btn=>btn.classList.toggle("active",btn.dataset.adminView===view));
   document.querySelectorAll(".admin-section").forEach(sec=>sec.classList.toggle("active",sec.id===`admin-${view}`));
+  renderAdminToolbar(view);
+  renderActiveAdminSection(view);
+}
+
+function getActiveAdminView(){
+  const activeBtn=document.querySelector(".admin-btn.active");
+  return activeBtn?.dataset.adminView || "users";
+}
+
+function getAdminFilterConfig(view){
+  const map={
+    users:{
+      placeholder:"이름/아이디/권한 검색",
+      statuses:[
+        {value:"all",label:"상태 전체"},
+        {value:"approved",label:"승인됨"},
+        {value:"pending",label:"승인대기"},
+        {value:"role-admin",label:"관리자"},
+        {value:"role-supervisor",label:"감독자"},
+        {value:"role-worker",label:"작업자"}
+      ],
+      sorts:[
+        {value:"default",label:"기본순"},
+        {value:"name-asc",label:"이름 오름차순"},
+        {value:"name-desc",label:"이름 내림차순"}
+      ]
+    },
+    machines:{
+      placeholder:"장비ID/관리번호/장소/설명 검색",
+      statuses:[
+        {value:"all",label:"상태 전체"},
+        {value:"booked",label:"예약 있음"},
+        {value:"unbooked",label:"예약 없음"}
+      ],
+      sorts:[
+        {value:"default",label:"기본순"},
+        {value:"id-asc",label:"ID 오름차순"},
+        {value:"id-desc",label:"ID 내림차순"},
+        {value:"count-desc",label:"예약 수 많은순"}
+      ]
+    },
+    locations:{
+      placeholder:"장소명 검색",
+      statuses:[
+        {value:"all",label:"상태 전체"},
+        {value:"used",label:"장비 배정됨"},
+        {value:"empty",label:"장비 없음"}
+      ],
+      sorts:[
+        {value:"default",label:"기본순"},
+        {value:"name-asc",label:"이름 오름차순"},
+        {value:"name-desc",label:"이름 내림차순"},
+        {value:"count-desc",label:"장비 수 많은순"}
+      ]
+    },
+    purposes:{
+      placeholder:"목적 코드/표시명 검색",
+      statuses:[
+        {value:"all",label:"상태 전체"},
+        {value:"global",label:"전체 적용"},
+        {value:"scoped",label:"장비 지정"},
+        {value:"used",label:"예약 사용중"},
+        {value:"unused",label:"미사용"}
+      ],
+      sorts:[
+        {value:"default",label:"기본순"},
+        {value:"code-asc",label:"코드 오름차순"},
+        {value:"label-asc",label:"표시명 오름차순"}
+      ]
+    },
+    audit:{
+      placeholder:"장비/작업자/목적/날짜 검색",
+      statuses:[
+        {value:"all",label:"전체"},
+        {value:"autoclean",label:"자동소독 포함"},
+        {value:"manual",label:"자동소독 없음"}
+      ],
+      sorts:[
+        {value:"default",label:"시간 오름차순"},
+        {value:"time-desc",label:"시간 내림차순"},
+        {value:"user-asc",label:"작업자 오름차순"}
+      ]
+    }
+  };
+  return map[view] || null;
+}
+
+function getAdminFilterState(view=getActiveAdminView()){
+  if(!adminFilters[view]){
+    adminFilters[view]={ query:"", status:"all", sort:"default" };
+  }
+  return adminFilters[view];
+}
+
+function renderAdminToolbar(view=getActiveAdminView()){
+  const toolbar=document.getElementById("admin-toolbar");
+  if(!toolbar) return;
+  adminToolbarView=view;
+  const config=getAdminFilterConfig(view);
+  toolbar.classList.toggle("hidden",!config);
+  const panel=document.getElementById("view-admin");
+  if(panel){
+    panel.classList.toggle("compact-rows",appState.adminCompact);
+  }
+  const compactBtn=document.getElementById("btn-admin-compact");
+  if(compactBtn){
+    compactBtn.textContent=appState.adminCompact ? "기본 간격" : "행 간격 축소";
+  }
+  if(!config) return;
+
+  const state=getAdminFilterState(view);
+  const search=document.getElementById("admin-search");
+  const statusSel=document.getElementById("admin-status-filter");
+  const sortSel=document.getElementById("admin-sort-filter");
+  if(search){
+    search.placeholder=config.placeholder;
+    search.value=state.query;
+  }
+  if(statusSel){
+    statusSel.innerHTML=config.statuses.map(opt=>`<option value="${opt.value}">${opt.label}</option>`).join("");
+    statusSel.value=config.statuses.some(opt=>opt.value===state.status) ? state.status : "all";
+  }
+  if(sortSel){
+    sortSel.innerHTML=config.sorts.map(opt=>`<option value="${opt.value}">${opt.label}</option>`).join("");
+    sortSel.value=config.sorts.some(opt=>opt.value===state.sort) ? state.sort : config.sorts[0].value;
+  }
+}
+
+function applyAdminFilterInput(){
+  const view=adminToolbarView || getActiveAdminView();
+  const state=getAdminFilterState(view);
+  const search=document.getElementById("admin-search");
+  const statusSel=document.getElementById("admin-status-filter");
+  const sortSel=document.getElementById("admin-sort-filter");
+  state.query=(search?.value || "").trim();
+  state.status=statusSel?.value || "all";
+  state.sort=sortSel?.value || "default";
+  renderActiveAdminSection(view);
+}
+
+function resetAdminFilter(){
+  const view=adminToolbarView || getActiveAdminView();
+  adminFilters[view]={ query:"", status:"all", sort:"default" };
+  renderAdminToolbar(view);
+  renderActiveAdminSection(view);
+}
+
+function setAdminCompactMode(enabled){
+  appState.adminCompact=!!enabled;
+  renderAdminToolbar(getActiveAdminView());
+}
+
+function renderActiveAdminSection(view=getActiveAdminView()){
+  if(view==="users"){
+    if(users.length) renderUserTable();
+    else refreshUsersFromDb();
+    return;
+  }
+  if(view==="locations"){renderLocationTable(); return;}
+  if(view==="machines"){renderMachineTable(); return;}
+  if(view==="purposes"){renderPurposeTable(); return;}
+  if(view==="audit"){renderPendingList(); return;}
+  if(view==="stats"){renderStats(); return;}
 }
 
 function updateDate(delta){
@@ -1602,6 +1767,7 @@ function renderAdmin(){
     if(purposesBtn) purposesBtn.style.display="flex";
     locationsBtn.style.display="flex";
   }
+  renderAdminToolbar(getActiveAdminView());
   refreshUsersFromDb();
   renderLocationTable();
   renderMachineTable();
@@ -1656,7 +1822,23 @@ async function approveUser(uid){
 function renderUserTable(){
   const tbody=document.getElementById("user-table-body");
   tbody.innerHTML="";
-  for(const user of users){
+  const filter=getAdminFilterState("users");
+  const query=filter.query.toLowerCase();
+  let rows=[...users];
+  if(query){
+    rows=rows.filter(user=>{
+      const haystack=`${user.name||""} ${user.id||""} ${user.role||""}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }
+  if(filter.status==="approved") rows=rows.filter(user=>!!user.approved);
+  if(filter.status==="pending") rows=rows.filter(user=>!user.approved);
+  if(filter.status==="role-admin") rows=rows.filter(user=>user.role==="admin");
+  if(filter.status==="role-supervisor") rows=rows.filter(user=>user.role==="supervisor");
+  if(filter.status==="role-worker") rows=rows.filter(user=>user.role==="worker");
+  if(filter.sort==="name-asc") rows.sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  if(filter.sort==="name-desc") rows.sort((a,b)=>(b.name||"").localeCompare(a.name||""));
+  for(const user of rows){
     const tr=document.createElement("tr");
     const canDelete=appState.currentUser&&user.id!==appState.currentUser.id;
     const statusLabel=user.approved?"\uC2B9\uC778\uB428":"\uC2B9\uC778\uB300\uAE30";
@@ -1669,7 +1851,23 @@ function renderUserTable(){
 
 function renderPendingList(){
   const list=document.getElementById("pending-list");list.innerHTML="";
-  const pending=getPendingBookings();
+  const filter=getAdminFilterState("audit");
+  const query=filter.query.toLowerCase();
+  let pending=getPendingBookings();
+  if(query){
+    pending=pending.filter(item=>{
+      const b=item.booking;
+      const haystack=`${item.id} ${b.user} ${b.date} ${getPurposeMeta(b.purpose).label}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }
+  if(filter.status==="autoclean") pending=pending.filter(item=>!!item.booking.autoClean);
+  if(filter.status==="manual") pending=pending.filter(item=>!item.booking.autoClean);
+  if(filter.sort==="time-desc"){
+    pending.sort((a,b)=>b.booking.date.localeCompare(a.booking.date)||b.booking.start-a.booking.start);
+  }else if(filter.sort==="user-asc"){
+    pending.sort((a,b)=>a.booking.user.localeCompare(b.booking.user));
+  }
   if(pending.length===0){const empty=document.createElement("div");empty.className="pending-item";empty.innerHTML='<strong>승인 대기 없음</strong><span class="pending-meta">현재 날짜에 대기 중인 요청이 없습니다.</span>';list.appendChild(empty);return;}
   for(const item of pending){
     const {id,docId,booking}=item;
@@ -1723,6 +1921,17 @@ function openDeleteModal(id, docId){
   appState.deleteTarget = { id, docId };
   const reason = document.getElementById("delete-reason");
   if(reason) reason.value = "";
+  const impactEl=document.getElementById("delete-impact");
+  const booking=findBookingByDocId(id,docId);
+  if(impactEl && booking){
+    const linkedBuffer=(booking.autoClean)
+      ? getBookingsForDate(id, booking.date).find(b=>b.user==="System" && b.start===booking.start+booking.duration && b.duration===0.5)
+      : null;
+    const linkedText=linkedBuffer ? "연동 자동소독 1건이 함께 삭제됩니다." : "연동 자동소독 삭제 없음.";
+    impactEl.innerHTML=`대상: ${id} / ${booking.user}<br>시간: ${booking.date} ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}<br>영향: ${linkedText}`;
+  }else if(impactEl){
+    impactEl.textContent="";
+  }
   document.getElementById("delete-modal").style.display = "flex";
 }
 
@@ -1859,6 +2068,13 @@ function openApprovalModal(id,docId){
   const autoCleanText = booking.autoClean ? "예" : "아니오";
   document.getElementById("approval-detail").innerHTML=
     `날짜: ${booking.date}<br />장비: ${id}<br />시간: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}<br />목적: ${getPurposeMeta(booking.purpose).label}<br />자동 소독: ${autoCleanText}`;
+  const impactEl=document.getElementById("approval-impact");
+  if(impactEl){
+    const rejectEffect=booking.autoClean
+      ? "반려 시 예약이 취소되며 자동소독 예약은 생성되지 않습니다."
+      : "반려 시 예약만 취소됩니다.";
+    impactEl.textContent=`처리 영향: ${rejectEffect}`;
+  }
   const reasonEl = document.getElementById("reject-reason");
   if(reasonEl) reasonEl.value = "";
 }
@@ -2001,13 +2217,32 @@ function renderMachineTable(){
   const tbody=document.getElementById("machine-table-body");
   if(!tbody) return;
   tbody.innerHTML="";
-  for(const id of bscIds){
+  const filter=getAdminFilterState("machines");
+  const query=filter.query.toLowerCase();
+  let rows=bscIds.map((id,index)=>({
+    id,
+    index,
+    count:(bookings[id]||[]).length,
+    mgmt:getMachineMgmtNo(id),
+    location:getMachineLocation(id),
+    desc:getMachineDesc(id)
+  }));
+  if(query){
+    rows=rows.filter(row=>{
+      const haystack=`${row.id} ${row.mgmt} ${row.location} ${row.desc}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }
+  if(filter.status==="booked") rows=rows.filter(row=>row.count>0);
+  if(filter.status==="unbooked") rows=rows.filter(row=>row.count===0);
+  if(filter.sort==="id-asc") rows.sort((a,b)=>a.id.localeCompare(b.id));
+  if(filter.sort==="id-desc") rows.sort((a,b)=>b.id.localeCompare(a.id));
+  if(filter.sort==="count-desc") rows.sort((a,b)=>b.count-a.count||a.id.localeCompare(b.id));
+  if(filter.sort==="default") rows.sort((a,b)=>a.index-b.index);
+  for(const row of rows){
     const tr=document.createElement("tr");
-    const count=(bookings[id]||[]).length;
-    const mgmt=getMachineMgmtNo(id);
-    const desc=getMachineDesc(id);
-    const descShort=desc.length>24?`${desc.slice(0,24)}...`:desc;
-    tr.innerHTML=`<td>${id}</td><td>${mgmt}</td><td>${getMachineLocation(id)}</td><td title="${desc.replace(/"/g,"&quot;")}">${descShort}</td><td>${count}</td><td><button class="btn-edit" data-edit-machine="${id}">수정</button><button class="btn-del" data-del-machine="${id}">삭제</button></td>`;
+    const descShort=row.desc.length>24?`${row.desc.slice(0,24)}...`:row.desc;
+    tr.innerHTML=`<td>${row.id}</td><td>${row.mgmt}</td><td>${row.location}</td><td title="${row.desc.replace(/"/g,"&quot;")}">${descShort}</td><td>${row.count}</td><td><button class="btn-edit" data-edit-machine="${row.id}">수정</button><button class="btn-del" data-del-machine="${row.id}">삭제</button></td>`;
     tbody.appendChild(tr);
   }
 }
@@ -2032,10 +2267,23 @@ function renderLocationTable(){
   const tbody=document.getElementById("location-table-body");
   if(!tbody) return;
   tbody.innerHTML="";
-  for(const loc of locations){
-    const count=bscIds.filter(id=>getMachineLocation(id)===loc).length;
+  const filter=getAdminFilterState("locations");
+  const query=filter.query.toLowerCase();
+  let rows=locations.map(loc=>({
+    loc,
+    count:bscIds.filter(id=>getMachineLocation(id)===loc).length
+  }));
+  if(query){
+    rows=rows.filter(row=>row.loc.toLowerCase().includes(query));
+  }
+  if(filter.status==="used") rows=rows.filter(row=>row.count>0);
+  if(filter.status==="empty") rows=rows.filter(row=>row.count===0);
+  if(filter.sort==="name-asc") rows.sort((a,b)=>a.loc.localeCompare(b.loc));
+  if(filter.sort==="name-desc") rows.sort((a,b)=>b.loc.localeCompare(a.loc));
+  if(filter.sort==="count-desc") rows.sort((a,b)=>b.count-a.count||a.loc.localeCompare(b.loc));
+  for(const row of rows){
     const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${loc}</td><td>${count}대</td><td><button class="btn-edit" data-edit-location="${loc}">수정</button><button class="btn-del" data-del-location="${loc}">삭제</button></td>`;
+    tr.innerHTML=`<td>${row.loc}</td><td>${row.count}대</td><td><button class="btn-edit" data-edit-location="${row.loc}">수정</button><button class="btn-del" data-del-location="${row.loc}">삭제</button></td>`;
     tbody.appendChild(tr);
   }
 }
@@ -2044,7 +2292,25 @@ function renderPurposeTable(){
   const tbody=document.getElementById("purpose-table-body");
   if(!tbody) return;
   tbody.innerHTML="";
-  for(const purpose of purposeList){
+  const filter=getAdminFilterState("purposes");
+  const query=filter.query.toLowerCase();
+  let rows=purposeList.map(purpose=>({
+    ...purpose,
+    used:isPurposeUsed(purpose.key)
+  }));
+  if(query){
+    rows=rows.filter(p=>{
+      const haystack=`${p.key} ${p.label}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }
+  if(filter.status==="global") rows=rows.filter(p=>!p.machines || p.machines.length===0);
+  if(filter.status==="scoped") rows=rows.filter(p=>p.machines && p.machines.length>0);
+  if(filter.status==="used") rows=rows.filter(p=>p.used);
+  if(filter.status==="unused") rows=rows.filter(p=>!p.used);
+  if(filter.sort==="code-asc") rows.sort((a,b)=>a.key.localeCompare(b.key));
+  if(filter.sort==="label-asc") rows.sort((a,b)=>a.label.localeCompare(b.label));
+  for(const purpose of rows){
     const tr=document.createElement("tr");
     const scope = (!purpose.machines || purpose.machines.length === 0)
       ? "전체"
@@ -2315,6 +2581,11 @@ function bindEvents(){
   on("btn-save-location","click",saveLocation);
   on("btn-save-purpose","click",savePurpose);
   on("btn-print","click",printReport);
+  on("admin-search","input",applyAdminFilterInput);
+  on("admin-status-filter","change",applyAdminFilterInput);
+  on("admin-sort-filter","change",applyAdminFilterInput);
+  on("btn-admin-filter-reset","click",resetAdminFilter);
+  on("btn-admin-compact","click",()=>setAdminCompactMode(!appState.adminCompact));
   on("schedule-location-filter","change",renderSchedule);
   on("schedule-machine-search","input",renderSchedule);
   on("schedule-my-only","change",renderSchedule);
