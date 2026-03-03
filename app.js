@@ -2177,14 +2177,12 @@ function openUserModal(mode,uid){
   const originalId=document.getElementById("user-original-id");
   const nameInput=document.getElementById("user-display-name");
   const idInput=document.getElementById("user-id");
-  const pwdInput=document.getElementById("user-password");
   const roleSelect=document.getElementById("user-role");
   if(mode==="create"){
     if(title) title.textContent="계정 생성";
     if(originalId) originalId.value="";
     if(nameInput) nameInput.value="";
     if(idInput){idInput.value=""; idInput.disabled=false;}
-    if(pwdInput) pwdInput.value="";
     if(roleSelect) roleSelect.value="worker";
     return;
   }
@@ -2194,7 +2192,6 @@ function openUserModal(mode,uid){
   if(originalId) originalId.value=user.uid;
   if(nameInput) nameInput.value=user.name||"";
   if(idInput){idInput.value=user.id||""; idInput.disabled=true;}
-  if(pwdInput) pwdInput.value="";
   if(roleSelect) roleSelect.value=user.role||"worker";
 }
 
