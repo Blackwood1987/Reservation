@@ -461,12 +461,13 @@ body.login-page {
   border: 1px solid #d9e1e8;
   border-radius: 8px;
   background: #f6f9fb;
-  font-size: 12px;
-  font-weight: 900;
   color: #2e4256;
-  text-align: left;
   padding: 7px 9px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .map-site-btn.active {
@@ -479,6 +480,7 @@ body.login-page {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  padding-left: 10px;
 }
 
 .map-room-btn {
@@ -486,24 +488,95 @@ body.login-page {
   border: 1px solid #e0e6ec;
   border-radius: 7px;
   background: #ffffff;
-  font-size: 11px;
-  font-weight: 800;
   color: #2f4558;
   padding: 6px 8px;
   cursor: pointer;
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
-}
-
-.map-room-btn span:last-child {
-  color: #6d8093;
-  font-size: 10px;
 }
 
 .map-room-btn.active {
   border-color: #2f90d5;
   background: #eef7fd;
+}
+
+.tree-node-main {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
+}
+
+.tree-node-toggle {
+  width: 12px;
+  color: #607286;
+  font-size: 11px;
+  font-weight: 900;
+  flex: 0 0 12px;
+}
+
+.tree-node-label {
+  font-size: 12px;
+  font-weight: 900;
+  color: #2f4558;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-room-btn .tree-node-label,
+.map-machine-node .tree-node-label {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.tree-node-meta {
+  font-size: 10px;
+  font-weight: 800;
+  color: #6d8093;
+  white-space: nowrap;
+}
+
+.map-machine-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 20px;
+  margin-top: 3px;
+}
+
+.map-machine-node {
+  width: 100%;
+  border: 1px solid #e5ebf1;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #2f4558;
+  padding: 5px 7px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.map-machine-node:hover {
+  border-color: #bfd0df;
+  background: #f0f6fb;
+}
+
+.map-machine-node.active {
+  border-color: #2f90d5;
+  background: #eaf4fc;
+}
+
+.tree-node-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #7f93a6;
+  flex: 0 0 7px;
 }
 
 .map-canvas-panel {

@@ -69,6 +69,8 @@ const appState = {
     selectedRoomId:null,
     selectedMachineId:null,
     searchText:"",
+    expandedSiteIds:new Set(),
+    expandedRoomIds:new Set(),
     layoutEditMode:false,
     layoutDraft:null,
     layoutDrag:null,
@@ -244,15 +246,72 @@ function buildRoomsFromLocations(locationList,siteId){
   }));
 }
 function ensureSiteRoomSelection(){
+  if(!(appState.map.expandedSiteIds instanceof Set)){
+    appState.map.expandedSiteIds=new Set();
+  }
+  if(!(appState.map.expandedRoomIds instanceof Set)){
+    appState.map.expandedRoomIds=new Set();
+  }
   const activeSites=getActiveSites();
+  const validSiteIds=new Set(activeSites.map(site=>site.id));
+  [...appState.map.expandedSiteIds].forEach(siteId=>{
+    if(!validSiteIds.has(siteId)) appState.map.expandedSiteIds.delete(siteId);
+  });
   const selectedSite=activeSites.find(site=>site.id===appState.map.selectedSiteId) || activeSites[0] || null;
   appState.map.selectedSiteId=selectedSite?.id || null;
   const roomCandidates=selectedSite ? getRoomsBySite(selectedSite.id) : [];
-  const selectedRoom=roomCandidates.find(room=>room.id===appState.map.selectedRoomId) || roomCandidates[0] || null;
+  const validRoomIds=new Set(rooms.map(room=>room.id));
+  [...appState.map.expandedRoomIds].forEach(roomId=>{
+    if(!validRoomIds.has(roomId)) appState.map.expandedRoomIds.delete(roomId);
+  });
+  const selectedRoom=roomCandidates.find(room=>room.id===appState.map.selectedRoomId) || null;
   appState.map.selectedRoomId=selectedRoom?.id || null;
   if(appState.map.selectedMachineId && !bscIds.includes(appState.map.selectedMachineId)){
     appState.map.selectedMachineId=null;
   }
+}
+function toggleSiteTreeExpand(siteId){
+  if(!(appState.map.expandedSiteIds instanceof Set)){
+    appState.map.expandedSiteIds=new Set();
+  }
+  if(appState.map.expandedSiteIds.has(siteId)){
+    appState.map.expandedSiteIds.delete(siteId);
+    const siteRooms=getRoomsBySite(siteId,{includeInactive:true});
+    siteRooms.forEach(room=>appState.map.expandedRoomIds.delete(room.id));
+    if(appState.map.selectedRoomId){
+      const selectedRoom=getRoomById(appState.map.selectedRoomId);
+      if(selectedRoom && selectedRoom.siteId===siteId){
+        appState.map.selectedRoomId=null;
+        appState.map.selectedMachineId=null;
+      }
+    }
+    return false;
+  }
+  appState.map.expandedSiteIds.add(siteId);
+  return true;
+}
+function toggleRoomTreeExpand(roomId){
+  if(!(appState.map.expandedRoomIds instanceof Set)){
+    appState.map.expandedRoomIds=new Set();
+  }
+  if(appState.map.expandedRoomIds.has(roomId)){
+    appState.map.expandedRoomIds.delete(roomId);
+    const selectedMachineRoom=appState.map.selectedMachineId ? getMachineRoomId(appState.map.selectedMachineId) : null;
+    if(selectedMachineRoom===roomId) appState.map.selectedMachineId=null;
+    return false;
+  }
+  appState.map.expandedRoomIds.add(roomId);
+  return true;
+}
+function expandTreePathForRoom(siteId,roomId){
+  if(!(appState.map.expandedSiteIds instanceof Set)){
+    appState.map.expandedSiteIds=new Set();
+  }
+  if(!(appState.map.expandedRoomIds instanceof Set)){
+    appState.map.expandedRoomIds=new Set();
+  }
+  if(siteId) appState.map.expandedSiteIds.add(siteId);
+  if(roomId) appState.map.expandedRoomIds.add(roomId);
 }
 function applyLegacyMigrationData(data){
   const siteId="site-default";
@@ -2015,7 +2074,7 @@ function renderMap(){
   const selectedSite=activeSites.find(site=>site.id===appState.map.selectedSiteId) || activeSites[0];
   appState.map.selectedSiteId=selectedSite.id;
   const siteRooms=getRoomsBySite(selectedSite.id);
-  const selectedRoom=siteRooms.find(room=>room.id===appState.map.selectedRoomId) || siteRooms[0] || null;
+  const selectedRoom=siteRooms.find(room=>room.id===appState.map.selectedRoomId) || null;
   appState.map.selectedRoomId=selectedRoom?.id || null;
   if(appState.map.selectedMachineId && !bscIds.includes(appState.map.selectedMachineId)){
     appState.map.selectedMachineId=null;
@@ -2043,54 +2102,123 @@ function renderMap(){
   canvas.classList.toggle("layout-edit-mode",appState.map.layoutEditMode);
 
   tree.innerHTML="";
+  const forceExpandBySearch=!!query;
   for(const site of activeSites){
+    const roomsBySite=getRoomsBySite(site.id);
+    const roomRows=roomsBySite.map(room=>{
+      const machineIds=getMachinesByRoomId(room.id);
+      const matchedMachineIds=getMatchedRoomMachineIds(room,machineIds,query,site);
+      const roomMatched=!query || matchedMachineIds.length>0 || String(room.name||"").toLowerCase().includes(query) || String(site.name||"").toLowerCase().includes(query);
+      return { room, machineIds, matchedMachineIds, roomMatched };
+    }).filter(row=>row.roomMatched);
+    if(query && !roomRows.length && !String(site.name||"").toLowerCase().includes(query)){
+      continue;
+    }
+
+    const siteMachineTotal=roomsBySite.reduce((sum,room)=>sum+getMachinesByRoomId(room.id).length,0);
     const siteBlock=document.createElement("section");
     siteBlock.className="map-site-block";
+
+    const siteExpanded=forceExpandBySearch || appState.map.expandedSiteIds.has(site.id);
     const siteBtn=document.createElement("button");
     siteBtn.type="button";
     siteBtn.className=`map-site-btn ${site.id===appState.map.selectedSiteId?"active":""}`;
-    siteBtn.textContent=site.name;
+    siteBtn.innerHTML=
+      `<span class="tree-node-main"><span class="tree-node-toggle">${siteExpanded?"▾":"▸"}</span><span class="tree-node-label">${site.name}</span></span>`+
+      `<span class="tree-node-meta">${siteMachineTotal}대</span>`;
     siteBtn.addEventListener("click",()=>{
       appState.map.selectedSiteId=site.id;
-      appState.map.selectedRoomId=getRoomsBySite(site.id)[0]?.id || null;
       appState.map.selectedMachineId=null;
+      if(forceExpandBySearch){
+        renderMap();
+        renderSelectionDetailPanel();
+        clearMachineFocusState();
+        return;
+      }
+      const expanded=toggleSiteTreeExpand(site.id);
+      if(!expanded){
+        appState.map.selectedRoomId=null;
+      }
       renderMap();
       renderSelectionDetailPanel();
       clearMachineFocusState();
     });
     siteBlock.appendChild(siteBtn);
 
-    const roomList=document.createElement("div");
-    roomList.className="map-room-list";
-    const roomsBySite=getRoomsBySite(site.id);
-    for(const room of roomsBySite){
-      const machineIds=getMachinesByRoomId(room.id);
-      const matchedMachineIds=getMatchedRoomMachineIds(room,machineIds,query,site);
-      if(query && matchedMachineIds.length===0 && !String(room.name).toLowerCase().includes(query) && !String(site.name).toLowerCase().includes(query)){
-        continue;
+    if(siteExpanded){
+      const roomList=document.createElement("div");
+      roomList.className="map-room-list";
+      for(const row of roomRows){
+        const room=row.room;
+        const machineIds=row.machineIds;
+        const roomExpanded=forceExpandBySearch || appState.map.expandedRoomIds.has(room.id);
+        const runningCount=machineIds.filter(id=>isMachineRunning(id)).length;
+
+        const roomBtn=document.createElement("button");
+        roomBtn.type="button";
+        roomBtn.className=`map-room-btn ${room.id===appState.map.selectedRoomId?"active":""}`;
+        roomBtn.innerHTML=
+          `<span class="tree-node-main"><span class="tree-node-toggle">${roomExpanded?"▾":"▸"}</span><span class="tree-node-label">${room.name}</span></span>`+
+          `<span class="tree-node-meta">${machineIds.length}대 / 가동 ${runningCount}대</span>`;
+        roomBtn.addEventListener("click",event=>{
+          event.stopPropagation();
+          appState.map.selectedSiteId=site.id;
+          let expanded=true;
+          if(!forceExpandBySearch){
+            expanded=toggleRoomTreeExpand(room.id);
+          }
+          if(expanded){
+            appState.map.selectedRoomId=room.id;
+            appState.map.selectedMachineId=null;
+          }else{
+            appState.map.selectedRoomId=null;
+            appState.map.selectedMachineId=null;
+          }
+          renderMap();
+          renderSelectionDetailPanel();
+        });
+        roomList.appendChild(roomBtn);
+
+        if(roomExpanded){
+          const machineList=document.createElement("div");
+          machineList.className="map-machine-list";
+          const machineRows=query ? row.matchedMachineIds : machineIds;
+          machineRows.forEach(id=>{
+            const booking=getCurrentBooking(id);
+            const statusLabel=booking ? (booking.user==="System" ? "소독" : getPurposeMeta(booking.purpose).label) : "사용 가능";
+            const machineBtn=document.createElement("button");
+            machineBtn.type="button";
+            machineBtn.className=`map-machine-node ${appState.map.selectedMachineId===id?"active":""}`;
+            machineBtn.innerHTML=
+              `<span class="tree-node-main"><span class="tree-node-dot"></span><span class="tree-node-label">${id}</span></span>`+
+              `<span class="tree-node-meta">${statusLabel}</span>`;
+            machineBtn.addEventListener("click",event=>{
+              event.stopPropagation();
+              selectMachineInMap(id,true);
+            });
+            machineList.appendChild(machineBtn);
+          });
+          if(!machineRows.length){
+            const empty=document.createElement("p");
+            empty.className="map-empty-text";
+            empty.textContent="표시할 장비가 없습니다.";
+            machineList.appendChild(empty);
+          }
+          roomList.appendChild(machineList);
+        }
       }
-      const runningCount=matchedMachineIds.filter(id=>isMachineRunning(id)).length;
-      const roomBtn=document.createElement("button");
-      roomBtn.type="button";
-      roomBtn.className=`map-room-btn ${room.id===appState.map.selectedRoomId?"active":""}`;
-      roomBtn.innerHTML=`<span>${room.name}</span><span>${matchedMachineIds.length}대 / 가동 ${runningCount}대</span>`;
-      roomBtn.addEventListener("click",()=>{
-        appState.map.selectedSiteId=site.id;
-        appState.map.selectedRoomId=room.id;
-        appState.map.selectedMachineId=null;
-        renderMap();
-        renderSelectionDetailPanel();
-      });
-      roomList.appendChild(roomBtn);
+      if(!roomList.childElementCount){
+        const empty=document.createElement("p");
+        empty.className="map-empty-text";
+        empty.textContent="조건에 맞는 Room이 없습니다.";
+        roomList.appendChild(empty);
+      }
+      siteBlock.appendChild(roomList);
     }
-    if(!roomList.childElementCount){
-      const empty=document.createElement("p");
-      empty.className="map-empty-text";
-      empty.textContent="조건에 맞는 Room이 없습니다.";
-      roomList.appendChild(empty);
-    }
-    siteBlock.appendChild(roomList);
     tree.appendChild(siteBlock);
+  }
+  if(!tree.childElementCount){
+    tree.innerHTML='<p class="map-empty-text">검색 조건에 맞는 Site/Room이 없습니다.</p>';
   }
 
   canvas.innerHTML="";
@@ -2127,6 +2255,7 @@ function renderMap(){
       appState.map.selectedSiteId=room.siteId;
       appState.map.selectedRoomId=room.id;
       appState.map.selectedMachineId=null;
+      expandTreePathForRoom(room.siteId,room.id);
       renderMap();
       renderSelectionDetailPanel();
     });
@@ -2140,33 +2269,36 @@ function renderMap(){
 
     const machineWrap=document.createElement("div");
     machineWrap.className="map-room-machines";
+    const revealMachines=appState.map.layoutEditMode || !!query || room.id===appState.map.selectedRoomId;
     const fallbackIds=!machineIds.length && !query ? allMachineIds : machineIds;
-    fallbackIds.forEach(id=>{
-      const booking=getCurrentBooking(id);
-      const meta=getTileMeta(booking);
-      const button=document.createElement("button");
-      button.type="button";
-      button.className=`map-machine-chip ${meta.tile} ${appState.map.selectedMachineId===id?"selected":""}`;
-      button.dataset.machineId=id;
-      button.textContent=id;
-      button.title=getBookingTooltipText(booking) || `${id}: 사용 가능`;
-      button.addEventListener("click",event=>{
-        event.stopPropagation();
-        handleTileClick(id);
+    if(revealMachines){
+      fallbackIds.forEach(id=>{
+        const booking=getCurrentBooking(id);
+        const meta=getTileMeta(booking);
+        const button=document.createElement("button");
+        button.type="button";
+        button.className=`map-machine-chip ${meta.tile} ${appState.map.selectedMachineId===id?"selected":""}`;
+        button.dataset.machineId=id;
+        button.textContent=id;
+        button.title=getBookingTooltipText(booking) || `${id}: 사용 가능`;
+        button.addEventListener("click",event=>{
+          event.stopPropagation();
+          handleTileClick(id);
+        });
+        button.addEventListener("mouseenter",()=>setMachineFocus(id,true));
+        button.addEventListener("mouseleave",()=>setMachineFocus(null,false));
+        button.addEventListener("mousemove",e=>showTooltip(e,id,booking));
+        button.addEventListener("mouseleave",hideTooltip);
+        machineWrap.appendChild(button);
       });
-      button.addEventListener("mouseenter",()=>setMachineFocus(id,true));
-      button.addEventListener("mouseleave",()=>setMachineFocus(null,false));
-      button.addEventListener("mousemove",e=>showTooltip(e,id,booking));
-      button.addEventListener("mouseleave",hideTooltip);
-      machineWrap.appendChild(button);
-    });
+    }
     if(appState.map.layoutEditMode){
       machineWrap.classList.add("disabled");
     }
     if(!machineWrap.childElementCount){
       const empty=document.createElement("span");
       empty.className="map-empty-inline";
-      empty.textContent="표시할 장비 없음";
+      empty.textContent=revealMachines ? "표시할 장비 없음" : "Room 클릭 시 장비 표시";
       machineWrap.appendChild(empty);
     }
     if(appState.map.layoutEditMode){
@@ -2223,6 +2355,7 @@ function selectMachineInMap(machineId,focus=true){
   if(room){
     appState.map.selectedSiteId=room.siteId;
     appState.map.selectedRoomId=room.id;
+    expandTreePathForRoom(room.siteId,room.id);
   }
   appState.map.selectedMachineId=machineId;
   if(focus){
@@ -2301,6 +2434,21 @@ function renderSelectionDetailPanel(){
         const badge=booking ? (booking.user==="System" ? "소독" : getPurposeMeta(booking.purpose).label) : "사용 가능";
         return `<button type="button" class="detail-machine-btn ${appState.map.selectedMachineId===id?"active":""}" data-detail-machine="${id}" data-machine-id="${id}">${id}<span>${badge}</span></button>`;
       }).join("")+
+      `</div>`;
+    return;
+  }
+  if(appState.map.selectedSiteId){
+    const site=getSiteById(appState.map.selectedSiteId);
+    const siteRooms=getRoomsBySite(appState.map.selectedSiteId);
+    const machineCount=siteRooms.reduce((sum,room)=>sum+getMachinesByRoomId(room.id).length,0);
+    const runningCount=siteRooms.reduce((sum,room)=>sum+getMachinesByRoomId(room.id).filter(id=>isMachineRunning(id)).length,0);
+    body.innerHTML=
+      `<div class="detail-section">`+
+      `<h4>${site ? site.name : "Site"}</h4>`+
+      `<p><strong>Room 수:</strong> ${siteRooms.length}개</p>`+
+      `<p><strong>장비 수:</strong> ${machineCount}대</p>`+
+      `<p><strong>가동 중:</strong> ${runningCount}대</p>`+
+      `<p><strong>안내:</strong> 좌측에서 Room을 열어 장비를 선택하세요.</p>`+
       `</div>`;
     return;
   }
