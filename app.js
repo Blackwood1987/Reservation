@@ -226,6 +226,33 @@ function getMachineDisplayPath(machineId){
   if(!site) return room.name;
   return `${site.name} / ${room.name}`;
 }
+function normalizeMachineIdForRender(rawId){
+  const id=String(rawId || "").replace(/[\u200B-\u200D\uFEFF]/g,"").trim();
+  if(!id) return "";
+  if(!/[A-Za-z0-9가-힣]/.test(id)) return "";
+  return id;
+}
+function getTimelineMachineIds(){
+  ensureSiteRoomState();
+  const ids=[];
+  const seen=new Set();
+  const orderedRooms=getActiveSites().flatMap(site=>getRoomsBySite(site.id));
+  orderedRooms.forEach(room=>{
+    getMachinesByRoomId(room.id).forEach(rawId=>{
+      const id=normalizeMachineIdForRender(rawId);
+      if(!id || seen.has(id)) return;
+      seen.add(id);
+      ids.push(id);
+    });
+  });
+  bscIds.forEach(rawId=>{
+    const id=normalizeMachineIdForRender(rawId);
+    if(!id || seen.has(id)) return;
+    seen.add(id);
+    ids.push(id);
+  });
+  return ids;
+}
 function getMachinesByRoomId(roomId){
   return bscIds.filter(id=>getMachineRoomId(id)===roomId);
 }
@@ -2643,9 +2670,7 @@ function renderTimeline(container,date){
   container.innerHTML="";
   container.appendChild(createTimelineShade("past"));
   container.appendChild(createTimelineShade("future"));
-  for(const rawId of bscIds){
-    const id=String(rawId||"").trim();
-    if(!id) continue;
+  for(const id of getTimelineMachineIds()){
     const row=document.createElement("div");row.className="timeline-row";
     row.dataset.machineId=id;
     const label=document.createElement("div");label.className="tl-label";label.textContent=id;
