@@ -51,7 +51,8 @@ const appState = {
   isResizing:false,resizeStartX:0,resizeOriginDuration:0,resizeTarget:null,
   bookingTarget:{id:null,start:9},bookingEditTarget:null,deleteTarget:null,
   suppressBookingClickUntil:0,
-  resizeCellWidth:0,resizeMovedPx:0,resizePreviewDuration:0,resizeValidationOk:true,resizeIntentLocked:false,
+  resizeSlotWidth:0,resizeOriginWidthPx:0,resizeMinWidthPx:0,resizeMaxWidthPx:0,
+  resizeMovedPx:0,resizePreviewDuration:0,resizeValidationOk:true,resizeIntentLocked:false,
   isLiveMode:true,dayModalDate:null,dashboardSidePanel:"status",
   focusMachineId:null,mobileDashboardView:"summary",adminCompact:false,
   mobile:{activePane:"dashboard",layoutMode:"drawer",drawerOpen:false,canReserveNow:false},
@@ -2216,16 +2217,19 @@ function handleResizeMove(event){
     appState.resizeValidationOk=false;
     return;
   }
-  const cellWidth=appState.resizeCellWidth || (document.querySelector(".schedule-table td")?.offsetWidth || 40);
+  const slotWidth=Math.max(8,appState.resizeSlotWidth||8);
   const moved=event.clientX-appState.resizeStartX;
   appState.resizeMovedPx=Math.max(appState.resizeMovedPx,Math.abs(moved));
-  const rawDuration=Math.max(0.5,Math.min(18-booking.start,appState.resizeOriginDuration + (moved/cellWidth)*0.5));
+  const rawWidth=Math.max(
+    appState.resizeMinWidthPx||slotWidth,
+    Math.min(appState.resizeMaxWidthPx||appState.resizeOriginWidthPx, appState.resizeOriginWidthPx + moved)
+  );
+  const rawDuration=(rawWidth/slotWidth)*0.5;
   const snapDuration=snapToHalfHour(rawDuration);
   const validation=getResizeValidation(booking,id,docId,snapDuration);
   appState.resizePreviewDuration=snapDuration;
   appState.resizeValidationOk=validation.ok;
-  const widthRatio=Math.max(0.2,rawDuration/appState.resizeOriginDuration);
-  block.style.width=`${(widthRatio*100).toFixed(1)}%`;
+  block.style.width=`${rawWidth.toFixed(1)}px`;
   block.classList.toggle("resize-invalid",!validation.ok);
   block.classList.add("resizing");
   const endText=formatTime(booking.start+snapDuration);
@@ -2249,11 +2253,16 @@ function handleResizeStart(event,id,docId,duration,sourceBlock){
   appState.resizeStartX=event.clientX;
   appState.resizeOriginDuration=duration;
   appState.resizeTarget={id,docId,blockEl:block};
-  appState.resizeCellWidth=document.querySelector(".schedule-table td")?.offsetWidth || 40;
+  appState.resizeOriginWidthPx=Math.max(1,block.getBoundingClientRect().width);
+  const slots=Math.max(1,duration/0.5);
+  appState.resizeSlotWidth=appState.resizeOriginWidthPx/slots;
+  appState.resizeMinWidthPx=appState.resizeSlotWidth;
+  appState.resizeMaxWidthPx=appState.resizeSlotWidth*((18-booking.start)/0.5);
   appState.resizeMovedPx=0;
   appState.resizePreviewDuration=duration;
   appState.resizeValidationOk=true;
   document.body.style.cursor="col-resize";
+  document.body.style.userSelect="none";
   document.body.classList.add("is-resizing");
   block.classList.add("resizing");
   block.setAttribute("data-resize-label",`${formatTime(booking.start+duration)} · ${formatDurationText(duration)}`);
@@ -2263,6 +2272,7 @@ async function handleResizeEnd(event){
   if(!appState.isResizing||!appState.resizeTarget) return;
   appState.isResizing=false;
   document.body.style.cursor="default";
+  document.body.style.userSelect="";
   document.body.classList.remove("is-resizing");
   try{
     const {id,docId}=appState.resizeTarget;
@@ -2284,7 +2294,10 @@ async function handleResizeEnd(event){
   }finally{
     clearResizePreview();
     appState.resizeTarget=null;
-    appState.resizeCellWidth=0;
+    appState.resizeSlotWidth=0;
+    appState.resizeOriginWidthPx=0;
+    appState.resizeMinWidthPx=0;
+    appState.resizeMaxWidthPx=0;
     appState.resizeMovedPx=0;
     appState.resizePreviewDuration=0;
     appState.resizeValidationOk=true;
