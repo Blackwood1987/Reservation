@@ -49,7 +49,8 @@ const appState = {
   currentMonth:new Date().getMonth()+1,dragPayload:null,
   statsYear:new Date().getFullYear(),statsMonth:new Date().getMonth()+1,
   isResizing:false,resizeStartX:0,resizeOriginDuration:0,resizeTarget:null,
-  bookingTarget:{id:null,start:9},deleteTarget:null,
+  bookingTarget:{id:null,start:9},bookingEditTarget:null,deleteTarget:null,
+  suppressBookingClickUntil:0,
   isLiveMode:true,dayModalDate:null,dashboardSidePanel:"status",
   focusMachineId:null,mobileDashboardView:"summary",adminCompact:false,
   mobile:{activePane:"dashboard",layoutMode:"drawer",drawerOpen:false,canReserveNow:false},
@@ -390,6 +391,14 @@ function canDragBooking(booking){
   if(booking.userId && user.id && booking.userId===user.id) return true;
   if(booking.user && user.name && booking.user===user.name) return true;
   return false;
+}
+
+function canResizeBooking(booking){
+  return canDragBooking(booking);
+}
+
+function canEditBooking(booking){
+  return canDragBooking(booking);
 }
 
 function canUseScheduleDrop(){
@@ -2002,6 +2011,13 @@ function renderSchedule(){
             block.style.backgroundColor=purposeMeta.color;
             block.innerHTML=`<span>${booking.user}</span><span class="booking-sub">${purposeMeta.label}</span><div class="resize-handle"></div>`;
           }
+          if(canEditBooking(booking)){
+            block.classList.add("can-edit");
+            block.addEventListener("click",event=>{
+              if(shouldSkipBookingClick(event)) return;
+              openBookingEditModal(id,booking.docId);
+            });
+          }
           if(canDeleteBooking()){
             const delBtn=document.createElement("button");
             delBtn.type="button";
@@ -2019,7 +2035,10 @@ function renderSchedule(){
             block.addEventListener("dragstart",e=>handleDragStart(e,id,booking.docId));
             block.addEventListener("dragend",handleDragEnd);
             const handle=block.querySelector(".resize-handle");
-            if(handle && can("edit")) handle.addEventListener("mousedown",e=>handleResizeStart(e,id,booking.docId,booking.duration));
+            if(handle && canResizeBooking(booking)){
+              block.classList.add("resizable");
+              handle.addEventListener("mousedown",e=>handleResizeStart(e,id,booking.docId,booking.duration));
+            }
           }else{
             block.style.cursor="default";
             const handle=block.querySelector(".resize-handle");if(handle) handle.style.display="none";
@@ -2068,8 +2087,10 @@ function handleDragStart(e,machineId,docId){
     e.preventDefault();
     return;
   }
+  appState.suppressBookingClickUntil=Date.now()+260;
   appState.dragPayload={ machineId, docId, booking };
   e.dataTransfer.setData("text", JSON.stringify({machineId,docId}));
+  e.dataTransfer.effectAllowed="move";
   e.target.classList.add("dragging");
   document.body.classList.add("is-dragging");
 }
@@ -2079,6 +2100,15 @@ function handleDragEnd(e){
   document.body.classList.remove("is-dragging");
   appState.dragPayload=null;
   document.querySelectorAll(".schedule-table td.drag-hover, .schedule-table td.drag-hover-valid, .schedule-table td.drag-hover-invalid").forEach(el=>clearDropCellState(el));
+}
+
+function shouldSkipBookingClick(event){
+  if(appState.isResizing) return true;
+  if(Date.now()<appState.suppressBookingClickUntil) return true;
+  const target=event?.target;
+  if(target?.closest(".booking-delete")) return true;
+  if(target?.closest(".resize-handle")) return true;
+  return false;
 }
 
 async function handleDrop(e,targetMachineId,targetHour){
@@ -2120,19 +2150,25 @@ async function handleDrop(e,targetMachineId,targetHour){
 }
 
 function handleResizeStart(event,id,docId,duration){
-  if(!can("edit")) return;
+  const booking=findBookingByDocId(id,docId);
+  if(!canResizeBooking(booking)) return;
+  if(event.button!==0) return;
+  appState.suppressBookingClickUntil=Date.now()+320;
   event.stopPropagation();
+  event.preventDefault();
   appState.isResizing=true;
   appState.resizeStartX=event.clientX;
   appState.resizeOriginDuration=duration;
   appState.resizeTarget={id,docId};
   document.body.style.cursor="col-resize";
+  document.body.classList.add("is-resizing");
 }
 
 async function handleResizeEnd(event){
   if(!appState.isResizing||!appState.resizeTarget) return;
   appState.isResizing=false;
   document.body.style.cursor="default";
+  document.body.classList.remove("is-resizing");
   try{
     const cell=document.querySelector(".schedule-table td");
     const cellWidth=cell?cell.offsetWidth:40;
@@ -2141,6 +2177,7 @@ async function handleResizeEnd(event){
     const {id,docId}=appState.resizeTarget;
     const booking=findBookingByDocId(id,docId);
     if(!booking) return;
+    if(!canResizeBooking(booking)) return;
     const newDuration=appState.resizeOriginDuration+diff;
     if(newDuration<0.5||booking.start+newDuration>18){
       showToast("운영 시간 범위를 벗어나 변경할 수 없습니다.","warn");
@@ -2932,13 +2969,18 @@ async function submitReserveWizard(){
 
 function openBookingModal(id,start){
   if(!can("create")){showToast("예약 생성 권한이 없습니다.","warn");return;}
+  appState.bookingEditTarget=null;
   appState.bookingTarget={id,start};
+  setBookingModalMode(false);
   document.getElementById("booking-modal").style.display="flex";
   document.getElementById("booking-sub").textContent=`${id} / ${formatTime(start)} 시작`;
   document.getElementById("booking-start").value=String(start);
   document.getElementById("booking-date").value=getViewDate();
-  document.getElementById("booking-user").value=appState.currentUser.name;
+  const userInput=document.getElementById("booking-user");
+  userInput.value=appState.currentUser.name;
+  userInput.readOnly=false;
   document.getElementById("booking-recurring").checked=false;
+  document.getElementById("booking-duration").value="1";
   renderPurposeOptions(id);
   const purposeSelect=document.getElementById("booking-purpose");
   if(purposeSelect && !purposeSelect.value){
@@ -2948,10 +2990,60 @@ function openBookingModal(id,start){
   const autoClean=document.getElementById("booking-autoclean");
   if(autoClean) autoClean.checked=false;
 }
+
+function setBookingModalMode(isEdit){
+  const title=document.getElementById("booking-title");
+  const saveBtn=document.getElementById("btn-save-booking");
+  const recurringRow=document.getElementById("booking-recurring-row");
+  const editNote=document.getElementById("booking-edit-note");
+  if(title) title.textContent=isEdit ? "작업 예약 수정" : "작업 예약 등록";
+  if(saveBtn) saveBtn.textContent=isEdit ? "변경 저장" : "예약 저장";
+  if(recurringRow) recurringRow.hidden=isEdit;
+  if(editNote) editNote.hidden=!isEdit;
+}
+
+function openBookingEditModal(id,docId){
+  const booking=findBookingByDocId(id,docId);
+  if(!booking || booking.user==="System"){
+    showToast("수정 가능한 예약을 찾을 수 없습니다.","warn");
+    return;
+  }
+  if(!canEditBooking(booking)){
+    showToast("본인 예약만 수정할 수 있습니다.","warn");
+    return;
+  }
+  appState.bookingTarget={id,start:booking.start};
+  appState.bookingEditTarget={id,docId};
+  setBookingModalMode(true);
+  document.getElementById("booking-modal").style.display="flex";
+  document.getElementById("booking-sub").textContent=`${id} / ${booking.date} ${formatTime(booking.start)} 시작`;
+  document.getElementById("booking-start").value=String(booking.start);
+  document.getElementById("booking-date").value=booking.date;
+  const userInput=document.getElementById("booking-user");
+  userInput.value=booking.user || appState.currentUser.name;
+  userInput.readOnly=!isManagerUser();
+  document.getElementById("booking-recurring").checked=false;
+  document.getElementById("booking-duration").value=String(booking.duration);
+  renderPurposeOptions(id);
+  const purposeSelect=document.getElementById("booking-purpose");
+  if(purposeSelect){
+    purposeSelect.value=booking.purpose;
+    if(!purposeSelect.value && purposeSelect.options.length>0){
+      purposeSelect.value=purposeSelect.options[0].value;
+    }
+  }
+  const autoClean=document.getElementById("booking-autoclean");
+  if(autoClean) autoClean.checked=!!booking.autoClean;
+}
+
 function closeModal(id){
   const modal=document.getElementById(id);
   if(modal) modal.style.display="none";
   if(id==="day-modal") appState.dayModalDate=null;
+  if(id==="booking-modal"){
+    appState.bookingEditTarget=null;
+    setBookingModalMode(false);
+  }
 }
 
 function openDeleteModal(id, docId){
@@ -3016,6 +3108,79 @@ async function confirmDelete(){
   }
 }
 
+function findLinkedAutoCleanBooking(machineId,date,startHour){
+  return getBookingsForDate(machineId,date).find(b=>b.user==="System" && b.start===startHour && b.duration===0.5);
+}
+
+async function markBookingDeleted(docId,reason){
+  if(!docId) return;
+  await updateDoc(doc(db,"bookings",docId),{
+    status:"deleted",
+    deleteReason:reason || "예약 변경으로 삭제",
+    deletedBy: appState.currentUser?.uid || "system",
+    deletedAt: serverTimestamp()
+  });
+}
+
+async function syncAutoCleanAfterEdit(machineId,beforeBooking,afterState){
+  const beforeAuto=!!beforeBooking.autoClean;
+  const afterAuto=!!afterState.autoClean;
+  const beforeEnd=beforeBooking.start + beforeBooking.duration;
+  const afterEnd=afterState.start + afterState.duration;
+  const anchorChanged=beforeBooking.date!==afterState.date || beforeEnd!==afterEnd;
+  if(beforeAuto){
+    const oldBuffer=findLinkedAutoCleanBooking(machineId,beforeBooking.date,beforeEnd);
+    if(oldBuffer?.docId && (!afterAuto || anchorChanged)){
+      await markBookingDeleted(oldBuffer.docId,"연동 예약 변경");
+    }
+  }
+  if(afterAuto && (!beforeAuto || anchorChanged)){
+    await addSystemBuffer(machineId,afterState.date,afterEnd);
+  }
+}
+
+async function updateExistingBooking({ user, date, start, duration, purpose, autoClean }){
+  const target=appState.bookingEditTarget;
+  if(!target) return false;
+  const { id, docId }=target;
+  const booking=findBookingByDocId(id,docId);
+  if(!booking){
+    showToast("수정할 예약을 찾을 수 없습니다.","warn");
+    return false;
+  }
+  if(!canEditBooking(booking)){
+    showToast("본인 예약만 수정할 수 있습니다.","warn");
+    return false;
+  }
+  if(isWorkerUser() && booking.date===todayISO() && booking.start<=getNowHour()){
+    showToast("이미 시작된 예약은 수정할 수 없습니다.","warn");
+    return false;
+  }
+  if(isOverlap(id,date,start,duration,docId)){
+    showToast("해당 날짜/시간에 예약이 중복됩니다.","warn");
+    return false;
+  }
+  const allowedPurposes=getPurposesForMachine(id);
+  if(allowedPurposes.length && !allowedPurposes.some(p=>p.key===purpose)){
+    showToast("선택한 목적은 해당 장비에 사용할 수 없습니다.","warn");
+    return false;
+  }
+  const userId=isManagerUser() ? (booking.userId || user) : (appState.currentUser.id || appState.currentUser.name || user);
+  await updateBookingDoc(docId,{
+    user,
+    userId,
+    date,
+    start,
+    duration,
+    purpose,
+    autoClean: !!autoClean
+  });
+  await syncAutoCleanAfterEdit(id,booking,{date,start,duration,autoClean: !!autoClean});
+  showToast("예약이 변경되었습니다.","success");
+  addAdminActivity("예약 수정", `${id} ${date} ${formatTime(start)} ${formatTime(start+duration)}`);
+  return true;
+}
+
 async function confirmBooking(){
   try{
     const user=document.getElementById("booking-user").value.trim();
@@ -3037,6 +3202,13 @@ async function confirmBooking(){
     const allowedPurposes = getPurposesForMachine(appState.bookingTarget.id);
     if(allowedPurposes.length && !allowedPurposes.some(p=>p.key===purpose)){
       showToast("선택한 목적은 해당 장비에 사용할 수 없습니다.","warn");
+      return;
+    }
+    if(appState.bookingEditTarget){
+      const ok=await updateExistingBooking({ user, date, start, duration, purpose, autoClean });
+      if(!ok) return;
+      closeModal("booking-modal");
+      refreshAuditHistory(true);
       return;
     }
     const status="confirmed";

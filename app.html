@@ -6,7 +6,7 @@
     <title>장비 예약 관리 시스템 (데모)</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="stylesheet" href="styles.css?v=20260129-45" />
+    <link rel="stylesheet" href="styles.css?v=20260129-46" />
   </head>
   <body>
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
@@ -476,7 +476,7 @@
             <option value="4">4시간</option>
           </select>
         </div>
-        <div class="form-check">
+        <div class="form-check" id="booking-recurring-row">
           <label>
             <input id="booking-recurring" type="checkbox" />
             매주 반복 (4주)
@@ -488,6 +488,7 @@
             작업 종료 후 자동 소독 추가
           </label>
         </div>
+        <p id="booking-edit-note" class="modal-sub booking-edit-note" hidden>수정 모드에서는 반복 예약을 사용할 수 없습니다.</p>
         <div class="btn-group">
           <button class="btn btn-cancel" data-close-modal="booking-modal" type="button">취소</button>
           <button id="btn-save-booking" class="btn btn-save" type="button">예약 저장</button>
@@ -644,7 +645,7 @@
       </div>
     </div>
 
-    <script type="module" src="app.js?v=20260129-45"></script>
+    <script type="module" src="app.js?v=20260129-46"></script>
   </body>
 </html>
 

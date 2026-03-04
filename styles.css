@@ -1245,6 +1245,14 @@ body.login-page {
   overflow: hidden;
 }
 
+.booking-block.can-edit {
+  cursor: pointer;
+}
+
+.booking-block.can-edit:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+}
+
 .booking-delete {
   position: absolute;
   top: 4px;
@@ -1281,10 +1289,33 @@ body.login-page {
 .resize-handle {
   position: absolute;
   top: 0;
-  right: 0;
-  width: 10px;
+  right: -1px;
+  width: 16px;
   height: 100%;
   cursor: col-resize;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.2));
+  touch-action: none;
+  z-index: 5;
+}
+
+.resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.booking-block.resizable {
+  padding-right: 18px;
+}
+
+.booking-block.resizable:hover .resize-handle {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.32));
 }
 
 .empty-slot {
@@ -1332,8 +1363,16 @@ body.role-worker .booking-block.can-drag {
   cursor: grab;
 }
 
-body.role-worker .resize-handle {
-  display: none;
+body.is-resizing .booking-block,
+body.is-resizing .resize-handle {
+  transition: none !important;
+}
+
+.booking-edit-note {
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6c7a89;
 }
 
 .schedule-mobile {
