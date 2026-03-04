@@ -1266,8 +1266,6 @@ function getDashboardLegendItems(){
     const meta=getPurposeMeta(p.key);
     items.push({key:p.key, label:meta.label, color:meta.color});
   });
-  items.push({key:"pending", label:statusMeta.pending.label, color:statusMeta.pending.color});
-  items.push({key:"system", label:statusMeta.system.label, color:statusMeta.system.color});
   const seen=new Set();
   return items.filter(item=>{
     if(seen.has(item.key)) return false;
@@ -2079,7 +2077,7 @@ function renderMap(){
   if(appState.map.selectedMachineId && !bscIds.includes(appState.map.selectedMachineId)){
     appState.map.selectedMachineId=null;
   }
-  const canEdit=canEditMapLayout() && selectedSite?.id;
+  const canEdit=Boolean(canEditMapLayout() && selectedSite?.id);
   if(appState.map.layoutEditMode && !canEdit){
     stopMapLayoutEditMode(true);
   }

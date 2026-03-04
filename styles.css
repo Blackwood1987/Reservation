@@ -617,6 +617,14 @@ body.login-page {
   gap: 6px;
 }
 
+#map-canvas-actions[hidden] {
+  display: none !important;
+}
+
+body:not(.role-admin) #map-canvas-actions {
+  display: none !important;
+}
+
 .btn-map-layout {
   border: 1px solid #ccd8e3;
   border-radius: 7px;
