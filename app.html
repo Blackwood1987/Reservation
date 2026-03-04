@@ -99,9 +99,17 @@
                   </aside>
                   <section class="map-canvas-panel" aria-label="Room 맵">
                     <div class="map-canvas-header">
-                      <strong id="map-canvas-title">Room 배치</strong>
-                      <span id="map-canvas-subtitle"></span>
+                      <div class="map-canvas-title-wrap">
+                        <strong id="map-canvas-title">Room 배치</strong>
+                        <span id="map-canvas-subtitle"></span>
+                      </div>
+                      <div class="map-canvas-actions" id="map-canvas-actions">
+                        <button id="btn-map-layout-toggle" class="btn-map-layout" type="button">배치 편집</button>
+                        <button id="btn-map-layout-cancel" class="btn-map-layout ghost" type="button">취소</button>
+                        <button id="btn-map-layout-save" class="btn-map-layout save" type="button">저장</button>
+                      </div>
                     </div>
+                    <p id="map-layout-warning" class="map-layout-warning" hidden></p>
                     <div class="map-canvas" id="map-canvas"></div>
                   </section>
                 </div>

@@ -64,7 +64,17 @@ const appState = {
   resizeMovedPx:0,resizePreviewDuration:0,resizeValidationOk:true,resizeIntentLocked:false,
   isLiveMode:true,dayModalDate:null,dashboardSidePanel:"status",
   focusMachineId:null,mobileDashboardView:"summary",adminCompact:false,
-  map:{ selectedSiteId:null, selectedRoomId:null, selectedMachineId:null, searchText:"", layoutEditMode:false },
+  map:{
+    selectedSiteId:null,
+    selectedRoomId:null,
+    selectedMachineId:null,
+    searchText:"",
+    layoutEditMode:false,
+    layoutDraft:null,
+    layoutDrag:null,
+    layoutInvalidRoomIds:new Set(),
+    layoutDirty:false
+  },
   mobile:{activePane:"dashboard",layoutMode:"drawer",drawerOpen:false,canReserveNow:false},
   reserveWizard:null
 };
@@ -100,6 +110,8 @@ const focusCache = {
 const RESIZE_INTENT_HIT_PX = 22;
 const RESIZE_CLICK_GUARD_MS = 360;
 const RESIZE_MIN_COMMIT_PX = 5;
+const MAP_LAYOUT_SNAP_PCT = 2;
+const MAP_LAYOUT_MIN_SIZE_PCT = 16;
 
 
 
@@ -292,6 +304,205 @@ function ensureSiteRoomState(){
   machineRoomIds=nextRoomIds;
   syncLocationsFromRooms();
   ensureSiteRoomSelection();
+}
+function canEditMapLayout(){
+  return isAdminUser() && appState.currentView==="dashboard" && !isMobileViewport();
+}
+function getRoomLayoutSnapshot(){
+  const snapshot={};
+  rooms.forEach(room=>{
+    snapshot[room.id]=cloneLayout(room.layout);
+  });
+  return snapshot;
+}
+function startMapLayoutEditMode(){
+  if(!canEditMapLayout()) return;
+  appState.map.searchText="";
+  appState.map.layoutEditMode=true;
+  appState.map.layoutDraft=getRoomLayoutSnapshot();
+  appState.map.layoutInvalidRoomIds=new Set();
+  appState.map.layoutDirty=false;
+  appState.map.layoutDrag=null;
+}
+function stopMapLayoutEditMode(resetDraft=true){
+  appState.map.layoutEditMode=false;
+  appState.map.layoutDrag=null;
+  appState.map.layoutInvalidRoomIds=new Set();
+  appState.map.layoutDirty=false;
+  if(resetDraft){
+    appState.map.layoutDraft=null;
+  }
+  document.body.classList.remove("map-layout-dragging");
+}
+function snapLayoutPercent(value){
+  return Math.round((Number(value)||0)/MAP_LAYOUT_SNAP_PCT)*MAP_LAYOUT_SNAP_PCT;
+}
+function clampRoomLayout(layout){
+  const next=cloneLayout(layout);
+  next.w=Math.max(MAP_LAYOUT_MIN_SIZE_PCT,Math.min(96,next.w));
+  next.h=Math.max(MAP_LAYOUT_MIN_SIZE_PCT,Math.min(96,next.h));
+  next.x=Math.max(0,Math.min(100-next.w,next.x));
+  next.y=Math.max(0,Math.min(100-next.h,next.y));
+  next.x=snapLayoutPercent(next.x);
+  next.y=snapLayoutPercent(next.y);
+  next.w=snapLayoutPercent(next.w);
+  next.h=snapLayoutPercent(next.h);
+  next.w=Math.max(MAP_LAYOUT_MIN_SIZE_PCT,Math.min(100-next.x,next.w));
+  next.h=Math.max(MAP_LAYOUT_MIN_SIZE_PCT,Math.min(100-next.y,next.h));
+  return next;
+}
+function getRoomLayoutForRender(roomId){
+  if(appState.map.layoutEditMode && appState.map.layoutDraft && appState.map.layoutDraft[roomId]){
+    return appState.map.layoutDraft[roomId];
+  }
+  return cloneLayout(getRoomById(roomId)?.layout);
+}
+function collectSiteRoomLayouts(siteId){
+  const result=[];
+  const siteRooms=getRoomsBySite(siteId,{includeInactive:true});
+  siteRooms.forEach(room=>{
+    const layout=getRoomLayoutForRender(room.id);
+    if(!layout) return;
+    result.push({ id:room.id, layout });
+  });
+  return result;
+}
+function isRectOverlap(a,b){
+  return a.x < (b.x+b.w) && (a.x+a.w) > b.x && a.y < (b.y+b.h) && (a.y+a.h) > b.y;
+}
+function getOverlappingRoomIds(siteId){
+  const layouts=collectSiteRoomLayouts(siteId);
+  const overlaps=new Set();
+  for(let i=0;i<layouts.length;i+=1){
+    for(let j=i+1;j<layouts.length;j+=1){
+      if(isRectOverlap(layouts[i].layout,layouts[j].layout)){
+        overlaps.add(layouts[i].id);
+        overlaps.add(layouts[j].id);
+      }
+    }
+  }
+  return overlaps;
+}
+function updateMapLayoutValidationUI(siteId){
+  const warning=document.getElementById("map-layout-warning");
+  if(!appState.map.layoutEditMode || !siteId){
+    if(warning){
+      warning.hidden=true;
+      warning.textContent="";
+    }
+    return;
+  }
+  const overlaps=getOverlappingRoomIds(siteId);
+  appState.map.layoutInvalidRoomIds=overlaps;
+  const hasIssue=overlaps.size>0;
+  if(warning){
+    warning.hidden=!hasIssue;
+    warning.textContent=hasIssue ? "Room 영역이 겹칩니다. 겹침 해소 후 저장하세요." : "";
+  }
+  const saveBtn=document.getElementById("btn-map-layout-save");
+  if(saveBtn){
+    saveBtn.disabled=hasIssue || !appState.map.layoutDirty;
+  }
+  document.querySelectorAll(".map-room-box").forEach(el=>{
+    const id=el.dataset.roomId;
+    el.classList.toggle("layout-overlap",overlaps.has(id));
+  });
+}
+function toggleMapLayoutEditMode(){
+  if(!canEditMapLayout()) return;
+  if(appState.map.layoutEditMode){
+    stopMapLayoutEditMode(true);
+  }else{
+    startMapLayoutEditMode();
+  }
+  renderMap();
+  renderSelectionDetailPanel();
+}
+function cancelMapLayoutEdit(){
+  if(!appState.map.layoutEditMode) return;
+  stopMapLayoutEditMode(true);
+  renderMap();
+}
+async function saveMapLayoutEdit(){
+  if(!appState.map.layoutEditMode || !canEditMapLayout()) return;
+  const selectedSiteId=appState.map.selectedSiteId;
+  const overlaps=getOverlappingRoomIds(selectedSiteId);
+  if(overlaps.size>0){
+    showToast("Room 영역이 겹쳐 저장할 수 없습니다.","warn");
+    updateMapLayoutValidationUI(selectedSiteId);
+    return;
+  }
+  try{
+    rooms=rooms.map(room=>{
+      const draft=appState.map.layoutDraft?.[room.id];
+      if(!draft) return room;
+      return { ...room, layout: clampRoomLayout(draft) };
+    });
+    stopMapLayoutEditMode(true);
+    await saveConfig();
+    renderAll();
+    showToast("Room 배치 좌표를 저장했습니다.","success");
+    addAdminActivity("Room 배치 저장", `${formatDateLabel(getViewDate())} / ${getSiteById(selectedSiteId)?.name || "-"}`);
+  }catch(error){
+    reportAsyncError("saveMapLayoutEdit", error, "Room 배치 저장에 실패했습니다.");
+  }
+}
+function beginMapRoomLayoutDrag(event,roomId,mode){
+  if(!appState.map.layoutEditMode || !canEditMapLayout()) return;
+  const canvas=document.getElementById("map-canvas");
+  if(!canvas) return;
+  const room=getRoomById(roomId);
+  if(!room || room.siteId!==appState.map.selectedSiteId) return;
+  const layout=getRoomLayoutForRender(roomId);
+  if(!layout) return;
+  const rect=canvas.getBoundingClientRect();
+  appState.map.layoutDrag={
+    roomId,
+    mode,
+    startX:event.clientX,
+    startY:event.clientY,
+    canvasRect:rect,
+    origin:cloneLayout(layout)
+  };
+  appState.map.selectedRoomId=roomId;
+  appState.map.selectedMachineId=null;
+  document.body.classList.add("map-layout-dragging");
+  event.preventDefault();
+}
+function handleMapLayoutDragMove(event){
+  const drag=appState.map.layoutDrag;
+  if(!drag || !appState.map.layoutEditMode) return;
+  const draft=appState.map.layoutDraft?.[drag.roomId];
+  if(!draft) return;
+  const dxPct=((event.clientX-drag.startX)/Math.max(1,drag.canvasRect.width))*100;
+  const dyPct=((event.clientY-drag.startY)/Math.max(1,drag.canvasRect.height))*100;
+  let next={...drag.origin};
+  if(drag.mode==="move"){
+    next.x=drag.origin.x+dxPct;
+    next.y=drag.origin.y+dyPct;
+  }else{
+    next.w=drag.origin.w+dxPct;
+    next.h=drag.origin.h+dyPct;
+  }
+  next=clampRoomLayout(next);
+  appState.map.layoutDraft[drag.roomId]=next;
+  appState.map.layoutDirty=true;
+  const box=document.querySelector(`.map-room-box[data-room-id="${drag.roomId}"]`);
+  if(box){
+    box.style.left=`${next.x}%`;
+    box.style.top=`${next.y}%`;
+    box.style.width=`${next.w}%`;
+    box.style.height=`${next.h}%`;
+    const coord=box.querySelector(".map-room-coord");
+    if(coord) coord.textContent=`x:${Math.round(next.x)} y:${Math.round(next.y)} w:${Math.round(next.w)} h:${Math.round(next.h)}`;
+  }
+  updateMapLayoutValidationUI(appState.map.selectedSiteId);
+}
+function handleMapLayoutDragEnd(){
+  if(!appState.map.layoutDrag) return;
+  appState.map.layoutDrag=null;
+  document.body.classList.remove("map-layout-dragging");
+  renderMap();
 }
 function getPurposeMeta(key){
   const found = purposeList.find(p=>p.key===key);
@@ -941,6 +1152,9 @@ async function logout(){
 function switchView(view){
   if(isMobileViewport() && view==="calendar"){
     view="dashboard";
+  }
+  if(view!=="dashboard" && appState.map.layoutEditMode){
+    stopMapLayoutEditMode(true);
   }
   if(view==="admin"&&!can("admin")){alert("접근 권한이 없습니다.");return;}
   if(view!=="dashboard" && view!=="reservation"){
@@ -1778,6 +1992,10 @@ function renderMap(){
   const canvas=document.getElementById("map-canvas");
   const titleEl=document.getElementById("map-canvas-title");
   const subtitleEl=document.getElementById("map-canvas-subtitle");
+  const actionWrap=document.getElementById("map-canvas-actions");
+  const editBtn=document.getElementById("btn-map-layout-toggle");
+  const cancelBtn=document.getElementById("btn-map-layout-cancel");
+  const saveBtn=document.getElementById("btn-map-layout-save");
   const searchInput=document.getElementById("map-search");
   if(!tree || !canvas) return;
 
@@ -1802,6 +2020,27 @@ function renderMap(){
   if(appState.map.selectedMachineId && !bscIds.includes(appState.map.selectedMachineId)){
     appState.map.selectedMachineId=null;
   }
+  const canEdit=canEditMapLayout() && selectedSite?.id;
+  if(appState.map.layoutEditMode && !canEdit){
+    stopMapLayoutEditMode(true);
+  }
+  if(searchInput){
+    searchInput.disabled=appState.map.layoutEditMode;
+  }
+  if(actionWrap){
+    actionWrap.hidden=!canEdit;
+  }
+  if(editBtn){
+    editBtn.textContent=appState.map.layoutEditMode ? "편집 종료" : "배치 편집";
+  }
+  if(cancelBtn){
+    cancelBtn.hidden=!appState.map.layoutEditMode;
+  }
+  if(saveBtn){
+    saveBtn.hidden=!appState.map.layoutEditMode;
+    saveBtn.disabled=!appState.map.layoutDirty;
+  }
+  canvas.classList.toggle("layout-edit-mode",appState.map.layoutEditMode);
 
   tree.innerHTML="";
   for(const site of activeSites){
@@ -1858,7 +2097,7 @@ function renderMap(){
   if(titleEl) titleEl.textContent=selectedSite.name;
   if(subtitleEl){
     const totalRooms=getRoomsBySite(selectedSite.id).length;
-    subtitleEl.textContent=`Room ${totalRooms}개`;
+    subtitleEl.textContent=appState.map.layoutEditMode ? `Room ${totalRooms}개 · 배치 편집중` : `Room ${totalRooms}개`;
   }
   const visibleRooms=getRoomsBySite(selectedSite.id).filter(room=>{
     const ids=getMachinesByRoomId(room.id);
@@ -1872,12 +2111,13 @@ function renderMap(){
     return;
   }
   visibleRooms.forEach((room,index)=>{
+    const layout=getRoomLayoutForRender(room.id);
     const box=document.createElement("section");
-    box.className=`map-room-box ${room.id===appState.map.selectedRoomId?"selected":""}`;
-    box.style.left=`${room.layout.x}%`;
-    box.style.top=`${room.layout.y}%`;
-    box.style.width=`${room.layout.w}%`;
-    box.style.height=`${room.layout.h}%`;
+    box.className=`map-room-box ${room.id===appState.map.selectedRoomId?"selected":""} ${appState.map.layoutEditMode?"editable":""}`;
+    box.style.left=`${layout.x}%`;
+    box.style.top=`${layout.y}%`;
+    box.style.width=`${layout.w}%`;
+    box.style.height=`${layout.h}%`;
     box.dataset.roomId=room.id;
     const allMachineIds=getMachinesByRoomId(room.id);
     const machineIds=getMatchedRoomMachineIds(room,allMachineIds,query,selectedSite);
@@ -1890,6 +2130,13 @@ function renderMap(){
       renderMap();
       renderSelectionDetailPanel();
     });
+    if(appState.map.layoutEditMode){
+      box.addEventListener("mousedown",event=>{
+        if(event.button!==0) return;
+        if(event.target.closest(".map-room-resize-handle")) return;
+        beginMapRoomLayoutDrag(event,room.id,"move");
+      });
+    }
 
     const machineWrap=document.createElement("div");
     machineWrap.className="map-room-machines";
@@ -1913,15 +2160,34 @@ function renderMap(){
       button.addEventListener("mouseleave",hideTooltip);
       machineWrap.appendChild(button);
     });
+    if(appState.map.layoutEditMode){
+      machineWrap.classList.add("disabled");
+    }
     if(!machineWrap.childElementCount){
       const empty=document.createElement("span");
       empty.className="map-empty-inline";
       empty.textContent="표시할 장비 없음";
       machineWrap.appendChild(empty);
     }
+    if(appState.map.layoutEditMode){
+      const coord=document.createElement("span");
+      coord.className="map-room-coord";
+      coord.textContent=`x:${Math.round(layout.x)} y:${Math.round(layout.y)} w:${Math.round(layout.w)} h:${Math.round(layout.h)}`;
+      box.appendChild(coord);
+      const handle=document.createElement("button");
+      handle.type="button";
+      handle.className="map-room-resize-handle";
+      handle.setAttribute("aria-label","Room 크기 조절");
+      handle.addEventListener("mousedown",event=>{
+        if(event.button!==0) return;
+        beginMapRoomLayoutDrag(event,room.id,"resize");
+      });
+      box.appendChild(handle);
+    }
     box.appendChild(machineWrap);
     canvas.appendChild(box);
   });
+  updateMapLayoutValidationUI(selectedSite.id);
 }
 
 function getMatchedRoomMachineIds(room,machineIds,query,site){
@@ -4717,6 +4983,9 @@ function bindEvents(){
   on("schedule-my-only","change",renderSchedule);
   on("btn-schedule-filter-reset","click",resetScheduleFilters);
   on("room-site-filter","change",renderRoomTable);
+  on("btn-map-layout-toggle","click",toggleMapLayoutEditMode);
+  on("btn-map-layout-cancel","click",cancelMapLayoutEdit);
+  on("btn-map-layout-save","click",saveMapLayoutEdit);
   on("map-search","input",e=>{
     appState.map.searchText=(e.target.value || "").trim();
     renderMap();
@@ -4774,9 +5043,14 @@ function bindEvents(){
   });
   document.addEventListener("mousemove",handleResizeMove);
   document.addEventListener("mouseup",handleResizeEnd);
+  document.addEventListener("mousemove",handleMapLayoutDragMove);
+  document.addEventListener("mouseup",handleMapLayoutDragEnd);
   window.addEventListener("blur",()=>{
     if(appState.isResizing){
       handleResizeEnd({ clientX: appState.resizeStartX });
+    }
+    if(appState.map.layoutDrag){
+      handleMapLayoutDragEnd();
     }else{
       appState.resizeIntentLocked=false;
     }
