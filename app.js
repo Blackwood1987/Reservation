@@ -2643,7 +2643,9 @@ function renderTimeline(container,date){
   container.innerHTML="";
   container.appendChild(createTimelineShade("past"));
   container.appendChild(createTimelineShade("future"));
-  for(const id of bscIds){
+  for(const rawId of bscIds){
+    const id=String(rawId||"").trim();
+    if(!id) continue;
     const row=document.createElement("div");row.className="timeline-row";
     row.dataset.machineId=id;
     const label=document.createElement("div");label.className="tl-label";label.textContent=id;

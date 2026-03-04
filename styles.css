@@ -1001,6 +1001,10 @@ body.map-layout-dragging * {
   overflow-y: scroll;
   overflow-x: hidden;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 2px;
 }
 
 .timeline-shade {
@@ -1023,10 +1027,11 @@ body.map-layout-dragging * {
   display: flex;
   align-items: center;
   height: 24px;
-  margin-bottom: 4px;
+  margin-bottom: 0;
   position: relative;
   z-index: 3;
   transition: opacity 0.12s ease;
+  flex: 0 0 auto;
 }
 
 .tl-label {
