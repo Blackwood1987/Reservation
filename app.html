@@ -85,12 +85,26 @@
               <div class="card-header">
                 <div>
                   <h3 id="dashboard-title" class="card-title">룸 맵</h3>
-                  <p class="card-sub">장비 클릭 시 상태 확인</p>
+                  <p class="card-sub">Site/Room 선택 후 장비 상태 확인</p>
                 </div>
                 <div class="card-meta" id="map-time-label">기준 시각: --:--</div>
               </div>
               <div class="map-wrapper" id="map-wrapper" role="img" aria-label="장비 상태 맵">
-                <div class="map-grid" id="map-grid"></div>
+                <div class="map-split" id="map-split">
+                  <aside class="map-tree-panel" aria-label="Site/Room 탐색">
+                    <div class="map-tree-tools">
+                      <input id="map-search" type="text" placeholder="Site/Room/장비 검색" />
+                    </div>
+                    <div class="map-site-list" id="map-site-list"></div>
+                  </aside>
+                  <section class="map-canvas-panel" aria-label="Room 맵">
+                    <div class="map-canvas-header">
+                      <strong id="map-canvas-title">Room 배치</strong>
+                      <span id="map-canvas-subtitle"></span>
+                    </div>
+                    <div class="map-canvas" id="map-canvas"></div>
+                  </section>
+                </div>
                 <div class="tooltip" id="map-tooltip" role="status"></div>
               </div>
             </article>
@@ -117,28 +131,12 @@
           </div>
 
           <aside class="right-panel">
-            <div class="dashboard-side-tabs" role="tablist" aria-label="우측 패널 전환">
-              <button class="side-tab-btn" data-side-panel="status" type="button" role="tab" aria-selected="true">장비 상태</button>
-              <button class="side-tab-btn" data-side-panel="chart" type="button" role="tab" aria-selected="false">가동 분석</button>
-            </div>
-
-            <article class="card chart-card side-panel-card" id="side-panel-chart">
+            <article class="card detail-card" id="side-panel-detail">
               <div class="card-header">
-                <h3 class="card-title">가동 분석</h3>
-                <div class="card-meta" id="chart-date-label"></div>
+                <h3 class="card-title">선택 대상 상세</h3>
+                <div class="card-meta" id="detail-date-label"></div>
               </div>
-              <div class="chart-wrap">
-                <svg id="donut-chart" viewBox="0 0 42 42" class="donut-chart" aria-label="가동률 도넛 차트"></svg>
-              </div>
-              <div id="chart-legend" class="chart-legend"></div>
-            </article>
-
-            <article class="card status-card side-panel-card" id="side-panel-status">
-              <div class="card-header">
-                <h3 class="card-title">장비 상태 목록</h3>
-                <div class="card-meta" id="status-date-label"></div>
-              </div>
-              <div id="status-list" class="status-list"></div>
+              <div id="detail-panel-body" class="detail-panel-body"></div>
             </article>
           </aside>
         </div>
@@ -267,22 +265,48 @@
 
             <section id="admin-locations" class="admin-section">
               <div class="card-header">
-                <h3 class="card-title">장소 목록</h3>
+                <h3 class="card-title">Site / Room 관리</h3>
                 <div class="admin-header-actions">
                   <button id="btn-location-maintenance" class="btn-time-reset warning" type="button">+ 장소 유지보수 예약</button>
-                  <button id="btn-create-location" class="btn-time-reset success" type="button">+ 장소 등록</button>
+                  <button id="btn-create-site" class="btn-time-reset success" type="button">+ Site 등록</button>
+                  <button id="btn-create-room" class="btn-time-reset success" type="button">+ Room 등록</button>
                 </div>
+              </div>
+              <div class="admin-subhead">Site 목록</div>
+              <div class="admin-table-wrap compact">
+                <table class="user-table">
+                  <thead>
+                    <tr>
+                      <th>Site ID</th>
+                      <th>Site명</th>
+                      <th>Room 수</th>
+                      <th>상태</th>
+                      <th>관리</th>
+                    </tr>
+                  </thead>
+                  <tbody id="site-table-body"></tbody>
+                </table>
+              </div>
+              <div class="admin-subhead">Room 목록</div>
+              <div class="admin-header-actions room-filter-row">
+                <label class="schedule-filter inline">
+                  <span>Site</span>
+                  <select id="room-site-filter"></select>
+                </label>
               </div>
               <div class="admin-table-wrap">
                 <table class="user-table">
                   <thead>
                     <tr>
-                      <th>&#xC7A5;&#xC18C;&#xBA85;</th>
+                      <th>Room명</th>
+                      <th>Site</th>
                       <th>&#xC7A5;&#xBE44; &#xC218;</th>
+                      <th>좌표(x,y,w,h)</th>
+                      <th>상태</th>
                       <th>&#xAD00;&#xB9AC;</th>
                     </tr>
                   </thead>
-                  <tbody id="location-table-body"></tbody>
+                  <tbody id="room-table-body"></tbody>
                 </table>
               </div>
             </section>
@@ -629,17 +653,55 @@
       </div>
     </div>
 
-    <div id="location-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="location-modal-title">
+    <div id="site-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="site-modal-title">
       <div class="modal">
-        <h3 id="location-modal-title" class="modal-title">장소 등록</h3>
-        <input id="location-original-name" type="hidden" />
+        <h3 id="site-modal-title" class="modal-title">Site 등록</h3>
+        <input id="site-original-id" type="hidden" />
         <div class="form-group">
-          <label for="location-name">장소명</label>
-          <input id="location-name" type="text" placeholder="예: Room C" />
+          <label for="site-id">Site ID</label>
+          <input id="site-id" type="text" placeholder="예: site-m2" />
+        </div>
+        <div class="form-group">
+          <label for="site-name">Site명</label>
+          <input id="site-name" type="text" placeholder="예: M2 Site" />
+        </div>
+        <div class="form-check inline">
+          <label><input id="site-active" type="checkbox" checked />활성</label>
         </div>
         <div class="btn-group">
-          <button class="btn btn-cancel" data-close-modal="location-modal" type="button">취소</button>
-          <button id="btn-save-location" class="btn btn-save" type="button">저장</button>
+          <button class="btn btn-cancel" data-close-modal="site-modal" type="button">취소</button>
+          <button id="btn-save-site" class="btn btn-save" type="button">저장</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="room-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="room-modal-title">
+      <div class="modal">
+        <h3 id="room-modal-title" class="modal-title">Room 등록</h3>
+        <input id="room-original-id" type="hidden" />
+        <div class="form-group">
+          <label for="room-name">Room명</label>
+          <input id="room-name" type="text" placeholder="예: M2-301" />
+        </div>
+        <div class="form-group">
+          <label for="room-site">Site</label>
+          <select id="room-site"></select>
+        </div>
+        <div class="form-check inline">
+          <label><input id="room-active" type="checkbox" checked />활성</label>
+        </div>
+        <div class="form-group">
+          <label>배치 좌표 (%)</label>
+          <div class="layout-input-grid">
+            <label>X<input id="room-layout-x" type="number" min="0" max="100" step="1" /></label>
+            <label>Y<input id="room-layout-y" type="number" min="0" max="100" step="1" /></label>
+            <label>W<input id="room-layout-w" type="number" min="10" max="100" step="1" /></label>
+            <label>H<input id="room-layout-h" type="number" min="10" max="100" step="1" /></label>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-cancel" data-close-modal="room-modal" type="button">취소</button>
+          <button id="btn-save-room" class="btn btn-save" type="button">저장</button>
         </div>
       </div>
     </div>
@@ -657,11 +719,12 @@
           <input id="machine-mgmt" type="text" placeholder="&#xC608;: EQ-2026-001" />
         </div>
         <div class="form-group">
-          <label for="machine-location">&#xC7A5;&#xC18C;</label>
-          <select id="machine-location">
-            <option value="Room A">Room A</option>
-            <option value="Room B">Room B</option>
-          </select>
+          <label for="machine-site">Site</label>
+          <select id="machine-site"></select>
+        </div>
+        <div class="form-group">
+          <label for="machine-room">Room</label>
+          <select id="machine-room"></select>
         </div>
         <div class="form-group">
           <label for="machine-desc">&#xC124;&#xBA85;</label>
@@ -694,7 +757,7 @@
       </div>
     </div>
 
-    <script type="module" src="app.js?v=20260129-49"></script>
+    <script type="module" src="app.js?v=20260304-50"></script>
   </body>
 </html>
 

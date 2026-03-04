@@ -21,6 +21,15 @@ let locations = ["Room A","Room B"];
 let machineLocations = {"A-01":"Room A","A-02":"Room A","A-03":"Room A","A-04":"Room A","B-01":"Room B","B-02":"Room B","B-03":"Room B","B-04":"Room B"};
 let machineMgmtNos = {"A-01":"EQ-001","A-02":"EQ-002","A-03":"EQ-003","A-04":"EQ-004","B-01":"EQ-005","B-02":"EQ-006","B-03":"EQ-007","B-04":"EQ-008"};
 let machineDescs = {"A-01":"Class II cabinet","A-02":"Class II cabinet","A-03":"Service unit","A-04":"Service unit","B-01":"Process station","B-02":"Monitoring station","B-03":"Process station","B-04":"Cleaning station"};
+let sites = [{ id: "site-default", name: "기본 Site", order: 1, active: true }];
+let rooms = [
+  { id: "room-a", siteId: "site-default", name: "Room A", order: 1, active: true, layout: { x: 4, y: 6, w: 44, h: 40 } },
+  { id: "room-b", siteId: "site-default", name: "Room B", order: 2, active: true, layout: { x: 52, y: 6, w: 44, h: 40 } }
+];
+let machineRoomIds = {
+  "A-01": "room-a", "A-02": "room-a", "A-03": "room-a", "A-04": "room-a",
+  "B-01": "room-b", "B-02": "room-b", "B-03": "room-b", "B-04": "room-b"
+};
 
 const statusMeta = {
   free:{label:"사용 가능",color:"var(--status-free)",tile:"tile-free"},
@@ -55,6 +64,7 @@ const appState = {
   resizeMovedPx:0,resizePreviewDuration:0,resizeValidationOk:true,resizeIntentLocked:false,
   isLiveMode:true,dayModalDate:null,dashboardSidePanel:"status",
   focusMachineId:null,mobileDashboardView:"summary",adminCompact:false,
+  map:{ selectedSiteId:null, selectedRoomId:null, selectedMachineId:null, searchText:"", layoutEditMode:false },
   mobile:{activePane:"dashboard",layoutMode:"drawer",drawerOpen:false,canReserveNow:false},
   reserveWizard:null
 };
@@ -68,7 +78,7 @@ const bookings = Object.fromEntries(bscIds.map(id=>[id,[]]));
 let bookingsUnsub = null;
 let configUnsub = null;
 let clockTicker = null;
-const configState = { loaded: false, exists: false };
+const configState = { loaded: false, exists: false, needsMigrationSave: false, migrationNotified: false };
 let bookingsQueryKey = "";
 let usersFetchedAt = 0;
 let usersFetchPromise = null;
@@ -119,6 +129,170 @@ function getViewDate(){return appState.currentDate;}
 function getMachineLocation(id){return machineLocations[id]||locations[0];}
 function getMachineMgmtNo(id){return machineMgmtNos[id]||"";}
 function getMachineDesc(id){return machineDescs[id]||"";}
+function makeSafeId(value,prefix){
+  const base=String(value||"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+  const safe=base || `${prefix}-${Math.random().toString(36).slice(2,8)}`;
+  return safe.startsWith(prefix) ? safe : `${prefix}-${safe}`;
+}
+function cloneLayout(layout){
+  return {
+    x:Number(layout?.x) || 0,
+    y:Number(layout?.y) || 0,
+    w:Number(layout?.w) || 30,
+    h:Number(layout?.h) || 28
+  };
+}
+function sortByOrderThenName(list){
+  return [...list].sort((a,b)=>{
+    const ao=Number(a.order)||0;
+    const bo=Number(b.order)||0;
+    if(ao!==bo) return ao-bo;
+    return String(a.name||"").localeCompare(String(b.name||""));
+  });
+}
+function normalizeRoomLayout(layout,index,total){
+  const cols=Math.max(1,Math.ceil(Math.sqrt(Math.max(1,total))));
+  const row=Math.floor(index/cols);
+  const col=index%cols;
+  const gap=3;
+  const baseW=(100-gap*(cols+1))/cols;
+  const rowsCount=Math.ceil(total/cols);
+  const baseH=(100-gap*(rowsCount+1))/rowsCount;
+  const fallback={ x:gap+col*(baseW+gap), y:gap+row*(baseH+gap), w:baseW, h:baseH };
+  const merged={...fallback,...cloneLayout(layout)};
+  merged.w=Math.max(18,Math.min(96,merged.w));
+  merged.h=Math.max(18,Math.min(96,merged.h));
+  merged.x=Math.max(0,Math.min(100-merged.w,merged.x));
+  merged.y=Math.max(0,Math.min(100-merged.h,merged.y));
+  return merged;
+}
+function assignAutoRoomLayouts(roomList){
+  const grouped={};
+  for(const room of roomList){
+    const siteId=room.siteId || "site-default";
+    if(!grouped[siteId]) grouped[siteId]=[];
+    grouped[siteId].push(room);
+  }
+  Object.values(grouped).forEach(siteRooms=>{
+    const sorted=sortByOrderThenName(siteRooms);
+    sorted.forEach((room,index)=>{
+      room.layout=normalizeRoomLayout(room.layout,index,sorted.length);
+    });
+  });
+}
+function getActiveSites(){
+  const active=sites.filter(site=>site.active!==false);
+  return sortByOrderThenName(active);
+}
+function getSiteById(siteId){
+  return sites.find(site=>site.id===siteId) || null;
+}
+function getRoomsBySite(siteId,{ includeInactive=false } = {}){
+  const list=rooms.filter(room=>room.siteId===siteId && (includeInactive || room.active!==false));
+  return sortByOrderThenName(list);
+}
+function getRoomById(roomId){
+  return rooms.find(room=>room.id===roomId) || null;
+}
+function getMachineRoomId(machineId){
+  return machineRoomIds[machineId] || null;
+}
+function getMachineRoom(machineId){
+  const roomId=getMachineRoomId(machineId);
+  return roomId ? getRoomById(roomId) : null;
+}
+function getMachineSite(machineId){
+  const room=getMachineRoom(machineId);
+  return room ? getSiteById(room.siteId) : null;
+}
+function getMachineDisplayPath(machineId){
+  const room=getMachineRoom(machineId);
+  if(!room) return getMachineLocation(machineId);
+  const site=getSiteById(room.siteId);
+  if(!site) return room.name;
+  return `${site.name} / ${room.name}`;
+}
+function getMachinesByRoomId(roomId){
+  return bscIds.filter(id=>getMachineRoomId(id)===roomId);
+}
+function syncLocationsFromRooms(){
+  const names=sortByOrderThenName(rooms).map(room=>room.name);
+  locations=names.length ? names : ["Room A"];
+}
+function buildRoomsFromLocations(locationList,siteId){
+  const unique=[...new Set((locationList||[]).map(name=>String(name||"").trim()).filter(Boolean))];
+  const rows=unique.length ? unique : ["Room A"];
+  return rows.map((name,index)=>({
+    id: makeSafeId(name,"room"),
+    siteId,
+    name,
+    order:index+1,
+    active:true,
+    layout:{ x:0, y:0, w:30, h:28 }
+  }));
+}
+function ensureSiteRoomSelection(){
+  const activeSites=getActiveSites();
+  const selectedSite=activeSites.find(site=>site.id===appState.map.selectedSiteId) || activeSites[0] || null;
+  appState.map.selectedSiteId=selectedSite?.id || null;
+  const roomCandidates=selectedSite ? getRoomsBySite(selectedSite.id) : [];
+  const selectedRoom=roomCandidates.find(room=>room.id===appState.map.selectedRoomId) || roomCandidates[0] || null;
+  appState.map.selectedRoomId=selectedRoom?.id || null;
+  if(appState.map.selectedMachineId && !bscIds.includes(appState.map.selectedMachineId)){
+    appState.map.selectedMachineId=null;
+  }
+}
+function applyLegacyMigrationData(data){
+  const siteId="site-default";
+  const legacyLocations=Array.isArray(data?.locations) && data.locations.length ? data.locations : locations;
+  sites=[{ id: siteId, name: "기본 Site", order: 1, active: true }];
+  rooms=buildRoomsFromLocations(legacyLocations,siteId);
+  assignAutoRoomLayouts(rooms);
+  const roomByName=new Map(rooms.map(room=>[room.name,room.id]));
+  const nextRoomIds={};
+  for(const id of bscIds){
+    const legacyName=(data?.machines && data.machines[id]?.location) || machineLocations[id] || rooms[0]?.name;
+    const roomId=roomByName.get(legacyName) || rooms[0]?.id || null;
+    if(roomId) nextRoomIds[id]=roomId;
+    machineLocations[id]=getRoomById(roomId)?.name || legacyName;
+  }
+  machineRoomIds=nextRoomIds;
+  syncLocationsFromRooms();
+  configState.needsMigrationSave=true;
+  if(!configState.migrationNotified){
+    configState.migrationNotified=true;
+    showToast("장소 데이터가 Site/Room 구조로 자동 변환되었습니다.","info");
+  }
+}
+function ensureSiteRoomState(){
+  if(!Array.isArray(sites) || sites.length===0){
+    sites=[{ id: "site-default", name: "기본 Site", order: 1, active: true }];
+  }
+  if(!Array.isArray(rooms) || rooms.length===0){
+    rooms=buildRoomsFromLocations(locations,sites[0].id);
+  }
+  assignAutoRoomLayouts(rooms);
+  const validRoomIds=new Set(rooms.map(room=>room.id));
+  const nextRoomIds={};
+  const roomByName=new Map(rooms.map(room=>[room.name,room.id]));
+  for(const id of bscIds){
+    const existing=machineRoomIds[id];
+    if(existing && validRoomIds.has(existing)){
+      nextRoomIds[id]=existing;
+      machineLocations[id]=getRoomById(existing)?.name || machineLocations[id];
+      continue;
+    }
+    const fromName=machineLocations[id];
+    const roomId=roomByName.get(fromName) || rooms[0]?.id || null;
+    if(roomId){
+      nextRoomIds[id]=roomId;
+      machineLocations[id]=getRoomById(roomId)?.name || fromName;
+    }
+  }
+  machineRoomIds=nextRoomIds;
+  syncLocationsFromRooms();
+  ensureSiteRoomSelection();
+}
 function getPurposeMeta(key){
   const found = purposeList.find(p=>p.key===key);
   const base = statusMeta[key] || statusMeta.other;
@@ -153,21 +327,43 @@ function renderPurposeOptions(machineId){
   if(current && options.some(p=>p.key===current)) sel.value=current;
 }
 function renderLocationOptions(){
-  const sel=document.getElementById("machine-location");
-  if(!sel) return;
-  const current=sel.value;
-  sel.innerHTML=locations.map(loc=>`<option value="${loc}">${loc}</option>`).join("");
-  if(current && locations.includes(current)) sel.value=current;
+  ensureSiteRoomState();
+  const siteSel=document.getElementById("machine-site");
+  const roomSel=document.getElementById("machine-room");
+  if(!siteSel || !roomSel) return;
+  const currentSite=siteSel.value;
+  const siteOptions=sortByOrderThenName(sites);
+  siteSel.innerHTML=siteOptions.map(site=>`<option value="${site.id}">${site.name}</option>`).join("");
+  if(!siteOptions.length){
+    roomSel.innerHTML='<option value="">Room 없음</option>';
+    return;
+  }
+  const siteId=siteOptions.some(site=>site.id===currentSite) ? currentSite : siteOptions[0].id;
+  siteSel.value=siteId;
+  const currentRoom=roomSel.value;
+  const roomOptions=getRoomsBySite(siteId,{includeInactive:true});
+  roomSel.innerHTML=roomOptions.map(room=>`<option value="${room.id}">${room.name}</option>`).join("");
+  if(!roomOptions.length){
+    roomSel.innerHTML='<option value="">Room 없음</option>';
+    return;
+  }
+  roomSel.value=roomOptions.some(room=>room.id===currentRoom) ? currentRoom : roomOptions[0].id;
 }
 function ensureBookingBuckets(){
   for(const id of bscIds){if(!bookings[id]) bookings[id]=[];}
   for(const key of Object.keys(bookings)){if(!bscIds.includes(key)) delete bookings[key];}
+  ensureSiteRoomState();
 }
 
 function buildMachinesMap(){
+  ensureSiteRoomState();
   const map = {};
   for(const id of bscIds){
+    const roomId=getMachineRoomId(id);
+    const room=getRoomById(roomId);
     map[id] = {
+      roomId: roomId || null,
+      siteId: room?.siteId || null,
       location: getMachineLocation(id),
       mgmtNo: getMachineMgmtNo(id),
       desc: getMachineDesc(id)
@@ -177,7 +373,23 @@ function buildMachinesMap(){
 }
 
 function buildConfigPayload(){
+  ensureSiteRoomState();
   return {
+    configVersion: 2,
+    sites: sites.map(site=>({
+      id: site.id,
+      name: site.name,
+      order: Number(site.order) || 0,
+      active: site.active!==false
+    })),
+    rooms: rooms.map(room=>({
+      id: room.id,
+      siteId: room.siteId,
+      name: room.name,
+      order: Number(room.order) || 0,
+      active: room.active!==false,
+      layout: cloneLayout(room.layout)
+    })),
     locations: [...locations],
     machines: buildMachinesMap(),
     machineOrder: [...bscIds],
@@ -191,6 +403,7 @@ function buildConfigPayload(){
 }
 
 function applyConfigData(data){
+  configState.needsMigrationSave = false;
   if(Array.isArray(data.locations) && data.locations.length){
     locations = [...data.locations];
   }
@@ -203,6 +416,28 @@ function applyConfigData(data){
   }else{
     purposeList = [...defaultPurposeList];
   }
+  if(Array.isArray(data.sites) && data.sites.length){
+    sites = data.sites.map((site,index)=>({
+      id: String(site.id || makeSafeId(site.name || `site-${index+1}`,"site")),
+      name: String(site.name || `Site ${index+1}`),
+      order: Number(site.order) || index+1,
+      active: site.active!==false
+    }));
+  }else{
+    sites = [{ id: "site-default", name: "기본 Site", order: 1, active: true }];
+  }
+  if(Array.isArray(data.rooms) && data.rooms.length){
+    rooms = data.rooms.map((room,index)=>({
+      id: String(room.id || makeSafeId(room.name || `room-${index+1}`,"room")),
+      siteId: String(room.siteId || sites[0]?.id || "site-default"),
+      name: String(room.name || `Room ${index+1}`),
+      order: Number(room.order) || index+1,
+      active: room.active!==false,
+      layout: cloneLayout(room.layout)
+    }));
+  }else{
+    applyLegacyMigrationData(data);
+  }
   if(data.machines && typeof data.machines === "object"){
     const order = Array.isArray(data.machineOrder) ? data.machineOrder : Object.keys(data.machines);
     const nextIds = order.filter(id=>data.machines[id]);
@@ -210,16 +445,28 @@ function applyConfigData(data){
     const nextLocations = {};
     const nextMgmt = {};
     const nextDescs = {};
+    const nextRoomIds = {};
+    const roomNameToId=new Map(rooms.map(room=>[room.name,room.id]));
     for(const id of bscIds){
       const entry = data.machines[id] || {};
-      nextLocations[id] = entry.location || locations[0];
+      const entryRoomId=String(entry.roomId || "");
+      const resolvedRoomId=getRoomById(entryRoomId)
+        ? entryRoomId
+        : (entry.location ? roomNameToId.get(entry.location) : null);
+      if(resolvedRoomId){
+        nextRoomIds[id]=resolvedRoomId;
+      }
+      const roomName=getRoomById(resolvedRoomId)?.name || entry.location || locations[0] || "Room A";
+      nextLocations[id] = roomName;
       nextMgmt[id] = entry.mgmtNo || "";
       nextDescs[id] = entry.desc || "";
     }
     machineLocations = nextLocations;
     machineMgmtNos = nextMgmt;
     machineDescs = nextDescs;
+    machineRoomIds = nextRoomIds;
   }
+  ensureSiteRoomState();
   configState.loaded = true;
   configState.exists = true;
   ensureBookingBuckets();
@@ -229,7 +476,12 @@ function applyConfigData(data){
 function handleConfigMissing(){
   configState.loaded = true;
   configState.exists = false;
+  configState.needsMigrationSave = false;
   purposeList = [...defaultPurposeList];
+  sites=[{ id: "site-default", name: "기본 Site", order: 1, active: true }];
+  rooms=buildRoomsFromLocations(locations,sites[0].id);
+  assignAutoRoomLayouts(rooms);
+  machineRoomIds={};
   ensureBookingBuckets();
   renderAll();
 }
@@ -244,11 +496,16 @@ function subscribeConfig(){
 
 async function ensureConfigDoc(){
   if(!can("admin")) return;
-  if(configState.loaded && configState.exists) return;
   try{
     const snap = await getDoc(configRef);
     if(!snap.exists()){
       await setDoc(configRef, buildConfigPayload());
+      configState.needsMigrationSave=false;
+      return;
+    }
+    if(configState.needsMigrationSave){
+      await setDoc(configRef, buildConfigPayload(), { merge: true });
+      configState.needsMigrationSave=false;
     }
   }catch(error){
     reportAsyncError("ensureConfigDoc", error, "설정 초기화에 실패했습니다.");
@@ -1024,8 +1281,6 @@ function renderDashboardMobileView(){
   section.classList.toggle("worker-mobile-compact",workerMobile);
   if(workerMobile){
     appState.mobileDashboardView="map";
-    appState.dashboardSidePanel="status";
-    renderDashboardSidePanel();
   }else if(isMobile){
     section.classList.add(`mobile-view-${appState.mobileDashboardView}`);
   }
@@ -1204,16 +1459,19 @@ function getAdminFilterConfig(view){
       ]
     },
     locations:{
-      placeholder:"장소명 검색",
+      placeholder:"Site/Room 검색",
       statuses:[
         {value:"all",label:"상태 전체"},
+        {value:"active",label:"활성 Room"},
+        {value:"inactive",label:"비활성 Room"},
         {value:"used",label:"장비 배정됨"},
         {value:"empty",label:"장비 없음"}
       ],
       sorts:[
         {value:"default",label:"기본순"},
-        {value:"name-asc",label:"이름 오름차순"},
-        {value:"name-desc",label:"이름 내림차순"},
+        {value:"site-asc",label:"Site 오름차순"},
+        {value:"name-asc",label:"Room 오름차순"},
+        {value:"name-desc",label:"Room 내림차순"},
         {value:"count-desc",label:"장비 수 많은순"}
       ]
     },
@@ -1322,7 +1580,12 @@ function renderActiveAdminSection(view=getActiveAdminView()){
     else refreshUsersFromDb();
     return;
   }
-  if(view==="locations"){renderLocationTable(); return;}
+  if(view==="locations"){
+    renderSiteTable();
+    renderRoomSiteFilterOptions();
+    renderRoomTable();
+    return;
+  }
   if(view==="machines"){renderMachineTable(); return;}
   if(view==="purposes"){renderPurposeTable(); return;}
   if(view==="audit"){
@@ -1451,12 +1714,13 @@ function getDashboardSummaryStats(){
     );
     upcoming+=nextBookings.length;
   }
-  const issues=getPendingBookings(date).length;
+  const total=bscIds.length;
+  const utilization=total ? Math.round((running/total)*100) : 0;
   return {
-    total:bscIds.length,
+    total,
     running,
     upcoming,
-    issues
+    utilization
   };
 }
 
@@ -1467,8 +1731,8 @@ function renderDashboardSummary(){
   container.innerHTML=
     `<div class="summary-item"><div class="summary-label">전체 장비</div><div class="summary-value">${stats.total}</div><div class="summary-sub">등록 장비 수</div></div>`+
     `<div class="summary-item"><div class="summary-label">가동중</div><div class="summary-value">${stats.running}</div><div class="summary-sub">현재 시각 기준</div></div>`+
-    `<div class="summary-item"><div class="summary-label">예약 예정</div><div class="summary-value">${stats.upcoming}</div><div class="summary-sub">${formatDateLabel(getViewDate())}</div></div>`+
-    `<div class="summary-item"><div class="summary-label">이슈</div><div class="summary-value">${stats.issues}</div><div class="summary-sub">승인 대기 건수</div></div>`;
+    `<div class="summary-item"><div class="summary-label">가동률</div><div class="summary-value">${stats.utilization}%</div><div class="summary-sub">${stats.running}/${stats.total}대</div></div>`+
+    `<div class="summary-item"><div class="summary-label">예약 예정</div><div class="summary-value">${stats.upcoming}</div><div class="summary-sub">${formatDateLabel(getViewDate())}</div></div>`;
 }
 
 function renderDashboardLegend(){
@@ -1484,20 +1748,18 @@ function renderDateLabels(){
   document.getElementById("reservation-date-label").textContent=label;
   const modeLabel=appState.isLiveMode ? "라이브" : "조회";
   document.getElementById("timeline-date-label").textContent=`${label} · ${modeLabel} ${formatTime(appState.currentHour)}`;
-  document.getElementById("chart-date-label").textContent=label;
-  document.getElementById("status-date-label").textContent=label;
+  const detailLabel=document.getElementById("detail-date-label");
+  if(detailLabel) detailLabel.textContent=label;
 }
 
 function renderDashboard(){
   renderDashboardSummary();
   renderDashboardLegend();
-  renderDashboardSidePanel();
   renderDashboardMobileView();
   renderTimeLabels();
   renderMap();
   renderTimeline(document.getElementById("timeline-body"),getViewDate());
-  renderStatusList();
-  renderChart();
+  renderSelectionDetailPanel();
   rebuildFocusCache();
   applyMachineFocus();
   renderMobileShell();
@@ -1511,38 +1773,171 @@ function renderTimeLabels(){
   syncLiveModeUI();
 }
 function renderMap(){
-  const grid=document.getElementById("map-grid");
-  grid.innerHTML="";
-  for(const loc of locations){
-    const ids=bscIds.filter(id=>getMachineLocation(id)===loc);
-    if(ids.length===0) continue;
-    const group=document.createElement("section");
-    group.className="location-group";
-    const title=document.createElement("h4");
-    title.className="location-title";
-    title.textContent=loc;
-    const locGrid=document.createElement("div");
-    locGrid.className="location-grid";
-    for(const id of ids){
+  ensureSiteRoomState();
+  const tree=document.getElementById("map-site-list");
+  const canvas=document.getElementById("map-canvas");
+  const titleEl=document.getElementById("map-canvas-title");
+  const subtitleEl=document.getElementById("map-canvas-subtitle");
+  const searchInput=document.getElementById("map-search");
+  if(!tree || !canvas) return;
+
+  const query=(appState.map.searchText || "").trim().toLowerCase();
+  if(searchInput && searchInput.value !== appState.map.searchText){
+    searchInput.value=appState.map.searchText;
+  }
+  const activeSites=getActiveSites();
+  if(!activeSites.length){
+    tree.innerHTML='<p class="map-empty-text">활성 Site가 없습니다.</p>';
+    canvas.innerHTML='<p class="map-empty-text">표시할 Room이 없습니다.</p>';
+    if(titleEl) titleEl.textContent="Room 배치";
+    if(subtitleEl) subtitleEl.textContent="";
+    return;
+  }
+
+  const selectedSite=activeSites.find(site=>site.id===appState.map.selectedSiteId) || activeSites[0];
+  appState.map.selectedSiteId=selectedSite.id;
+  const siteRooms=getRoomsBySite(selectedSite.id);
+  const selectedRoom=siteRooms.find(room=>room.id===appState.map.selectedRoomId) || siteRooms[0] || null;
+  appState.map.selectedRoomId=selectedRoom?.id || null;
+  if(appState.map.selectedMachineId && !bscIds.includes(appState.map.selectedMachineId)){
+    appState.map.selectedMachineId=null;
+  }
+
+  tree.innerHTML="";
+  for(const site of activeSites){
+    const siteBlock=document.createElement("section");
+    siteBlock.className="map-site-block";
+    const siteBtn=document.createElement("button");
+    siteBtn.type="button";
+    siteBtn.className=`map-site-btn ${site.id===appState.map.selectedSiteId?"active":""}`;
+    siteBtn.textContent=site.name;
+    siteBtn.addEventListener("click",()=>{
+      appState.map.selectedSiteId=site.id;
+      appState.map.selectedRoomId=getRoomsBySite(site.id)[0]?.id || null;
+      appState.map.selectedMachineId=null;
+      renderMap();
+      renderSelectionDetailPanel();
+      clearMachineFocusState();
+    });
+    siteBlock.appendChild(siteBtn);
+
+    const roomList=document.createElement("div");
+    roomList.className="map-room-list";
+    const roomsBySite=getRoomsBySite(site.id);
+    for(const room of roomsBySite){
+      const machineIds=getMachinesByRoomId(room.id);
+      const matchedMachineIds=getMatchedRoomMachineIds(room,machineIds,query,site);
+      if(query && matchedMachineIds.length===0 && !String(room.name).toLowerCase().includes(query) && !String(site.name).toLowerCase().includes(query)){
+        continue;
+      }
+      const runningCount=matchedMachineIds.filter(id=>isMachineRunning(id)).length;
+      const roomBtn=document.createElement("button");
+      roomBtn.type="button";
+      roomBtn.className=`map-room-btn ${room.id===appState.map.selectedRoomId?"active":""}`;
+      roomBtn.innerHTML=`<span>${room.name}</span><span>${matchedMachineIds.length}대 / 가동 ${runningCount}대</span>`;
+      roomBtn.addEventListener("click",()=>{
+        appState.map.selectedSiteId=site.id;
+        appState.map.selectedRoomId=room.id;
+        appState.map.selectedMachineId=null;
+        renderMap();
+        renderSelectionDetailPanel();
+      });
+      roomList.appendChild(roomBtn);
+    }
+    if(!roomList.childElementCount){
+      const empty=document.createElement("p");
+      empty.className="map-empty-text";
+      empty.textContent="조건에 맞는 Room이 없습니다.";
+      roomList.appendChild(empty);
+    }
+    siteBlock.appendChild(roomList);
+    tree.appendChild(siteBlock);
+  }
+
+  canvas.innerHTML="";
+  if(titleEl) titleEl.textContent=selectedSite.name;
+  if(subtitleEl){
+    const totalRooms=getRoomsBySite(selectedSite.id).length;
+    subtitleEl.textContent=`Room ${totalRooms}개`;
+  }
+  const visibleRooms=getRoomsBySite(selectedSite.id).filter(room=>{
+    const ids=getMachinesByRoomId(room.id);
+    const matched=getMatchedRoomMachineIds(room,ids,query,selectedSite);
+    if(!query) return true;
+    if(String(room.name).toLowerCase().includes(query) || String(selectedSite.name).toLowerCase().includes(query)) return true;
+    return matched.length>0;
+  });
+  if(!visibleRooms.length){
+    canvas.innerHTML='<p class="map-empty-text">검색 조건에 맞는 Room이 없습니다.</p>';
+    return;
+  }
+  visibleRooms.forEach((room,index)=>{
+    const box=document.createElement("section");
+    box.className=`map-room-box ${room.id===appState.map.selectedRoomId?"selected":""}`;
+    box.style.left=`${room.layout.x}%`;
+    box.style.top=`${room.layout.y}%`;
+    box.style.width=`${room.layout.w}%`;
+    box.style.height=`${room.layout.h}%`;
+    box.dataset.roomId=room.id;
+    const allMachineIds=getMachinesByRoomId(room.id);
+    const machineIds=getMatchedRoomMachineIds(room,allMachineIds,query,selectedSite);
+    const runningCount=machineIds.filter(id=>isMachineRunning(id)).length;
+    box.innerHTML=`<header><strong>${room.name}</strong><span>${machineIds.length}대 / 가동 ${runningCount}대</span></header>`;
+    box.addEventListener("click",()=>{
+      appState.map.selectedSiteId=room.siteId;
+      appState.map.selectedRoomId=room.id;
+      appState.map.selectedMachineId=null;
+      renderMap();
+      renderSelectionDetailPanel();
+    });
+
+    const machineWrap=document.createElement("div");
+    machineWrap.className="map-room-machines";
+    const fallbackIds=!machineIds.length && !query ? allMachineIds : machineIds;
+    fallbackIds.forEach(id=>{
       const booking=getCurrentBooking(id);
       const meta=getTileMeta(booking);
-      const tile=document.createElement("button");
-      tile.type="button";
-      tile.className=`machine-tile ${meta.tile}`;
-      tile.dataset.machineId=id;
-      const timeText=booking?`${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}`:"예약 없음";
-      tile.innerHTML=`<div class="machine-id">${id}</div><div class="machine-meta">${meta.labelText}</div><div class="machine-time">${timeText}</div>`;
-      tile.addEventListener("click",()=>handleTileClick(id));
-      tile.addEventListener("mouseenter",()=>setMachineFocus(id,true));
-      tile.addEventListener("mouseleave",()=>setMachineFocus(null,false));
-      tile.addEventListener("mousemove",e=>showTooltip(e,id,booking));
-      tile.addEventListener("mouseleave",hideTooltip);
-      locGrid.appendChild(tile);
+      const button=document.createElement("button");
+      button.type="button";
+      button.className=`map-machine-chip ${meta.tile} ${appState.map.selectedMachineId===id?"selected":""}`;
+      button.dataset.machineId=id;
+      button.textContent=id;
+      button.title=getBookingTooltipText(booking) || `${id}: 사용 가능`;
+      button.addEventListener("click",event=>{
+        event.stopPropagation();
+        handleTileClick(id);
+      });
+      button.addEventListener("mouseenter",()=>setMachineFocus(id,true));
+      button.addEventListener("mouseleave",()=>setMachineFocus(null,false));
+      button.addEventListener("mousemove",e=>showTooltip(e,id,booking));
+      button.addEventListener("mouseleave",hideTooltip);
+      machineWrap.appendChild(button);
+    });
+    if(!machineWrap.childElementCount){
+      const empty=document.createElement("span");
+      empty.className="map-empty-inline";
+      empty.textContent="표시할 장비 없음";
+      machineWrap.appendChild(empty);
     }
-    group.appendChild(title);
-    group.appendChild(locGrid);
-    grid.appendChild(group);
-  }
+    box.appendChild(machineWrap);
+    canvas.appendChild(box);
+  });
+}
+
+function getMatchedRoomMachineIds(room,machineIds,query,site){
+  if(!query) return [...machineIds];
+  const roomMatch=String(room.name||"").toLowerCase().includes(query);
+  const siteMatch=String(site?.name||"").toLowerCase().includes(query);
+  if(roomMatch || siteMatch) return [...machineIds];
+  return machineIds.filter(id=>{
+    const haystack=`${id} ${getMachineMgmtNo(id)} ${getMachineDesc(id)}`.toLowerCase();
+    return haystack.includes(query);
+  });
+}
+
+function isMachineRunning(machineId){
+  const booking=getCurrentBooking(machineId);
+  return !!(booking && booking.status==="confirmed" && booking.user!=="System");
 }
 
 function getTileMeta(booking){
@@ -1554,14 +1949,96 @@ function getTileMeta(booking){
 }
 
 function handleTileClick(id){
-  const booking=getCurrentBooking(id);
-  if(!booking){alert(`[${id}] 현재 사용 가능합니다.\n\n예약 신청은 '예약 관리' 탭에서 진행하세요.`);return;}
-  if(booking.status==="pending"){
-    alert(`[승인 대기]\n신청자: ${booking.user}\n시간: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}\n\n처리는 '관리 > 운영 이력 및 보고'에서 가능합니다.`);
+  selectMachineInMap(id,true);
+}
+
+function selectMachineInMap(machineId,focus=true){
+  const room=getMachineRoom(machineId);
+  if(room){
+    appState.map.selectedSiteId=room.siteId;
+    appState.map.selectedRoomId=room.id;
+  }
+  appState.map.selectedMachineId=machineId;
+  if(focus){
+    setMachineFocus(machineId,true);
+  }
+  renderMap();
+  renderSelectionDetailPanel();
+}
+
+function getRoomSummary(roomId){
+  const machineIds=getMachinesByRoomId(roomId);
+  const date=getViewDate();
+  const hour=appState.currentHour;
+  const running=machineIds.filter(id=>isMachineRunning(id)).length;
+  let upcoming=0;
+  for(const id of machineIds){
+    upcoming+=getBookingsForDate(id,date).filter(b=>b.status==="confirmed" && b.user!=="System" && b.start>hour).length;
+  }
+  let nextAvailable=null;
+  for(let slot=Math.ceil(hour*2)/2; slot<18; slot+=0.5){
+    const hasFree=machineIds.some(id=>!isMachineBusyAt(id,date,slot));
+    if(hasFree){
+      nextAvailable=slot;
+      break;
+    }
+  }
+  return { machineCount: machineIds.length, running, upcoming, nextAvailable, machineIds };
+}
+
+function renderSelectionDetailPanel(){
+  const body=document.getElementById("detail-panel-body");
+  if(!body) return;
+  ensureSiteRoomState();
+  const machineId=appState.map.selectedMachineId;
+  const roomId=appState.map.selectedRoomId;
+  if(machineId && bscIds.includes(machineId)){
+    const booking=getCurrentBooking(machineId);
+    const room=getMachineRoom(machineId);
+    const site=getMachineSite(machineId);
+    const availability=getMachineAvailabilityHint(machineId,getViewDate(),appState.currentHour);
+    const bookingText=booking
+      ? `${booking.user} · ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}`
+      : "현재 예약 없음";
+    const purposeText=booking
+      ? (booking.user==="System" ? "자동 소독" : getPurposeMeta(booking.purpose).label)
+      : "사용 가능";
+    body.innerHTML=
+      `<div class="detail-section">`+
+      `<h4>${machineId}</h4>`+
+      `<p><strong>위치:</strong> ${site ? site.name : "-"} / ${room ? room.name : "-"}</p>`+
+      `<p><strong>관리번호:</strong> ${getMachineMgmtNo(machineId) || "-"}</p>`+
+      `<p><strong>설명:</strong> ${getMachineDesc(machineId) || "-"}</p>`+
+      `<p><strong>현재 상태:</strong> ${purposeText}</p>`+
+      `<p><strong>현재 예약:</strong> ${bookingText}</p>`+
+      `<p><strong>다음 가능:</strong> ${availability.text}</p>`+
+      `</div>`;
     return;
   }
-  const purpose=booking.user==="System"?"자동 소독":getPurposeMeta(booking.purpose).label;
-  alert(`[예약 정보]\n작업자: ${booking.user}\n목적: ${purpose}\n시간: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}`);
+  if(roomId){
+    const room=getRoomById(roomId);
+    const site=room ? getSiteById(room.siteId) : null;
+    const summary=getRoomSummary(roomId);
+    const nextText=summary.nextAvailable===null ? "당일 추가 가능 시간 없음" : `${formatTime(summary.nextAvailable)}부터 가능`;
+    body.innerHTML=
+      `<div class="detail-section">`+
+      `<h4>${room ? room.name : "Room"}</h4>`+
+      `<p><strong>Site:</strong> ${site ? site.name : "-"}</p>`+
+      `<p><strong>장비 수:</strong> ${summary.machineCount}대</p>`+
+      `<p><strong>가동 중:</strong> ${summary.running}대</p>`+
+      `<p><strong>예약 예정:</strong> ${summary.upcoming}건</p>`+
+      `<p><strong>다음 빈 슬롯:</strong> ${nextText}</p>`+
+      `</div>`+
+      `<div class="detail-machine-list">`+
+      summary.machineIds.map(id=>{
+        const booking=getCurrentBooking(id);
+        const badge=booking ? (booking.user==="System" ? "소독" : getPurposeMeta(booking.purpose).label) : "사용 가능";
+        return `<button type="button" class="detail-machine-btn ${appState.map.selectedMachineId===id?"active":""}" data-detail-machine="${id}" data-machine-id="${id}">${id}<span>${badge}</span></button>`;
+      }).join("")+
+      `</div>`;
+    return;
+  }
+  body.innerHTML='<p class="detail-empty">좌측 트리에서 Site/Room 또는 장비를 선택하세요.</p>';
 }
 
 function showTooltip(event,id,booking){
@@ -1769,10 +2246,21 @@ function renderTimeline(container,date){
       bar.dataset.machineId=id;
       if(booking.status!=="pending") bar.style.background=booking.user==="System"?statusMeta.system.color:getPurposeMeta(booking.purpose).color;
       bar.textContent=booking.status==="pending"?`${booking.user} (대기)`:booking.user;
+      bar.addEventListener("click",event=>{
+        event.stopPropagation();
+        selectMachineInMap(id,true);
+      });
       track.appendChild(bar);
     }
-    row.addEventListener("mouseenter",()=>setMachineFocus(id,true));
+    row.addEventListener("mouseenter",()=>{
+      setMachineFocus(id,true);
+      selectMachineInMap(id,false);
+    });
     row.addEventListener("mouseleave",()=>setMachineFocus(null,false));
+    row.addEventListener("click",event=>{
+      event.stopPropagation();
+      selectMachineInMap(id,true);
+    });
     row.appendChild(label);row.appendChild(track);container.appendChild(row);
   }
   const selectedIndicator=createTimelineIndicator("selected");
@@ -1785,7 +2273,9 @@ function renderTimeline(container,date){
   updateTimelineIndicators(container);
 }
 function renderStatusList(){
-  const list=document.getElementById("status-list");list.innerHTML="";
+  const list=document.getElementById("status-list");
+  if(!list) return;
+  list.innerHTML="";
   const showAvailabilityHint=isWorkerMobileMode();
   const statusDate=getViewDate();
   const statusHour=appState.currentHour;
@@ -1824,6 +2314,7 @@ function renderChart(){
   const total=bscIds.length;
   const svg=document.getElementById("donut-chart");
   const legend=document.getElementById("chart-legend");
+  if(!svg || !legend) return;
   svg.innerHTML="";legend.innerHTML="";
   let startAngle=0;
   for(const key of Object.keys(counts)){
@@ -2497,7 +2988,9 @@ function renderAdmin(){
   }
   renderAdminToolbar(getActiveAdminView());
   refreshUsersFromDb();
-  renderLocationTable();
+  renderSiteTable();
+  renderRoomSiteFilterOptions();
+  renderRoomTable();
   renderMachineTable();
   renderPurposeTable();
   refreshAuditHistory();
@@ -3400,6 +3893,7 @@ async function deleteMachine(id){
     delete machineLocations[id];
     delete machineMgmtNos[id];
     delete machineDescs[id];
+    delete machineRoomIds[id];
     await saveConfig();
     ensureBookingBuckets();
     renderAll();
@@ -3418,15 +3912,29 @@ function openMachineModal(mode,id){
   const input=document.getElementById("machine-id");
   const mgmtInput=document.getElementById("machine-mgmt");
   const descInput=document.getElementById("machine-desc");
-  const locationSel=document.getElementById("machine-location");
+  const siteSel=document.getElementById("machine-site");
+  const roomSel=document.getElementById("machine-room");
   renderLocationOptions();
+  if(siteSel){
+    siteSel.onchange=()=>{
+      renderLocationOptions();
+      const selectedSite=siteSel.value;
+      const roomsBySite=getRoomsBySite(selectedSite,{includeInactive:true});
+      if(roomsBySite.length){
+        roomSel.value=roomsBySite[0].id;
+      }
+    };
+  }
   if(mode==="create"){
     if(title) title.textContent="장비 등록";
     if(original) original.value="";
     if(input){input.value=""; input.disabled=false;}
     if(mgmtInput) mgmtInput.value="";
     if(descInput) descInput.value="";
-    if(locationSel) locationSel.value=locations[0];
+    if(siteSel && siteSel.options.length){
+      siteSel.value=siteSel.options[0].value;
+      renderLocationOptions();
+    }
     return;
   }
   if(title) title.textContent="장비 수정";
@@ -3434,7 +3942,14 @@ function openMachineModal(mode,id){
   if(input){input.value=id; input.disabled=false;}
   if(mgmtInput) mgmtInput.value=getMachineMgmtNo(id);
   if(descInput) descInput.value=getMachineDesc(id);
-  if(locationSel) locationSel.value=getMachineLocation(id);
+  const room=getMachineRoom(id);
+  if(siteSel && room){
+    siteSel.value=room.siteId;
+    renderLocationOptions();
+  }
+  if(roomSel && room){
+    roomSel.value=room.id;
+  }
 }
 
 async function saveMachine(){
@@ -3443,8 +3958,11 @@ async function saveMachine(){
     const nextId=document.getElementById("machine-id")?.value.trim() || "";
     const nextMgmt=document.getElementById("machine-mgmt")?.value.trim() || "";
     const nextDesc=document.getElementById("machine-desc")?.value.trim() || "";
-    const nextLocation=document.getElementById("machine-location")?.value || locations[0];
+    const nextRoomId=document.getElementById("machine-room")?.value || "";
+    const nextRoom=getRoomById(nextRoomId);
+    const nextLocation=nextRoom?.name || "";
     if(!nextId){alert("장비 ID를 입력하세요.");return;}
+    if(!nextRoomId || !nextRoom){alert("Room을 선택하세요.");return;}
     const isEdit=!!originalId;
     if(originalId){
       if(originalId!==nextId && bscIds.includes(nextId)){
@@ -3456,9 +3974,11 @@ async function saveMachine(){
         machineLocations[nextId]=nextLocation;
         machineMgmtNos[nextId]=nextMgmt;
         machineDescs[nextId]=nextDesc;
+        machineRoomIds[nextId]=nextRoomId;
         delete machineLocations[originalId];
         delete machineMgmtNos[originalId];
         delete machineDescs[originalId];
+        delete machineRoomIds[originalId];
         const existing=bookings[originalId]||[];
         for(const booking of existing){
           if(booking.docId) await updateBookingDoc(booking.docId,{machineId: nextId});
@@ -3468,6 +3988,7 @@ async function saveMachine(){
         machineLocations[originalId]=nextLocation;
         machineMgmtNos[originalId]=nextMgmt;
         machineDescs[originalId]=nextDesc;
+        machineRoomIds[originalId]=nextRoomId;
       }
     }else{
       if(bscIds.includes(nextId)){
@@ -3478,6 +3999,7 @@ async function saveMachine(){
       machineLocations[nextId]=nextLocation;
       machineMgmtNos[nextId]=nextMgmt;
       machineDescs[nextId]=nextDesc;
+      machineRoomIds[nextId]=nextRoomId;
       bookings[nextId]=[];
     }
     closeModal("machine-modal");
@@ -3502,7 +4024,7 @@ function renderMachineTable(){
     index,
     count:(bookings[id]||[]).length,
     mgmt:getMachineMgmtNo(id),
-    location:getMachineLocation(id),
+    location:getMachineDisplayPath(id),
     desc:getMachineDesc(id)
   }));
   if(query){
@@ -3541,28 +4063,261 @@ function renderMachineTable(){
 
 
 
-function renderLocationTable(){
-  const tbody=document.getElementById("location-table-body");
+function renderRoomSiteFilterOptions(){
+  const sel=document.getElementById("room-site-filter");
+  if(!sel) return;
+  const current=sel.value;
+  const allSites=sortByOrderThenName(sites);
+  const options=['<option value="all">전체 Site</option>',...allSites.map(site=>`<option value="${site.id}">${site.name}</option>`)];
+  sel.innerHTML=options.join("");
+  const validValues=new Set(["all",...allSites.map(site=>site.id)]);
+  sel.value=validValues.has(current) ? current : "all";
+}
+
+function renderSiteTable(){
+  const tbody=document.getElementById("site-table-body");
   if(!tbody) return;
   tbody.innerHTML="";
   const filter=getAdminFilterState("locations");
   const query=filter.query.toLowerCase();
-  let rows=locations.map(loc=>({
-    loc,
-    count:bscIds.filter(id=>getMachineLocation(id)===loc).length
+  let rows=sortByOrderThenName(sites).map(site=>({
+    ...site,
+    roomCount:getRoomsBySite(site.id,{includeInactive:true}).length
   }));
   if(query){
-    rows=rows.filter(row=>row.loc.toLowerCase().includes(query));
+    rows=rows.filter(row=>{
+      const haystack=`${row.id} ${row.name}`.toLowerCase();
+      return haystack.includes(query);
+    });
   }
-  if(filter.status==="used") rows=rows.filter(row=>row.count>0);
-  if(filter.status==="empty") rows=rows.filter(row=>row.count===0);
-  if(filter.sort==="name-asc") rows.sort((a,b)=>a.loc.localeCompare(b.loc));
-  if(filter.sort==="name-desc") rows.sort((a,b)=>b.loc.localeCompare(a.loc));
-  if(filter.sort==="count-desc") rows.sort((a,b)=>b.count-a.count||a.loc.localeCompare(b.loc));
   for(const row of rows){
     const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${row.loc}</td><td>${row.count}대</td><td><button class="btn-edit" data-edit-location="${row.loc}">수정</button><button class="btn-del" data-del-location="${row.loc}">삭제</button></td>`;
+    const status=row.active!==false ? "활성" : "비활성";
+    tr.innerHTML=`<td>${row.id}</td><td>${row.name}</td><td>${row.roomCount}개</td><td>${status}</td><td><button class="btn-edit" data-edit-site="${row.id}">수정</button><button class="btn-del" data-del-site="${row.id}">삭제</button></td>`;
     tbody.appendChild(tr);
+  }
+}
+
+function renderRoomTable(){
+  const tbody=document.getElementById("room-table-body");
+  if(!tbody) return;
+  tbody.innerHTML="";
+  const filter=getAdminFilterState("locations");
+  const query=filter.query.toLowerCase();
+  const siteFilter=document.getElementById("room-site-filter")?.value || "all";
+  let rows=sortByOrderThenName(rooms).map(room=>{
+    const machineCount=getMachinesByRoomId(room.id).length;
+    const site=getSiteById(room.siteId);
+    return {
+      ...room,
+      siteName:site?.name || "-",
+      machineCount
+    };
+  });
+  if(siteFilter!=="all"){
+    rows=rows.filter(row=>row.siteId===siteFilter);
+  }
+  if(query){
+    rows=rows.filter(row=>{
+      const haystack=`${row.name} ${row.siteName}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }
+  if(filter.status==="active") rows=rows.filter(row=>row.active!==false);
+  if(filter.status==="inactive") rows=rows.filter(row=>row.active===false);
+  if(filter.status==="used") rows=rows.filter(row=>row.machineCount>0);
+  if(filter.status==="empty") rows=rows.filter(row=>row.machineCount===0);
+  if(filter.sort==="site-asc") rows.sort((a,b)=>a.siteName.localeCompare(b.siteName)||a.name.localeCompare(b.name));
+  if(filter.sort==="name-asc") rows.sort((a,b)=>a.name.localeCompare(b.name));
+  if(filter.sort==="name-desc") rows.sort((a,b)=>b.name.localeCompare(a.name));
+  if(filter.sort==="count-desc") rows.sort((a,b)=>b.machineCount-a.machineCount||a.name.localeCompare(b.name));
+  for(const row of rows){
+    const tr=document.createElement("tr");
+    const l=row.layout || {x:0,y:0,w:0,h:0};
+    const status=row.active!==false ? "활성" : "비활성";
+    tr.innerHTML=`<td>${row.name}</td><td>${row.siteName}</td><td>${row.machineCount}대</td><td>${Math.round(l.x)}, ${Math.round(l.y)}, ${Math.round(l.w)}, ${Math.round(l.h)}</td><td>${status}</td><td><button class="btn-edit" data-edit-room="${row.id}">수정</button><button class="btn-del" data-del-room="${row.id}">삭제</button></td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function openSiteModal(mode,siteId){
+  const modal=document.getElementById("site-modal");
+  if(!modal) return;
+  modal.style.display="flex";
+  const title=document.getElementById("site-modal-title");
+  const original=document.getElementById("site-original-id");
+  const idInput=document.getElementById("site-id");
+  const nameInput=document.getElementById("site-name");
+  const activeInput=document.getElementById("site-active");
+  if(mode==="create"){
+    if(title) title.textContent="Site 등록";
+    if(original) original.value="";
+    if(idInput){idInput.value=""; idInput.disabled=false;}
+    if(nameInput) nameInput.value="";
+    if(activeInput) activeInput.checked=true;
+    return;
+  }
+  const site=getSiteById(siteId);
+  if(!site) return;
+  if(title) title.textContent="Site 수정";
+  if(original) original.value=site.id;
+  if(idInput){idInput.value=site.id; idInput.disabled=true;}
+  if(nameInput) nameInput.value=site.name;
+  if(activeInput) activeInput.checked=site.active!==false;
+}
+
+async function saveSite(){
+  try{
+    const originalId=document.getElementById("site-original-id")?.value || "";
+    const idInput=document.getElementById("site-id");
+    const nameInput=document.getElementById("site-name");
+    const activeInput=document.getElementById("site-active");
+    const nextId=(idInput?.value || "").trim() || makeSafeId(nameInput?.value || "site","site");
+    const nextName=(nameInput?.value || "").trim();
+    const nextActive=activeInput ? !!activeInput.checked : true;
+    if(!nextName){alert("Site명을 입력하세요.");return;}
+    const isEdit=!!originalId;
+    if(!isEdit){
+      if(sites.some(site=>site.id===nextId)){alert("이미 존재하는 Site ID입니다.");return;}
+      sites=[...sites,{ id: nextId, name: nextName, order: sites.length+1, active: nextActive }];
+    }else{
+      const idx=sites.findIndex(site=>site.id===originalId);
+      if(idx<0){alert("Site 정보를 찾을 수 없습니다.");return;}
+      sites[idx]={...sites[idx], name: nextName, active: nextActive};
+    }
+    closeModal("site-modal");
+    ensureSiteRoomState();
+    await saveConfig();
+    renderAll();
+    addAdminActivity(isEdit ? "Site 수정" : "Site 등록", `${nextId} (${nextName})`);
+  }catch(error){
+    reportAsyncError("saveSite", error, "Site 저장에 실패했습니다.");
+  }
+}
+
+async function deleteSite(siteId){
+  try{
+    const site=getSiteById(siteId);
+    if(!site) return;
+    const childRooms=getRoomsBySite(siteId,{includeInactive:true});
+    if(childRooms.length>0){
+      alert("하위 Room이 있는 Site는 삭제할 수 없습니다.");
+      return;
+    }
+    if(!confirm(`${site.name} Site를 삭제하시겠습니까?`)) return;
+    sites=sites.filter(item=>item.id!==siteId);
+    ensureSiteRoomState();
+    await saveConfig();
+    renderAll();
+    addAdminActivity("Site 삭제", `${siteId}`);
+  }catch(error){
+    reportAsyncError("deleteSite", error, "Site 삭제에 실패했습니다.");
+  }
+}
+
+function openRoomModal(mode,roomId){
+  const modal=document.getElementById("room-modal");
+  if(!modal) return;
+  modal.style.display="flex";
+  const title=document.getElementById("room-modal-title");
+  const original=document.getElementById("room-original-id");
+  const nameInput=document.getElementById("room-name");
+  const siteSel=document.getElementById("room-site");
+  const activeInput=document.getElementById("room-active");
+  if(siteSel){
+    siteSel.innerHTML=sortByOrderThenName(sites).map(site=>`<option value="${site.id}">${site.name}</option>`).join("");
+  }
+  if(mode==="create"){
+    if(title) title.textContent="Room 등록";
+    if(original) original.value="";
+    if(nameInput) nameInput.value="";
+    if(activeInput) activeInput.checked=true;
+    if(siteSel && siteSel.options.length){
+      siteSel.value=appState.map.selectedSiteId || siteSel.options[0].value;
+    }
+    document.getElementById("room-layout-x").value="4";
+    document.getElementById("room-layout-y").value="6";
+    document.getElementById("room-layout-w").value="44";
+    document.getElementById("room-layout-h").value="38";
+    return;
+  }
+  const room=getRoomById(roomId);
+  if(!room) return;
+  if(title) title.textContent="Room 수정";
+  if(original) original.value=room.id;
+  if(nameInput) nameInput.value=room.name;
+  if(siteSel) siteSel.value=room.siteId;
+  if(activeInput) activeInput.checked=room.active!==false;
+  document.getElementById("room-layout-x").value=String(Math.round(room.layout?.x ?? 0));
+  document.getElementById("room-layout-y").value=String(Math.round(room.layout?.y ?? 0));
+  document.getElementById("room-layout-w").value=String(Math.round(room.layout?.w ?? 30));
+  document.getElementById("room-layout-h").value=String(Math.round(room.layout?.h ?? 28));
+}
+
+async function saveRoom(){
+  try{
+    const originalId=document.getElementById("room-original-id")?.value || "";
+    const name=(document.getElementById("room-name")?.value || "").trim();
+    const siteId=document.getElementById("room-site")?.value || "";
+    const active=document.getElementById("room-active")?.checked ?? true;
+    const layout={
+      x:Number(document.getElementById("room-layout-x")?.value || 0),
+      y:Number(document.getElementById("room-layout-y")?.value || 0),
+      w:Number(document.getElementById("room-layout-w")?.value || 30),
+      h:Number(document.getElementById("room-layout-h")?.value || 28)
+    };
+    if(!name){alert("Room명을 입력하세요.");return;}
+    if(!getSiteById(siteId)){alert("Site를 선택하세요.");return;}
+    const normalized=normalizeRoomLayout(layout,0,1);
+    const isEdit=!!originalId;
+    if(isEdit){
+      const idx=rooms.findIndex(room=>room.id===originalId);
+      if(idx<0){alert("Room 정보를 찾을 수 없습니다.");return;}
+      const duplicate=rooms.some(room=>room.id!==originalId && room.name===name);
+      if(duplicate){alert("동일한 Room명이 이미 존재합니다.");return;}
+      rooms[idx]={...rooms[idx], name, siteId, active, layout:normalized};
+      bscIds.forEach(id=>{
+        if(getMachineRoomId(id)===originalId){
+          machineLocations[id]=name;
+        }
+      });
+    }else{
+      const duplicate=rooms.some(room=>room.name===name);
+      if(duplicate){alert("동일한 Room명이 이미 존재합니다.");return;}
+      const roomId=makeSafeId(name,"room");
+      rooms=[...rooms,{ id:roomId, siteId, name, order:rooms.length+1, active, layout:normalized }];
+    }
+    ensureSiteRoomState();
+    closeModal("room-modal");
+    await saveConfig();
+    renderAll();
+    addAdminActivity(isEdit ? "Room 수정" : "Room 등록", `${name}`);
+  }catch(error){
+    reportAsyncError("saveRoom", error, "Room 저장에 실패했습니다.");
+  }
+}
+
+async function deleteRoom(roomId){
+  try{
+    const room=getRoomById(roomId);
+    if(!room) return;
+    const assigned=bscIds.some(id=>getMachineRoomId(id)===roomId);
+    if(assigned){
+      alert("장비가 배정된 Room은 삭제할 수 없습니다.");
+      return;
+    }
+    if(!confirm(`${room.name} Room을 삭제하시겠습니까?`)) return;
+    rooms=rooms.filter(item=>item.id!==roomId);
+    if(appState.map.selectedRoomId===roomId){
+      appState.map.selectedRoomId=null;
+      appState.map.selectedMachineId=null;
+    }
+    ensureSiteRoomState();
+    await saveConfig();
+    renderAll();
+    addAdminActivity("Room 삭제", room.name);
+  }catch(error){
+    reportAsyncError("deleteRoom", error, "Room 삭제에 실패했습니다.");
   }
 }
 
@@ -3773,69 +4528,6 @@ async function deleteUser(uid){
   }
 }
 
-function openLocationModal(mode,loc){
-  const modal=document.getElementById("location-modal");
-  modal.style.display="flex";
-  const title=document.getElementById("location-modal-title");
-  const original=document.getElementById("location-original-name");
-  const input=document.getElementById("location-name");
-  if(mode==="create"){
-    title.textContent="장소 등록";
-    original.value="";
-    input.value="";
-    return;
-  }
-  title.textContent="장소 수정";
-  original.value=loc;
-  input.value=loc;
-}
-
-async function saveLocation(){
-  try{
-    const original=document.getElementById("location-original-name").value;
-    const next=document.getElementById("location-name").value.trim();
-    if(!next){alert("장소명을 입력하세요.");return;}
-    const isEdit=!!original;
-    if(original){
-      if(original!==next && locations.includes(next)){
-        alert("이미 존재하는 장소입니다.");
-        return;
-      }
-      locations=locations.map(l=>l===original?next:l);
-      for(const id of bscIds){
-        if(getMachineLocation(id)===original) machineLocations[id]=next;
-      }
-    }else{
-      if(locations.includes(next)){
-        alert("이미 존재하는 장소입니다.");
-        return;
-      }
-      locations=[...locations,next];
-    }
-    closeModal("location-modal");
-    showToast("장소 목록이 갱신되었습니다.","info");
-    await saveConfig();
-    renderAll();
-    addAdminActivity(isEdit ? "장소 수정" : "장소 등록", `${original || "-"} -> ${next}`);
-  }catch(error){
-    reportAsyncError("saveLocation", error, "장소 저장에 실패했습니다.");
-  }
-}
-
-async function deleteLocation(loc){
-  try{
-    const used=bscIds.some(id=>getMachineLocation(id)===loc);
-    if(used){alert("장비가 배정된 장소는 삭제할 수 없습니다.");return;}
-    if(!confirm(`${loc}를 삭제하시겠습니까?`)) return;
-    locations=locations.filter(l=>l!==loc);
-    await saveConfig();
-    renderAll();
-    addAdminActivity("장소 삭제", loc);
-  }catch(error){
-    reportAsyncError("deleteLocation", error, "장소 삭제에 실패했습니다.");
-  }
-}
-
 function initLocationMaintenanceStartOptions(date){
   const sel=document.getElementById("location-maintenance-start");
   if(!sel) return;
@@ -3999,11 +4691,13 @@ function bindEvents(){
   on("btn-save-user","click",saveUser);
   on("btn-create-machine","click",()=>openMachineModal("create"));
   on("btn-location-maintenance","click",openLocationMaintenanceModal);
-  on("btn-create-location","click",()=>openLocationModal("create"));
+  on("btn-create-site","click",()=>openSiteModal("create"));
+  on("btn-create-room","click",()=>openRoomModal("create"));
   on("btn-create-purpose","click",()=>openPurposeModal("create"));
   on("btn-save-machine","click",saveMachine);
   on("btn-save-location-maintenance","click",saveLocationMaintenance);
-  on("btn-save-location","click",saveLocation);
+  on("btn-save-site","click",saveSite);
+  on("btn-save-room","click",saveRoom);
   on("btn-save-purpose","click",savePurpose);
   on("btn-print","click",printReport);
   on("btn-stats-prev","click",()=>shiftStatsMonth(-1));
@@ -4022,6 +4716,12 @@ function bindEvents(){
   on("schedule-machine-search","input",renderSchedule);
   on("schedule-my-only","change",renderSchedule);
   on("btn-schedule-filter-reset","click",resetScheduleFilters);
+  on("room-site-filter","change",renderRoomTable);
+  on("map-search","input",e=>{
+    appState.map.searchText=(e.target.value || "").trim();
+    renderMap();
+    renderSelectionDetailPanel();
+  });
   on("purpose-all","change",(e)=>setPurposeAll(e.target.checked));
   on("location-maintenance-all","change",renderLocationMaintenanceList);
   on("location-maintenance-date","change",e=>initLocationMaintenanceStartOptions(e.target.value));
@@ -4052,8 +4752,14 @@ function bindEvents(){
     const approveUserId=e.target.getAttribute("data-approve-user"); if(approveUserId) approveUser(approveUserId);
     const editMachine=e.target.getAttribute("data-edit-machine"); if(editMachine) openMachineModal("edit",editMachine);
     const delMachine=e.target.getAttribute("data-del-machine"); if(delMachine) deleteMachine(delMachine);
-    const editLocation=e.target.getAttribute("data-edit-location"); if(editLocation) openLocationModal("edit",editLocation);
-    const delLocation=e.target.getAttribute("data-del-location"); if(delLocation) deleteLocation(delLocation);
+    const editSite=e.target.getAttribute("data-edit-site"); if(editSite) openSiteModal("edit",editSite);
+    const delSite=e.target.getAttribute("data-del-site"); if(delSite) deleteSite(delSite);
+    const editRoom=e.target.getAttribute("data-edit-room"); if(editRoom) openRoomModal("edit",editRoom);
+    const delRoom=e.target.getAttribute("data-del-room"); if(delRoom) deleteRoom(delRoom);
+    const detailMachineBtn=e.target.closest("[data-detail-machine]");
+    if(detailMachineBtn){
+      selectMachineInMap(detailMachineBtn.getAttribute("data-detail-machine"),true);
+    }
     const editPurpose=e.target.getAttribute("data-edit-purpose"); if(editPurpose) openPurposeModal("edit",editPurpose);
     const delPurpose=e.target.getAttribute("data-del-purpose"); if(delPurpose) deletePurpose(delPurpose);
     const adminView=e.target.closest(".admin-btn"); if(adminView&&adminView.dataset.adminView) switchAdminView(adminView.dataset.adminView);
