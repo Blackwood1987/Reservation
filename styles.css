@@ -692,6 +692,14 @@ body.login-page {
   background: #27ae60;
 }
 
+.btn-time-reset.warning {
+  background: #f39c12;
+}
+
+.btn-time-reset.warning:hover {
+  background: #d68910;
+}
+
 .btn-live-indicator {
   border: 1px solid #b7c4d3;
   border-radius: 6px;
@@ -2207,6 +2215,13 @@ body.is-resizing .resize-handle {
   background: #ffffff;
 }
 
+.admin-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .admin-section {
   display: none;
 }
@@ -2683,7 +2698,8 @@ body.is-resizing .resize-handle {
 }
 
 .form-group input,
-.form-group select {
+.form-group select,
+.form-group textarea {
   width: 100%;
   border: 1px solid #dfe6e9;
   border-radius: 8px;

@@ -382,6 +382,10 @@ function isManagerUser(user=appState.currentUser){
   return !!user && (user.role==="admin" || user.role==="supervisor");
 }
 
+function isAdminUser(user=appState.currentUser){
+  return !!user && user.role==="admin";
+}
+
 function isWorkerUser(user=appState.currentUser){
   return !!user && user.role==="worker";
 }
@@ -2476,17 +2480,20 @@ function renderAdmin(){
   const machinesBtn=document.querySelector('[data-admin-view="machines"]');
   const purposesBtn=document.querySelector('[data-admin-view="purposes"]');
   const locationsBtn=document.querySelector('[data-admin-view="locations"]');
+  const locationMaintenanceBtn=document.getElementById("btn-location-maintenance");
   if(appState.currentUser.role==="supervisor"){
     usersBtn.style.display="none";
     machinesBtn.style.display="none";
     if(purposesBtn) purposesBtn.style.display="none";
     locationsBtn.style.display="none";
+    if(locationMaintenanceBtn) locationMaintenanceBtn.hidden=true;
     switchAdminView("audit");
   }else{
     usersBtn.style.display="flex";
     machinesBtn.style.display="flex";
     if(purposesBtn) purposesBtn.style.display="flex";
     locationsBtn.style.display="flex";
+    if(locationMaintenanceBtn) locationMaintenanceBtn.hidden=!isAdminUser();
   }
   renderAdminToolbar(getActiveAdminView());
   refreshUsersFromDb();
@@ -3829,6 +3836,139 @@ async function deleteLocation(loc){
   }
 }
 
+function initLocationMaintenanceStartOptions(date){
+  const sel=document.getElementById("location-maintenance-start");
+  if(!sel) return;
+  const current=Number(sel.value);
+  sel.innerHTML="";
+  for(let h=9;h<18;h+=0.5){
+    const opt=document.createElement("option");
+    opt.value=String(h);
+    opt.textContent=formatTime(h);
+    sel.appendChild(opt);
+  }
+  if(current>=9 && current<18){
+    sel.value=String(current);
+  }else{
+    const baseHour=(date===todayISO()) ? getMinReservableHour(date) : 9;
+    sel.value=String(Math.min(17.5,baseHour));
+  }
+}
+
+function getLocationMaintenanceSelectedLocations(){
+  const allToggle=document.getElementById("location-maintenance-all");
+  const list=document.getElementById("location-maintenance-list");
+  if(!list) return [];
+  if(allToggle?.checked) return [...locations];
+  return [...list.querySelectorAll('input[type="checkbox"][data-location-maintenance]:checked')].map(input=>input.value);
+}
+
+function renderLocationMaintenanceImpact(){
+  const impact=document.getElementById("location-maintenance-impact");
+  if(!impact) return;
+  const selected=getLocationMaintenanceSelectedLocations();
+  const machineCount=bscIds.filter(id=>selected.includes(getMachineLocation(id))).length;
+  impact.textContent=`선택 장소 ${selected.length}곳 / 대상 장비 ${machineCount}대`;
+}
+
+function renderLocationMaintenanceList(){
+  const list=document.getElementById("location-maintenance-list");
+  const allToggle=document.getElementById("location-maintenance-all");
+  if(!list || !allToggle) return;
+  const previousSelected=new Set(
+    [...list.querySelectorAll('input[type="checkbox"][data-location-maintenance]:checked')].map(input=>input.value)
+  );
+  list.innerHTML=locations.map(loc=>{
+    const count=bscIds.filter(id=>getMachineLocation(id)===loc).length;
+    const checked=allToggle.checked || previousSelected.size===0 || previousSelected.has(loc);
+    const disabled=allToggle.checked ? "disabled" : "";
+    const checkedAttr=checked ? "checked" : "";
+    return `<label><input type="checkbox" data-location-maintenance value="${loc}" ${checkedAttr} ${disabled} /> ${loc} (${count}대)</label>`;
+  }).join("");
+  renderLocationMaintenanceImpact();
+}
+
+function openLocationMaintenanceModal(){
+  if(!isAdminUser()){
+    showToast("관리자만 장소 유지보수 예약을 등록할 수 있습니다.","warn");
+    return;
+  }
+  const modal=document.getElementById("location-maintenance-modal");
+  if(!modal) return;
+  modal.style.display="flex";
+  const dateInput=document.getElementById("location-maintenance-date");
+  const durationInput=document.getElementById("location-maintenance-duration");
+  const operatorInput=document.getElementById("location-maintenance-operator");
+  const reasonInput=document.getElementById("location-maintenance-reason");
+  const allToggle=document.getElementById("location-maintenance-all");
+  const defaultDate=getViewDate();
+  if(dateInput) dateInput.value=defaultDate;
+  if(durationInput) durationInput.value="1";
+  if(operatorInput) operatorInput.value="시설 점검";
+  if(reasonInput) reasonInput.value="";
+  if(allToggle) allToggle.checked=true;
+  initLocationMaintenanceStartOptions(defaultDate);
+  renderLocationMaintenanceList();
+}
+
+async function saveLocationMaintenance(){
+  if(!isAdminUser()){
+    showToast("관리자만 장소 유지보수 예약을 등록할 수 있습니다.","warn");
+    return;
+  }
+  try{
+    const date=document.getElementById("location-maintenance-date")?.value || "";
+    const start=Number(document.getElementById("location-maintenance-start")?.value || 0);
+    const duration=Number(document.getElementById("location-maintenance-duration")?.value || 0);
+    const operator=(document.getElementById("location-maintenance-operator")?.value || "").trim() || "시설 점검";
+    const reason=(document.getElementById("location-maintenance-reason")?.value || "").trim();
+    const selectedLocations=getLocationMaintenanceSelectedLocations();
+    if(!date){ showToast("날짜를 선택해주세요.","warn"); return; }
+    if(selectedLocations.length===0){ showToast("유지보수 대상 장소를 선택해주세요.","warn"); return; }
+    if(start<9 || start+duration>18){ showToast("운영 시간(09:00~18:00)을 벗어납니다.","warn"); return; }
+    const targetMachineIds=bscIds.filter(id=>selectedLocations.includes(getMachineLocation(id)));
+    if(targetMachineIds.length===0){
+      showToast("선택한 장소에 등록된 장비가 없습니다.","warn");
+      return;
+    }
+    let created=0;
+    let skippedOverlap=0;
+    for(const machineId of targetMachineIds){
+      if(isOverlap(machineId,date,start,duration)){
+        skippedOverlap+=1;
+        continue;
+      }
+      await createBookingDoc({
+        machineId,
+        user: operator,
+        userId: "location-maintenance",
+        createdBy: appState.currentUser.uid || null,
+        date,
+        start,
+        duration,
+        purpose: "maint",
+        status: "confirmed",
+        autoClean: false,
+        locationMaintenance: true,
+        maintenanceReason: reason,
+        maintenanceLocations: selectedLocations
+      });
+      created+=1;
+    }
+    if(created===0){
+      showToast("등록 가능한 장비가 없습니다. 기존 예약과 시간을 확인해주세요.","warn");
+      return;
+    }
+    closeModal("location-maintenance-modal");
+    const summary=`${created}대 등록${skippedOverlap>0 ? `, ${skippedOverlap}대 중복 제외` : ""}`;
+    showToast(`장소 유지보수 예약 완료: ${summary}`,"success");
+    addAdminActivity("장소 유지보수 예약", `${date} ${formatTime(start)} ${formatDurationText(duration)} / ${selectedLocations.join(", ")} / ${summary}`);
+    refreshAuditHistory(true);
+  }catch(error){
+    reportAsyncError("saveLocationMaintenance", error, "장소 유지보수 예약 저장에 실패했습니다.");
+  }
+}
+
 function bindEvents(){
   const on=(id,evt,handler)=>{
     const el=document.getElementById(id);
@@ -3858,9 +3998,11 @@ function bindEvents(){
   on("btn-create-user","click",()=>refreshUsersFromDb());
   on("btn-save-user","click",saveUser);
   on("btn-create-machine","click",()=>openMachineModal("create"));
+  on("btn-location-maintenance","click",openLocationMaintenanceModal);
   on("btn-create-location","click",()=>openLocationModal("create"));
   on("btn-create-purpose","click",()=>openPurposeModal("create"));
   on("btn-save-machine","click",saveMachine);
+  on("btn-save-location-maintenance","click",saveLocationMaintenance);
   on("btn-save-location","click",saveLocation);
   on("btn-save-purpose","click",savePurpose);
   on("btn-print","click",printReport);
@@ -3881,6 +4023,12 @@ function bindEvents(){
   on("schedule-my-only","change",renderSchedule);
   on("btn-schedule-filter-reset","click",resetScheduleFilters);
   on("purpose-all","change",(e)=>setPurposeAll(e.target.checked));
+  on("location-maintenance-all","change",renderLocationMaintenanceList);
+  on("location-maintenance-date","change",e=>initLocationMaintenanceStartOptions(e.target.value));
+  const locationMaintList=document.getElementById("location-maintenance-list");
+  if(locationMaintList){
+    locationMaintList.addEventListener("change",renderLocationMaintenanceImpact);
+  }
   document.querySelectorAll(".side-tab-btn").forEach(btn=>{
     btn.addEventListener("click",()=>setDashboardSidePanel(btn.dataset.sidePanel));
   });
