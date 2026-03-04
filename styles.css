@@ -1249,6 +1249,10 @@ body.login-page {
   cursor: pointer;
 }
 
+.booking-block.can-drag {
+  cursor: grab;
+}
+
 .booking-block.can-edit:hover {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
 }
@@ -1296,6 +1300,8 @@ body.login-page {
   background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.2));
   touch-action: none;
   z-index: 5;
+  opacity: 0.52;
+  transition: background 0.12s ease, opacity 0.12s ease;
 }
 
 .resize-handle::after {
@@ -1316,6 +1322,61 @@ body.login-page {
 
 .booking-block.resizable:hover .resize-handle {
   background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.32));
+  opacity: 1;
+}
+
+.booking-block.resizing {
+  overflow: visible;
+  z-index: 20;
+  outline: 2px dashed rgba(41, 128, 185, 0.95);
+  outline-offset: 1px;
+  box-shadow: 0 8px 14px rgba(41, 128, 185, 0.28);
+}
+
+.booking-block.resizing .resize-handle {
+  opacity: 1;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.4));
+}
+
+.booking-block.resizing::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  right: -1px;
+  width: 2px;
+  background: rgba(41, 128, 185, 0.95);
+  border-radius: 999px;
+}
+
+.booking-block.resizing::after {
+  content: attr(data-resize-label);
+  position: absolute;
+  right: -6px;
+  top: -28px;
+  transform: translateX(100%);
+  white-space: nowrap;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 900;
+  color: #ffffff;
+  background: #2c3e50;
+  border-radius: 999px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+
+.booking-block.resize-invalid {
+  outline-color: rgba(231, 76, 60, 0.95);
+  box-shadow: 0 8px 14px rgba(231, 76, 60, 0.24);
+}
+
+.booking-block.resize-invalid::before {
+  background: rgba(231, 76, 60, 0.95);
+}
+
+.booking-block.resize-invalid::after {
+  background: #c0392b;
 }
 
 .empty-slot {

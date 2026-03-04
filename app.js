@@ -51,6 +51,7 @@ const appState = {
   isResizing:false,resizeStartX:0,resizeOriginDuration:0,resizeTarget:null,
   bookingTarget:{id:null,start:9},bookingEditTarget:null,deleteTarget:null,
   suppressBookingClickUntil:0,
+  resizeCellWidth:0,resizeMovedPx:0,resizePreviewDuration:0,resizeValidationOk:true,resizeIntentLocked:false,
   isLiveMode:true,dayModalDate:null,dashboardSidePanel:"status",
   focusMachineId:null,mobileDashboardView:"summary",adminCompact:false,
   mobile:{activePane:"dashboard",layoutMode:"drawer",drawerOpen:false,canReserveNow:false},
@@ -85,6 +86,10 @@ const focusCache = {
   clearTimer: null
 };
 
+const RESIZE_INTENT_HIT_PX = 22;
+const RESIZE_CLICK_GUARD_MS = 360;
+const RESIZE_MIN_COMMIT_PX = 5;
+
 
 
 function todayISO(){return new Date().toISOString().slice(0,10);} 
@@ -93,6 +98,14 @@ function formatTime(val){
   const h=Math.floor(totalMinutes/60);
   const m=totalMinutes%60;
   return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+}
+function formatDurationText(val){
+  const totalMinutes=Math.max(30,Math.round((Number(val)||0)*60));
+  const hour=Math.floor(totalMinutes/60);
+  const min=totalMinutes%60;
+  if(min===0) return `${hour}시간`;
+  if(hour===0) return `${min}분`;
+  return `${hour}시간 ${min}분`;
 }
 function formatDateLabel(iso){return iso.replace(/-/g,". ");}
 function clampHour(val){if(val<9) return 9; if(val>18) return 18; return val;}
@@ -399,6 +412,15 @@ function canResizeBooking(booking){
 
 function canEditBooking(booking){
   return canDragBooking(booking);
+}
+
+function isResizeIntentTarget(event,block,booking){
+  if(!event || !block || !canResizeBooking(booking)) return false;
+  if(event.button!==0) return false;
+  const rect=block.getBoundingClientRect();
+  const hitWidth=Math.min(RESIZE_INTENT_HIT_PX,Math.max(10,rect.width*0.34));
+  const distance=rect.right-event.clientX;
+  return distance>=-2 && distance<=hitWidth;
 }
 
 function canUseScheduleDrop(){
@@ -2032,13 +2054,24 @@ function renderSchedule(){
           if(canDragBooking(booking)){
             block.draggable=true;
             block.classList.add("can-drag");
-            block.addEventListener("dragstart",e=>handleDragStart(e,id,booking.docId));
+            block.addEventListener("dragstart",e=>{
+              if(appState.isResizing || appState.resizeIntentLocked){
+                e.preventDefault();
+                return;
+              }
+              handleDragStart(e,id,booking.docId);
+            });
             block.addEventListener("dragend",handleDragEnd);
             const handle=block.querySelector(".resize-handle");
             if(handle && canResizeBooking(booking)){
               block.classList.add("resizable");
-              handle.addEventListener("mousedown",e=>handleResizeStart(e,id,booking.docId,booking.duration));
+              handle.addEventListener("mousedown",e=>handleResizeStart(e,id,booking.docId,booking.duration,block));
             }
+            block.addEventListener("mousedown",e=>{
+              if(e.target?.closest(".booking-delete") || e.target?.closest(".resize-handle")) return;
+              if(!isResizeIntentTarget(e,block,booking)) return;
+              handleResizeStart(e,id,booking.docId,booking.duration,block);
+            });
           }else{
             block.style.cursor="default";
             const handle=block.querySelector(".resize-handle");if(handle) handle.style.display="none";
@@ -2082,12 +2115,16 @@ function renderSchedule(){
 }
 
 function handleDragStart(e,machineId,docId){
+  if(appState.isResizing || appState.resizeIntentLocked){
+    e.preventDefault();
+    return;
+  }
   const booking=findBookingByDocId(machineId,docId);
   if(!canDragBooking(booking)){
     e.preventDefault();
     return;
   }
-  appState.suppressBookingClickUntil=Date.now()+260;
+  appState.suppressBookingClickUntil=Date.now()+RESIZE_CLICK_GUARD_MS;
   appState.dragPayload={ machineId, docId, booking };
   e.dataTransfer.setData("text", JSON.stringify({machineId,docId}));
   e.dataTransfer.effectAllowed="move";
@@ -2099,11 +2136,12 @@ function handleDragEnd(e){
   if(e?.target) e.target.classList.remove("dragging");
   document.body.classList.remove("is-dragging");
   appState.dragPayload=null;
+  appState.resizeIntentLocked=false;
   document.querySelectorAll(".schedule-table td.drag-hover, .schedule-table td.drag-hover-valid, .schedule-table td.drag-hover-invalid").forEach(el=>clearDropCellState(el));
 }
 
 function shouldSkipBookingClick(event){
-  if(appState.isResizing) return true;
+  if(appState.isResizing || appState.resizeIntentLocked) return true;
   if(Date.now()<appState.suppressBookingClickUntil) return true;
   const target=event?.target;
   if(target?.closest(".booking-delete")) return true;
@@ -2149,19 +2187,76 @@ async function handleDrop(e,targetMachineId,targetHour){
   }
 }
 
-function handleResizeStart(event,id,docId,duration){
+function getResizeValidation(booking,machineId,docId,newDuration){
+  if(!booking) return { ok:false, reason:"예약 정보를 찾을 수 없습니다." };
+  if(newDuration<0.5 || booking.start+newDuration>18){
+    return { ok:false, reason:"운영 시간 범위를 벗어납니다." };
+  }
+  if(isOverlap(machineId,booking.date,booking.start,newDuration,docId)){
+    return { ok:false, reason:"다른 예약과 시간이 겹칩니다." };
+  }
+  return { ok:true, reason:"변경 가능합니다." };
+}
+
+function clearResizePreview(){
+  const block=appState.resizeTarget?.blockEl || null;
+  if(block){
+    block.style.width="";
+    block.classList.remove("resizing","resize-invalid");
+    block.removeAttribute("data-resize-label");
+  }
+}
+
+function handleResizeMove(event){
+  if(!appState.isResizing||!appState.resizeTarget) return;
+  const {id,docId}=appState.resizeTarget;
+  const booking=findBookingByDocId(id,docId);
+  const block=appState.resizeTarget.blockEl;
+  if(!booking || !block){
+    appState.resizeValidationOk=false;
+    return;
+  }
+  const cellWidth=appState.resizeCellWidth || (document.querySelector(".schedule-table td")?.offsetWidth || 40);
+  const moved=event.clientX-appState.resizeStartX;
+  appState.resizeMovedPx=Math.max(appState.resizeMovedPx,Math.abs(moved));
+  const rawDuration=Math.max(0.5,Math.min(18-booking.start,appState.resizeOriginDuration + (moved/cellWidth)*0.5));
+  const snapDuration=snapToHalfHour(rawDuration);
+  const validation=getResizeValidation(booking,id,docId,snapDuration);
+  appState.resizePreviewDuration=snapDuration;
+  appState.resizeValidationOk=validation.ok;
+  const widthRatio=Math.max(0.2,rawDuration/appState.resizeOriginDuration);
+  block.style.width=`${(widthRatio*100).toFixed(1)}%`;
+  block.classList.toggle("resize-invalid",!validation.ok);
+  block.classList.add("resizing");
+  const endText=formatTime(booking.start+snapDuration);
+  const durationText=formatDurationText(snapDuration);
+  block.setAttribute("data-resize-label",`${endText} · ${durationText}${validation.ok?"":" (불가)"}`);
+}
+
+function handleResizeStart(event,id,docId,duration,sourceBlock){
   const booking=findBookingByDocId(id,docId);
   if(!canResizeBooking(booking)) return;
   if(event.button!==0) return;
-  appState.suppressBookingClickUntil=Date.now()+320;
+  const block=(sourceBlock && sourceBlock.classList?.contains("booking-block"))
+    ? sourceBlock
+    : (event.currentTarget?.closest(".booking-block") || null);
+  if(!block) return;
+  appState.suppressBookingClickUntil=Date.now()+RESIZE_CLICK_GUARD_MS;
+  appState.resizeIntentLocked=true;
   event.stopPropagation();
   event.preventDefault();
   appState.isResizing=true;
   appState.resizeStartX=event.clientX;
   appState.resizeOriginDuration=duration;
-  appState.resizeTarget={id,docId};
+  appState.resizeTarget={id,docId,blockEl:block};
+  appState.resizeCellWidth=document.querySelector(".schedule-table td")?.offsetWidth || 40;
+  appState.resizeMovedPx=0;
+  appState.resizePreviewDuration=duration;
+  appState.resizeValidationOk=true;
   document.body.style.cursor="col-resize";
   document.body.classList.add("is-resizing");
+  block.classList.add("resizing");
+  block.setAttribute("data-resize-label",`${formatTime(booking.start+duration)} · ${formatDurationText(duration)}`);
 }
 
 async function handleResizeEnd(event){
@@ -2170,21 +2265,16 @@ async function handleResizeEnd(event){
   document.body.style.cursor="default";
   document.body.classList.remove("is-resizing");
   try{
-    const cell=document.querySelector(".schedule-table td");
-    const cellWidth=cell?cell.offsetWidth:40;
-    const diff=Math.round((event.clientX-appState.resizeStartX)/cellWidth)*0.5;
-    if(diff===0) return;
     const {id,docId}=appState.resizeTarget;
     const booking=findBookingByDocId(id,docId);
     if(!booking) return;
     if(!canResizeBooking(booking)) return;
-    const newDuration=appState.resizeOriginDuration+diff;
-    if(newDuration<0.5||booking.start+newDuration>18){
-      showToast("운영 시간 범위를 벗어나 변경할 수 없습니다.","warn");
-      return;
-    }
-    if(isOverlap(id,booking.date,booking.start,newDuration,docId)){
-      showToast("다른 예약과 시간이 겹칩니다.","warn");
+    if(appState.resizeMovedPx<RESIZE_MIN_COMMIT_PX) return;
+    const newDuration=snapToHalfHour(appState.resizePreviewDuration||appState.resizeOriginDuration);
+    if(newDuration===appState.resizeOriginDuration) return;
+    const validation=getResizeValidation(booking,id,docId,newDuration);
+    if(!validation.ok){
+      showToast(validation.reason,"warn");
       return;
     }
     await updateBookingDoc(docId,{duration:newDuration});
@@ -2192,7 +2282,13 @@ async function handleResizeEnd(event){
   }catch(error){
     reportAsyncError("handleResizeEnd", error, "예약 시간 조정에 실패했습니다.");
   }finally{
+    clearResizePreview();
     appState.resizeTarget=null;
+    appState.resizeCellWidth=0;
+    appState.resizeMovedPx=0;
+    appState.resizePreviewDuration=0;
+    appState.resizeValidationOk=true;
+    setTimeout(()=>{ appState.resizeIntentLocked=false; },80);
   }
 }
 
@@ -3809,7 +3905,15 @@ function bindEvents(){
       }
     }
   });
+  document.addEventListener("mousemove",handleResizeMove);
   document.addEventListener("mouseup",handleResizeEnd);
+  window.addEventListener("blur",()=>{
+    if(appState.isResizing){
+      handleResizeEnd({ clientX: appState.resizeStartX });
+    }else{
+      appState.resizeIntentLocked=false;
+    }
+  });
   window.addEventListener("resize",()=>{
     appState.mobile.layoutMode=getMobileLayoutMode();
     if(appState.mobile.layoutMode==="rail") appState.mobile.drawerOpen=false;
