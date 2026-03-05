@@ -236,7 +236,7 @@ function normalizeMachineIdForRender(rawId){
   return id;
 }
 function isRenderableMachineId(id){
-  return /^[A-Za-z0-9가-힣][A-Za-z0-9\-_.가-힣]{0,31}$/.test(id);
+  return /^[A-Za-z가-힣][A-Za-z0-9\-_.가-힣]{0,31}$/.test(id);
 }
 function compareMachineIdAsc(a,b){
   return String(a).localeCompare(String(b),"ko",{ numeric:true, sensitivity:"base" });
