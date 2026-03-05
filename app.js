@@ -232,6 +232,9 @@ function normalizeMachineIdForRender(rawId){
   if(!/[A-Za-z0-9가-힣]/.test(id)) return "";
   return id;
 }
+function isRenderableMachineId(id){
+  return /^[A-Za-z0-9가-힣][A-Za-z0-9\-_.가-힣]{0,31}$/.test(id);
+}
 function getTimelineMachineIds(){
   ensureSiteRoomState();
   const ids=[];
@@ -240,14 +243,15 @@ function getTimelineMachineIds(){
   orderedRooms.forEach(room=>{
     getMachinesByRoomId(room.id).forEach(rawId=>{
       const id=normalizeMachineIdForRender(rawId);
-      if(!id || seen.has(id)) return;
+      if(!id || !isRenderableMachineId(id) || seen.has(id)) return;
       seen.add(id);
       ids.push(id);
     });
   });
   bscIds.forEach(rawId=>{
     const id=normalizeMachineIdForRender(rawId);
-    if(!id || seen.has(id)) return;
+    if(!id || !isRenderableMachineId(id) || seen.has(id)) return;
+    if(!getMachineRoomId(id)) return;
     seen.add(id);
     ids.push(id);
   });
