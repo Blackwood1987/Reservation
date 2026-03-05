@@ -227,7 +227,10 @@ function getMachineDisplayPath(machineId){
   return `${site.name} / ${room.name}`;
 }
 function normalizeMachineIdForRender(rawId){
-  const id=String(rawId || "").replace(/[\u200B-\u200D\uFEFF]/g,"").trim();
+  const id=String(rawId || "")
+    .replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200D\u2060\uFEFF]/g,"")
+    .replace(/\s+/g,"")
+    .trim();
   if(!id) return "";
   if(!/[A-Za-z0-9가-힣]/.test(id)) return "";
   return id;
@@ -2672,8 +2675,6 @@ function updateTimelineIndicators(container){
 
 function renderTimeline(container,date){
   container.innerHTML="";
-  container.appendChild(createTimelineShade("past"));
-  container.appendChild(createTimelineShade("future"));
   for(const id of getTimelineMachineIds()){
     const row=document.createElement("div");row.className="timeline-row";
     row.dataset.machineId=id;

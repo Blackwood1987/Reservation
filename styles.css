@@ -2952,6 +2952,14 @@ body.is-resizing .resize-handle {
   color: #555555;
 }
 
+.form-group .form-label {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 900;
+  color: #555555;
+}
+
 .form-group input,
 .form-group select,
 .form-group textarea {
