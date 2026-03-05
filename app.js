@@ -238,19 +238,46 @@ function normalizeMachineIdForRender(rawId){
 function isRenderableMachineId(id){
   return /^[A-Za-z0-9가-힣][A-Za-z0-9\-_.가-힣]{0,31}$/.test(id);
 }
+function compareMachineIdAsc(a,b){
+  return String(a).localeCompare(String(b),"ko",{ numeric:true, sensitivity:"base" });
+}
+function isCellBankRoom(room){
+  return String(room?.name || "").includes("세포은행");
+}
 function getTimelineMachineIds(){
   ensureSiteRoomState();
   const ids=[];
   const seen=new Set();
   const orderedRooms=getActiveSites().flatMap(site=>getRoomsBySite(site.id));
+  let fixedTopCrfId=null;
+
   orderedRooms.forEach(room=>{
-    getMachinesByRoomId(room.id).forEach(rawId=>{
-      const id=normalizeMachineIdForRender(rawId);
-      if(!id || !isRenderableMachineId(id) || seen.has(id)) return;
+    if(!isCellBankRoom(room)) return;
+    const roomMachineIds=getMachinesByRoomId(room.id)
+      .map(rawId=>normalizeMachineIdForRender(rawId))
+      .filter(id=>id && isRenderableMachineId(id));
+    const crf=roomMachineIds.find(id=>String(id).toUpperCase()==="CRF");
+    if(crf){
+      fixedTopCrfId=crf;
+    }
+  });
+
+  if(fixedTopCrfId){
+    seen.add(fixedTopCrfId);
+    ids.push(fixedTopCrfId);
+  }
+
+  orderedRooms.forEach(room=>{
+    const roomMachineIds=getMachinesByRoomId(room.id)
+      .map(rawId=>normalizeMachineIdForRender(rawId))
+      .filter(id=>id && isRenderableMachineId(id) && !seen.has(id))
+      .sort(compareMachineIdAsc);
+    roomMachineIds.forEach(id=>{
       seen.add(id);
       ids.push(id);
     });
   });
+
   bscIds.forEach(rawId=>{
     const id=normalizeMachineIdForRender(rawId);
     if(!id || !isRenderableMachineId(id) || seen.has(id)) return;
