@@ -57,21 +57,29 @@ export function isCellBankRoomName(name){
 export function buildTimelineMachineIds({ orderedRooms, machineIdsByRoomId, allMachineIds, machineRoomIdsById }){
   const ids=[];
   const seen=new Set();
-  let fixedTopCrfId=null;
+  const fixedTopCrfIds=[];
 
   orderedRooms.forEach(room=>{
-    if(!isCellBankRoomName(room?.name)) return;
     const roomMachineIds=(machineIdsByRoomId[room.id] || [])
       .map(rawId=>normalizeMachineIdForRender(rawId))
-      .filter(id=>id && isRenderableMachineId(id));
-    const crf=roomMachineIds.find(id=>String(id).toUpperCase()==="CRF");
-    if(crf) fixedTopCrfId=crf;
+      .filter(id=>id && isRenderableMachineId(id) && isPinnedTimelineMachineId(id))
+      .sort(compareMachineIdAsc);
+    roomMachineIds.forEach(id=>{
+      if(seen.has(id)) return;
+      seen.add(id);
+      fixedTopCrfIds.push(id);
+    });
   });
 
-  if(fixedTopCrfId){
-    seen.add(fixedTopCrfId);
-    ids.push(fixedTopCrfId);
-  }
+  allMachineIds.forEach(rawId=>{
+    const id=normalizeMachineIdForRender(rawId);
+    if(!id || !isRenderableMachineId(id) || seen.has(id)) return;
+    if(!machineRoomIdsById[id] || !isPinnedTimelineMachineId(id)) return;
+    seen.add(id);
+    fixedTopCrfIds.push(id);
+  });
+
+  fixedTopCrfIds.sort(compareMachineIdAsc).forEach(id=>ids.push(id));
 
   orderedRooms.forEach(room=>{
     const roomMachineIds=(machineIdsByRoomId[room.id] || [])
@@ -152,4 +160,9 @@ export function validateBookingResize({
     return { ok:false, reason:"다른 예약과 시간이 겹칩니다." };
   }
   return { ok:true, reason:"변경 가능합니다." };
+}
+
+
+export function isPinnedTimelineMachineId(id){
+  return String(id || "").toUpperCase().includes("CRF");
 }

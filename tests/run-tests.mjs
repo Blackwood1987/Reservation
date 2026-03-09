@@ -99,30 +99,30 @@ const tests = [
     }
   },
   {
-    name: "buildTimelineMachineIds pins CRF from cell bank room and sorts remaining machines",
+    name: "buildTimelineMachineIds pins every CRF-like machine to the top group",
     run() {
       const orderedRooms = [
-        { id: "room-cell", name: "314호 세포은행", order: 1 },
-        { id: "room-a", name: "M2-301", order: 2 },
-        { id: "room-b", name: "M2-401", order: 3 }
+        { id: "room-a", name: "M2-301", order: 1 },
+        { id: "room-b", name: "314호 세포은행", order: 2 },
+        { id: "room-c", name: "M2-401", order: 3 }
       ];
       const machineIdsByRoomId = {
-        "room-cell": ["CRF"],
-        "room-a": ["BSC-1540", "BSC-1539"],
-        "room-b": ["BSC-1542", "BSC-1541"]
+        "room-a": ["BSC-1540", "CRF-02"],
+        "room-b": ["CRF"],
+        "room-c": ["BSC-1542", "BSC-1541"]
       };
-      const allMachineIds = ["CRF", "BSC-1540", "BSC-1539", "BSC-1542", "BSC-1541"];
+      const allMachineIds = ["BSC-1540", "CRF-02", "CRF", "BSC-1542", "BSC-1541"];
       const machineRoomIdsById = {
-        "CRF": "room-cell",
         "BSC-1540": "room-a",
-        "BSC-1539": "room-a",
-        "BSC-1542": "room-b",
-        "BSC-1541": "room-b"
+        "CRF-02": "room-a",
+        "CRF": "room-b",
+        "BSC-1542": "room-c",
+        "BSC-1541": "room-c"
       };
 
       assert.deepEqual(
         buildTimelineMachineIds({ orderedRooms, machineIdsByRoomId, allMachineIds, machineRoomIdsById }),
-        ["CRF", "BSC-1539", "BSC-1540", "BSC-1541", "BSC-1542"]
+        ["CRF", "CRF-02", "BSC-1540", "BSC-1541", "BSC-1542"]
       );
     }
   }
