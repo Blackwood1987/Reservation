@@ -1,4 +1,4 @@
-﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { buildTimelineMachineIds, canRolePerform, canUserOperateBooking, clampHour, formatTime, hasBookingOverlap, snapToHalfHour, sortByOrderThenName, validateBookingDrop, validateBookingResize } from "./core-utils.mjs";
@@ -56,41 +56,43 @@ let purposeList = [...defaultPurposeList];
 const defaultManualSections = [
   {
     id: "manual-login",
-    title: "접속 및 로그인",
-    body: "1. 접속 URL로 이동합니다.\n2. 화면 하단의 [또는 데모 로그인] 영역에서 [작업자(Worker)] 버튼을 누릅니다.\n3. 접속 후 우측 상단 로그아웃 버튼으로 세션을 종료합니다.",
-    imageUrl: "",
-    imageCaption: "로그인 화면 스크린샷 추가 예정",
+    title: "\uC811\uC18D \uBC0F \uB85C\uADF8\uC778",
+    body: "1. \uC811\uC18D URL\uB85C \uC774\uB3D9\uD569\uB2C8\uB2E4.\n2. \uD654\uBA74 \uD558\uB2E8\uC758 [\uB610\uB294 \uB370\uBAA8 \uB85C\uADF8\uC778] \uC601\uC5ED\uC5D0\uC11C [\uC791\uC5C5\uC790(Worker)] \uBC84\uD2BC\uC744 \uB204\uB985\uB2C8\uB2E4.\n3. \uC811\uC18D \uD6C4 \uC6B0\uCE21 \uC0C1\uB2E8 \uB85C\uADF8\uC544\uC6C3 \uBC84\uD2BC\uC73C\uB85C \uC138\uC158\uC744 \uC885\uB8CC\uD569\uB2C8\uB2E4.",
+    imageUrl: "manual/reservation-step-01.png",
+    imageCaption: "\uC811\uC18D \uBC0F \uB85C\uADF8\uC778 \uD654\uBA74",
     order: 1,
     active: true
   },
   {
     id: "manual-reservation",
-    title: "예약 등록 방법",
-    body: "1. 상단 메뉴에서 [예약 관리]로 이동합니다.\n2. 장비, 날짜, 시작 시간, 목적, 소요 시간을 입력합니다.\n3. 저장 버튼을 눌러 예약을 등록합니다.\n4. 중복 시간이 있으면 저장되지 않으므로 시간을 다시 조정합니다.",
-    imageUrl: "",
-    imageCaption: "예약 등록 화면 스크린샷 추가 예정",
+    title: "\uC608\uC57D \uB4F1\uB85D \uBC29\uBC95",
+    body: "1. \uC0C1\uB2E8 \uBA54\uB274\uC5D0\uC11C [\uC608\uC57D \uAD00\uB9AC]\uB85C \uC774\uB3D9\uD569\uB2C8\uB2E4.\n2. \uC7A5\uBE44, \uB0A0\uC9DC, \uC2DC\uC791 \uC2DC\uAC04, \uBAA9\uC801, \uC18C\uC694 \uC2DC\uAC04\uC744 \uC785\uB825\uD569\uB2C8\uB2E4.\n3. \uC800\uC7A5 \uBC84\uD2BC\uC744 \uB20C\uB7EC \uC608\uC57D\uC744 \uB4F1\uB85D\uD569\uB2C8\uB2E4.\n4. \uC911\uBCF5 \uC2DC\uAC04\uC774 \uC788\uC73C\uBA74 \uC800\uC7A5\uB418\uC9C0 \uC54A\uC73C\uBBC0\uB85C \uC2DC\uAC04\uC744 \uB2E4\uC2DC \uC870\uC815\uD569\uB2C8\uB2E4.",
+    imageUrl: "manual/reservation-step-02.png",
+    imageCaption: "\uC608\uC57D \uB4F1\uB85D \uD654\uBA74",
     order: 2,
     active: true
   },
   {
     id: "manual-dashboard",
-    title: "대시보드 확인 방법",
-    body: "1. 대시보드에서 현재 가동 상태와 실시간 타임라인을 확인합니다.\n2. 장소 또는 장비를 클릭하면 상세 현황을 확인할 수 있습니다.\n3. 라이브 ON 상태에서는 현재 시각 기준으로 화면이 갱신됩니다.",
-    imageUrl: "",
-    imageCaption: "대시보드 화면 스크린샷 추가 예정",
+    title: "\uB300\uC2DC\uBCF4\uB4DC \uD655\uC778 \uBC29\uBC95",
+    body: "1. \uB300\uC2DC\uBCF4\uB4DC\uC5D0\uC11C \uD604\uC7AC \uAC00\uB3D9 \uC0C1\uD0DC\uC640 \uC2E4\uC2DC\uAC04 \uD0C0\uC784\uB77C\uC778\uC744 \uD655\uC778\uD569\uB2C8\uB2E4.\n2. \uC7A5\uC18C \uB610\uB294 \uC7A5\uBE44\uB97C \uD074\uB9AD\uD558\uBA74 \uC0C1\uC138 \uD604\uD669\uC744 \uD655\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.\n3. \uB77C\uC774\uBE0C ON \uC0C1\uD0DC\uC5D0\uC11C\uB294 \uD604\uC7AC \uC2DC\uAC01 \uAE30\uC900\uC73C\uB85C \uD654\uBA74\uC774 \uAC31\uC2E0\uB429\uB2C8\uB2E4.",
+    imageUrl: "manual/reservation-step-03.png",
+    imageCaption: "\uB300\uC2DC\uBCF4\uB4DC \uD655\uC778 \uD654\uBA74",
     order: 3,
     active: true
   },
   {
     id: "manual-notes",
-    title: "운영 유의사항",
-    body: "1. 현재는 베타 운영 단계이므로 화면 구성과 정책이 변경될 수 있습니다.\n2. 예약이 보이지 않거나 저장되지 않으면 필수 입력값과 시간을 먼저 확인합니다.\n3. 수정/삭제 권한이 보이지 않으면 운영 관리자에게 요청합니다.",
+    title: "\uC6B4\uC601 \uC720\uC758\uC0AC\uD56D",
+    body: "1. \uD604\uC7AC\uB294 \uBCA0\uD0C0 \uC6B4\uC601 \uB2E8\uACC4\uC774\uBBC0\uB85C \uD654\uBA74 \uAD6C\uC131\uACFC \uC815\uCC45\uC774 \uBCC0\uACBD\uB420 \uC218 \uC788\uC2B5\uB2C8\uB2E4.\n2. \uC608\uC57D\uC774 \uBCF4\uC774\uC9C0 \uC54A\uAC70\uB098 \uC800\uC7A5\uB418\uC9C0 \uC54A\uC73C\uBA74 \uD544\uC218 \uC785\uB825\uAC12\uACFC \uC2DC\uAC04\uC744 \uBA3C\uC800 \uD655\uC778\uD569\uB2C8\uB2E4.\n3. \uC218\uC815/\uC0AD\uC81C \uAD8C\uD55C\uC774 \uBCF4\uC774\uC9C0 \uC54A\uC73C\uBA74 \uC6B4\uC601 \uAD00\uB9AC\uC790\uC5D0\uAC8C \uC694\uCCAD\uD569\uB2C8\uB2E4.",
     imageUrl: "",
-    imageCaption: "안내용 이미지 추가 예정",
+    imageCaption: "",
     order: 4,
     active: true
   }
 ];
+
+const defaultManualSectionsById = Object.fromEntries(defaultManualSections.map(section=>[section.id, section]));
 
 let manualSections = defaultManualSections.map(section=>({ ...section }));
 
@@ -735,15 +737,25 @@ function applyConfigData(data){
     purposeList = [...defaultPurposeList];
   }
   if(Array.isArray(data.manualSections) && data.manualSections.length){
-    manualSections = data.manualSections.map((section,index)=>({
-      id: String(section.id || `manual-${index+1}`),
-      title: String(section.title || `섹션 ${index+1}`),
-      body: String(section.body || ""),
-      imageUrl: String(section.imageUrl || ""),
-      imageCaption: String(section.imageCaption || ""),
-      order: Number(section.order) || index+1,
-      active: section.active!==false
-    }));
+    manualSections = data.manualSections.map((section,index)=>{
+      const id = String(section.id || `manual-${index+1}`);
+      const baseSection = defaultManualSectionsById[id] || null;
+      const rawImageUrl = String(section.imageUrl || "");
+      const imageUrl = rawImageUrl || String(baseSection?.imageUrl || "");
+      const rawImageCaption = String(section.imageCaption || "");
+      const imageCaption = imageUrl
+        ? (rawImageUrl ? rawImageCaption : String(baseSection?.imageCaption || rawImageCaption).replace(/\uCD94\uAC00 \uC608\uC815/g, "").trim())
+        : "";
+      return {
+        id,
+        title: String(section.title || baseSection?.title || `\uC139\uC158 ${index+1}`),
+        body: String(section.body || baseSection?.body || ""),
+        imageUrl,
+        imageCaption,
+        order: Number(section.order) || baseSection?.order || index+1,
+        active: section.active!==false
+      };
+    });
   }else{
     manualSections = defaultManualSections.map(section=>({ ...section }));
   }
@@ -3478,7 +3490,7 @@ function renderManualViewer(){
 
     const body=document.createElement("div");
     body.className="manual-body";
-    body.textContent=section.body || "내용 없음";
+    body.textContent=section.body || "\uB0B4\uC6A9 \uC5C6\uC74C";
     article.appendChild(body);
 
     if(section.imageUrl){
@@ -3490,16 +3502,13 @@ function renderManualViewer(){
       img.alt=section.imageCaption || section.title;
       img.loading="lazy";
       figure.appendChild(img);
-      const caption=document.createElement("figcaption");
-      caption.className="manual-caption";
-      caption.textContent=section.imageCaption || "스크린샷";
-      figure.appendChild(caption);
+      if(section.imageCaption){
+        const caption=document.createElement("figcaption");
+        caption.className="manual-caption";
+        caption.textContent=section.imageCaption;
+        figure.appendChild(caption);
+      }
       article.appendChild(figure);
-    }else{
-      const placeholder=document.createElement("div");
-      placeholder.className="manual-image-placeholder";
-      placeholder.textContent=section.imageCaption || "스크린샷 추가 예정";
-      article.appendChild(placeholder);
     }
 
     container.appendChild(article);

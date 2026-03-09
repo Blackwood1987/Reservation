@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg-color: #f0f2f5;
   --card-bg: #ffffff;
   --text-color: #333333;
@@ -2564,7 +2564,6 @@ body.is-resizing .resize-handle {
   color: #708395;
 }
 
-.manual-image-placeholder,
 .manual-empty {
   border: 1px dashed #d7e0e8;
   border-radius: 10px;
