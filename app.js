@@ -53,6 +53,47 @@ const defaultPurposeList = [
 
 let purposeList = [...defaultPurposeList];
 
+const defaultManualSections = [
+  {
+    id: "manual-login",
+    title: "접속 및 로그인",
+    body: "1. 접속 URL로 이동합니다.\n2. 화면 하단의 [또는 데모 로그인] 영역에서 [작업자(Worker)] 버튼을 누릅니다.\n3. 접속 후 우측 상단 로그아웃 버튼으로 세션을 종료합니다.",
+    imageUrl: "",
+    imageCaption: "로그인 화면 스크린샷 추가 예정",
+    order: 1,
+    active: true
+  },
+  {
+    id: "manual-reservation",
+    title: "예약 등록 방법",
+    body: "1. 상단 메뉴에서 [예약 관리]로 이동합니다.\n2. 장비, 날짜, 시작 시간, 목적, 소요 시간을 입력합니다.\n3. 저장 버튼을 눌러 예약을 등록합니다.\n4. 중복 시간이 있으면 저장되지 않으므로 시간을 다시 조정합니다.",
+    imageUrl: "",
+    imageCaption: "예약 등록 화면 스크린샷 추가 예정",
+    order: 2,
+    active: true
+  },
+  {
+    id: "manual-dashboard",
+    title: "대시보드 확인 방법",
+    body: "1. 대시보드에서 현재 가동 상태와 실시간 타임라인을 확인합니다.\n2. 장소 또는 장비를 클릭하면 상세 현황을 확인할 수 있습니다.\n3. 라이브 ON 상태에서는 현재 시각 기준으로 화면이 갱신됩니다.",
+    imageUrl: "",
+    imageCaption: "대시보드 화면 스크린샷 추가 예정",
+    order: 3,
+    active: true
+  },
+  {
+    id: "manual-notes",
+    title: "운영 유의사항",
+    body: "1. 현재는 베타 운영 단계이므로 화면 구성과 정책이 변경될 수 있습니다.\n2. 예약이 보이지 않거나 저장되지 않으면 필수 입력값과 시간을 먼저 확인합니다.\n3. 수정/삭제 권한이 보이지 않으면 운영 관리자에게 요청합니다.",
+    imageUrl: "",
+    imageCaption: "안내용 이미지 추가 예정",
+    order: 4,
+    active: true
+  }
+];
+
+let manualSections = defaultManualSections.map(section=>({ ...section }));
+
 const appState = {
   currentUser:null,currentView:"dashboard",currentHour:9,
   currentDate:todayISO(),currentYear:new Date().getFullYear(),
@@ -666,6 +707,15 @@ function buildConfigPayload(){
       label: p.label,
       machines: Array.isArray(p.machines) ? p.machines : null
     })),
+    manualSections: manualSections.map(section=>({
+      id: section.id,
+      title: section.title,
+      body: section.body,
+      imageUrl: section.imageUrl || "",
+      imageCaption: section.imageCaption || "",
+      order: Number(section.order) || 0,
+      active: section.active!==false
+    })),
     updatedAt: serverTimestamp()
   };
 }
@@ -683,6 +733,19 @@ function applyConfigData(data){
     }));
   }else{
     purposeList = [...defaultPurposeList];
+  }
+  if(Array.isArray(data.manualSections) && data.manualSections.length){
+    manualSections = data.manualSections.map((section,index)=>({
+      id: String(section.id || `manual-${index+1}`),
+      title: String(section.title || `섹션 ${index+1}`),
+      body: String(section.body || ""),
+      imageUrl: String(section.imageUrl || ""),
+      imageCaption: String(section.imageCaption || ""),
+      order: Number(section.order) || index+1,
+      active: section.active!==false
+    }));
+  }else{
+    manualSections = defaultManualSections.map(section=>({ ...section }));
   }
   if(Array.isArray(data.sites) && data.sites.length){
     sites = data.sites.map((site,index)=>({
@@ -746,6 +809,7 @@ function handleConfigMissing(){
   configState.exists = false;
   configState.needsMigrationSave = false;
   purposeList = [...defaultPurposeList];
+  manualSections = defaultManualSections.map(section=>({ ...section }));
   sites=[{ id: "site-default", name: "기본 Site", order: 1, active: true }];
   rooms=buildRoomsFromLocations(locations,sites[0].id);
   assignAutoRoomLayouts(rooms);
@@ -1842,6 +1906,7 @@ function renderActiveAdminSection(view=getActiveAdminView()){
     return;
   }
   if(view==="machines"){renderMachineTable(); return;}
+  if(view==="manual"){renderManualAdmin(); return;}
   if(view==="purposes"){renderPurposeTable(); return;}
   if(view==="audit"){
     refreshAuditHistory();
@@ -3355,18 +3420,259 @@ function handleDayAction(action){
   }
 }
 
+function getManualSections(includeInactive=false){
+  return [...manualSections]
+    .filter(section=>includeInactive || section.active!==false)
+    .sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0) || (a.title||"").localeCompare(b.title||"","ko"));
+}
+
+function renderManualAdmin(){
+  renderManualToc();
+  renderManualViewer();
+  renderManualSectionTable();
+}
+
+function renderManualToc(){
+  const container=document.getElementById("manual-toc");
+  if(!container) return;
+  container.innerHTML="";
+  const sections=getManualSections();
+  if(!sections.length){
+    const empty=document.createElement("div");
+    empty.className="manual-empty";
+    empty.textContent="노출 중인 메뉴얼 섹션이 없습니다.";
+    container.appendChild(empty);
+    return;
+  }
+  sections.forEach(section=>{
+    const btn=document.createElement("button");
+    btn.type="button";
+    btn.className="manual-toc-btn";
+    btn.dataset.manualJump=section.id;
+    btn.textContent=section.title;
+    container.appendChild(btn);
+  });
+}
+
+function renderManualViewer(){
+  const container=document.getElementById("manual-content");
+  if(!container) return;
+  container.innerHTML="";
+  const sections=getManualSections();
+  if(!sections.length){
+    const empty=document.createElement("div");
+    empty.className="manual-empty manual-content-empty";
+    empty.textContent="메뉴얼 콘텐츠가 없습니다. 관리자 화면에서 섹션을 추가하세요.";
+    container.appendChild(empty);
+    return;
+  }
+  sections.forEach(section=>{
+    const article=document.createElement("article");
+    article.className="manual-section-card";
+    article.id=`manual-view-${section.id}`;
+
+    const title=document.createElement("h4");
+    title.className="manual-section-title";
+    title.textContent=section.title;
+    article.appendChild(title);
+
+    const body=document.createElement("div");
+    body.className="manual-body";
+    body.textContent=section.body || "내용 없음";
+    article.appendChild(body);
+
+    if(section.imageUrl){
+      const figure=document.createElement("figure");
+      figure.className="manual-figure";
+      const img=document.createElement("img");
+      img.className="manual-image";
+      img.src=section.imageUrl;
+      img.alt=section.imageCaption || section.title;
+      img.loading="lazy";
+      figure.appendChild(img);
+      const caption=document.createElement("figcaption");
+      caption.className="manual-caption";
+      caption.textContent=section.imageCaption || "스크린샷";
+      figure.appendChild(caption);
+      article.appendChild(figure);
+    }else{
+      const placeholder=document.createElement("div");
+      placeholder.className="manual-image-placeholder";
+      placeholder.textContent=section.imageCaption || "스크린샷 추가 예정";
+      article.appendChild(placeholder);
+    }
+
+    container.appendChild(article);
+  });
+}
+
+function renderManualSectionTable(){
+  const tbody=document.getElementById("manual-section-table-body");
+  if(!tbody) return;
+  tbody.innerHTML="";
+  if(!isAdminUser()) return;
+  const sections=getManualSections(true);
+  if(!sections.length){
+    const tr=document.createElement("tr");
+    const td=document.createElement("td");
+    td.colSpan=5;
+    td.className="table-empty";
+    td.textContent="등록된 메뉴얼 섹션이 없습니다.";
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+    return;
+  }
+  sections.forEach(section=>{
+    const tr=document.createElement("tr");
+    const values=[
+      String(section.order || 0),
+      section.title,
+      section.imageUrl ? "연결됨" : "없음",
+      section.active!==false ? "노출" : "숨김"
+    ];
+    values.forEach(value=>{
+      const td=document.createElement("td");
+      td.textContent=value;
+      tr.appendChild(td);
+    });
+    const actionTd=document.createElement("td");
+    const editBtn=document.createElement("button");
+    editBtn.type="button";
+    editBtn.className="btn-edit";
+    editBtn.dataset.editManualSection=section.id;
+    editBtn.textContent="수정";
+    const delBtn=document.createElement("button");
+    delBtn.type="button";
+    delBtn.className="btn-del";
+    delBtn.dataset.delManualSection=section.id;
+    delBtn.textContent="삭제";
+    actionTd.appendChild(editBtn);
+    actionTd.appendChild(delBtn);
+    tr.appendChild(actionTd);
+    tbody.appendChild(tr);
+  });
+}
+
+function jumpToManualSection(sectionId){
+  const target=document.getElementById(`manual-view-${sectionId}`);
+  if(!target) return;
+  target.scrollIntoView({ behavior:"smooth", block:"start" });
+}
+
+function openManualSectionModal(mode,sectionId=""){
+  if(!isAdminUser()){
+    showToast("관리자만 메뉴얼을 편집할 수 있습니다.","warn");
+    return;
+  }
+  const modal=document.getElementById("manual-section-modal");
+  if(!modal) return;
+  const title=document.getElementById("manual-section-modal-title");
+  const original=document.getElementById("manual-section-original-id");
+  const titleInput=document.getElementById("manual-section-title");
+  const bodyInput=document.getElementById("manual-section-body");
+  const imageInput=document.getElementById("manual-section-image");
+  const captionInput=document.getElementById("manual-section-caption");
+  const orderInput=document.getElementById("manual-section-order");
+  const activeInput=document.getElementById("manual-section-active");
+  modal.style.display="flex";
+  if(mode==="create"){
+    if(title) title.textContent="메뉴얼 섹션 등록";
+    if(original) original.value="";
+    if(titleInput) titleInput.value="";
+    if(bodyInput) bodyInput.value="";
+    if(imageInput) imageInput.value="";
+    if(captionInput) captionInput.value="";
+    if(orderInput) orderInput.value=String(getManualSections(true).length+1);
+    if(activeInput) activeInput.checked=true;
+    return;
+  }
+  const section=manualSections.find(item=>item.id===sectionId);
+  if(!section){
+    closeModal("manual-section-modal");
+    showToast("수정할 메뉴얼 섹션을 찾을 수 없습니다.","warn");
+    return;
+  }
+  if(title) title.textContent="메뉴얼 섹션 수정";
+  if(original) original.value=section.id;
+  if(titleInput) titleInput.value=section.title;
+  if(bodyInput) bodyInput.value=section.body || "";
+  if(imageInput) imageInput.value=section.imageUrl || "";
+  if(captionInput) captionInput.value=section.imageCaption || "";
+  if(orderInput) orderInput.value=String(section.order || 1);
+  if(activeInput) activeInput.checked=section.active!==false;
+}
+
+async function saveManualSection(){
+  if(!isAdminUser()){
+    showToast("관리자만 메뉴얼을 편집할 수 있습니다.","warn");
+    return;
+  }
+  try{
+    const originalId=(document.getElementById("manual-section-original-id")?.value || "").trim();
+    const title=(document.getElementById("manual-section-title")?.value || "").trim();
+    const body=(document.getElementById("manual-section-body")?.value || "").trim();
+    const imageUrl=(document.getElementById("manual-section-image")?.value || "").trim();
+    const imageCaption=(document.getElementById("manual-section-caption")?.value || "").trim();
+    const order=Math.max(1,Number(document.getElementById("manual-section-order")?.value || 1));
+    const active=document.getElementById("manual-section-active")?.checked ?? true;
+    if(!title){ alert("제목을 입력하세요."); return; }
+    if(!body){ alert("본문을 입력하세요."); return; }
+    if(originalId){
+      const idx=manualSections.findIndex(section=>section.id===originalId);
+      if(idx<0){ alert("메뉴얼 섹션 정보를 찾을 수 없습니다."); return; }
+      manualSections[idx]={ ...manualSections[idx], title, body, imageUrl, imageCaption, order, active };
+    }else{
+      let nextId=makeSafeId(title,"manual");
+      let seed=1;
+      while(manualSections.some(section=>section.id===nextId)){
+        seed+=1;
+        nextId=`${makeSafeId(title,"manual")}-${seed}`;
+      }
+      manualSections=[...manualSections,{ id:nextId, title, body, imageUrl, imageCaption, order, active }];
+    }
+    closeModal("manual-section-modal");
+    await saveConfig();
+    renderManualAdmin();
+    addAdminActivity(originalId ? "메뉴얼 수정" : "메뉴얼 등록", title);
+    showToast(originalId ? "메뉴얼 섹션을 수정했습니다." : "메뉴얼 섹션을 등록했습니다.","success");
+  }catch(error){
+    reportAsyncError("saveManualSection", error, "메뉴얼 섹션 저장에 실패했습니다.");
+  }
+}
+
+async function deleteManualSection(sectionId){
+  if(!isAdminUser()){
+    showToast("관리자만 메뉴얼을 삭제할 수 있습니다.","warn");
+    return;
+  }
+  const section=manualSections.find(item=>item.id===sectionId);
+  if(!section) return;
+  if(!confirm(`메뉴얼 섹션 [${section.title}] 을 삭제하시겠습니까?`)) return;
+  try{
+    manualSections=manualSections.filter(item=>item.id!==sectionId);
+    await saveConfig();
+    renderManualAdmin();
+    addAdminActivity("메뉴얼 삭제", section.title);
+    showToast("메뉴얼 섹션을 삭제했습니다.","success");
+  }catch(error){
+    reportAsyncError("deleteManualSection", error, "메뉴얼 섹션 삭제에 실패했습니다.");
+  }
+}
+
 function renderAdmin(){
   if(!can("admin") || appState.currentView!=="admin") return;
   const usersBtn=document.querySelector('[data-admin-view="users"]');
   const machinesBtn=document.querySelector('[data-admin-view="machines"]');
   const purposesBtn=document.querySelector('[data-admin-view="purposes"]');
   const locationsBtn=document.querySelector('[data-admin-view="locations"]');
+  const manualBtn=document.querySelector('[data-admin-view="manual"]');
   const locationMaintenanceBtn=document.getElementById("btn-location-maintenance");
   if(appState.currentUser.role==="supervisor"){
     usersBtn.style.display="none";
     machinesBtn.style.display="none";
     if(purposesBtn) purposesBtn.style.display="none";
     locationsBtn.style.display="none";
+    if(manualBtn) manualBtn.style.display="none";
     if(locationMaintenanceBtn) locationMaintenanceBtn.hidden=true;
     switchAdminView("audit");
   }else{
@@ -3374,6 +3680,7 @@ function renderAdmin(){
     machinesBtn.style.display="flex";
     if(purposesBtn) purposesBtn.style.display="flex";
     locationsBtn.style.display="flex";
+    if(manualBtn) manualBtn.style.display="flex";
     if(locationMaintenanceBtn) locationMaintenanceBtn.hidden=!isAdminUser();
   }
   renderAdminToolbar(getActiveAdminView());
@@ -3383,6 +3690,7 @@ function renderAdmin(){
   renderRoomTable();
   renderMachineTable();
   renderLocationMaintenanceTable();
+  renderManualAdmin();
   renderPurposeTable();
   refreshAuditHistory();
   renderAdminActivity();
@@ -5293,11 +5601,13 @@ function bindEvents(){
   on("btn-create-site","click",()=>openSiteModal("create"));
   on("btn-create-room","click",()=>openRoomModal("create"));
   on("btn-create-purpose","click",()=>openPurposeModal("create"));
+  on("btn-create-manual-section","click",()=>openManualSectionModal("create"));
   on("btn-save-machine","click",saveMachine);
   on("btn-save-location-maintenance","click",saveLocationMaintenance);
   on("btn-save-site","click",saveSite);
   on("btn-save-room","click",saveRoom);
   on("btn-save-purpose","click",savePurpose);
+  on("btn-save-manual-section","click",saveManualSection);
   on("btn-print","click",printReport);
   on("btn-stats-prev","click",()=>shiftStatsMonth(-1));
   on("btn-stats-next","click",()=>shiftStatsMonth(1));
@@ -5364,6 +5674,9 @@ function bindEvents(){
     if(detailMachineBtn){
       selectMachineInMap(detailMachineBtn.getAttribute("data-detail-machine"),true);
     }
+    const manualJump=e.target.closest("[data-manual-jump]"); if(manualJump) jumpToManualSection(manualJump.dataset.manualJump);
+    const editManualSection=e.target.getAttribute("data-edit-manual-section"); if(editManualSection) openManualSectionModal("edit",editManualSection);
+    const delManualSection=e.target.getAttribute("data-del-manual-section"); if(delManualSection) deleteManualSection(delManualSection);
     const editPurpose=e.target.getAttribute("data-edit-purpose"); if(editPurpose) openPurposeModal("edit",editPurpose);
     const delPurpose=e.target.getAttribute("data-del-purpose"); if(delPurpose) deletePurpose(delPurpose);
     const adminView=e.target.closest(".admin-btn"); if(adminView&&adminView.dataset.adminView) switchAdminView(adminView.dataset.adminView);

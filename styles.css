@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg-color: #f0f2f5;
   --card-bg: #ffffff;
   --text-color: #333333;
@@ -2467,6 +2467,120 @@ body.is-resizing .resize-handle {
   color: #6b7d8f;
 }
 
+.manual-admin-layout {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.manual-toc-panel,
+.manual-content {
+  border: 1px solid #e7edf2;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.manual-toc-panel {
+  padding: 12px;
+  align-self: start;
+}
+
+.manual-panel-title {
+  font-size: 12px;
+  font-weight: 900;
+  color: #31475b;
+  margin-bottom: 8px;
+}
+
+.manual-toc {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.manual-toc-btn {
+  border: 1px solid #dde6ee;
+  border-radius: 8px;
+  background: #f8fbfe;
+  color: #2f4458;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+  padding: 9px 10px;
+  cursor: pointer;
+}
+
+.manual-toc-btn:hover {
+  background: #edf5fb;
+}
+
+.manual-content {
+  padding: 12px;
+  max-height: min(52vh, 520px);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.manual-section-card {
+  border: 1px solid #e8eef4;
+  border-radius: 10px;
+  background: #fbfcfd;
+  padding: 14px;
+}
+
+.manual-section-title {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #243746;
+}
+
+.manual-body {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #435567;
+  white-space: pre-line;
+}
+
+.manual-figure {
+  margin: 12px 0 0;
+}
+
+.manual-image {
+  display: block;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #dde7ef;
+  background: #ffffff;
+}
+
+.manual-caption {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #708395;
+}
+
+.manual-image-placeholder,
+.manual-empty {
+  border: 1px dashed #d7e0e8;
+  border-radius: 10px;
+  background: #f8fbfd;
+  color: #7a8d9e;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 14px 12px;
+}
+
+.manual-content-empty {
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .admin-table-wrap.compact {
   max-height: min(30vh, 260px);
 }
@@ -3654,6 +3768,9 @@ body.is-resizing .resize-handle {
 
 
 @media (max-width: 1024px) {
+  .manual-admin-layout {
+    grid-template-columns: 1fr;
+  }
   .map-split {
     grid-template-columns: minmax(160px, 34%) minmax(0, 1fr);
   }
