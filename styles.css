@@ -2460,6 +2460,13 @@ body.is-resizing .resize-handle {
   color: #31475b;
 }
 
+.admin-inline-note {
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7d8f;
+}
+
 .admin-table-wrap.compact {
   max-height: min(30vh, 260px);
 }
@@ -2506,6 +2513,14 @@ body.is-resizing .resize-handle {
   position: sticky;
   top: 0;
   z-index: 2;
+}
+
+.table-empty {
+  text-align: center !important;
+  color: #708395;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 14px 8px !important;
 }
 
 .btn-edit,
@@ -3729,5 +3744,6 @@ body.is-resizing .resize-handle {
   font-family: inherit;
   resize: vertical;
 }
+
 
 

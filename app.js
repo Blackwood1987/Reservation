@@ -1,4 +1,4 @@
-﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { buildTimelineMachineIds, canRolePerform, canUserOperateBooking, clampHour, formatTime, hasBookingOverlap, snapToHalfHour, sortByOrderThenName, validateBookingDrop, validateBookingResize } from "./core-utils.mjs";
@@ -65,6 +65,7 @@ const appState = {
   resizeMovedPx:0,resizePreviewDuration:0,resizeValidationOk:true,resizeIntentLocked:false,
   isLiveMode:true,dayModalDate:null,dashboardSidePanel:"status",
   focusMachineId:null,mobileDashboardView:"summary",adminCompact:false,
+  locationMaintenanceEdit:null,
   map:{
     selectedSiteId:null,
     selectedRoomId:null,
@@ -833,6 +834,7 @@ function renderAfterBookingsChange(){
     renderAdminActivity();
     renderStats();
     renderMachineTable();
+    renderLocationMaintenanceTable();
   }
 }
 
@@ -3380,6 +3382,7 @@ function renderAdmin(){
   renderRoomSiteFilterOptions();
   renderRoomTable();
   renderMachineTable();
+  renderLocationMaintenanceTable();
   renderPurposeTable();
   refreshAuditHistory();
   renderAdminActivity();
@@ -4040,6 +4043,10 @@ function closeModal(id){
   if(id==="booking-modal"){
     appState.bookingEditTarget=null;
     setBookingModalMode(false);
+  }
+  if(id==="location-maintenance-modal"){
+    appState.locationMaintenanceEdit=null;
+    syncLocationMaintenanceModalMeta();
   }
 }
 
@@ -4931,6 +4938,102 @@ function initLocationMaintenanceStartOptions(date){
   }
 }
 
+function createLocationMaintenanceBatchId(){
+  const token=(crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2,10));
+  return `location-maint-${token}`;
+}
+
+function isLocationMaintenanceBooking(booking){
+  return !!booking && booking.status!=="deleted" && (booking.locationMaintenance===true || booking.userId==="location-maintenance");
+}
+
+function normalizeLocationMaintenanceLocations(items){
+  const unique=[];
+  for(const raw of Array.isArray(items) ? items : []){
+    const name=String(raw || "").trim();
+    if(!name || unique.includes(name)) continue;
+    unique.push(name);
+  }
+  return unique.sort((a,b)=>a.localeCompare(b,"ko"));
+}
+
+function getLocationMaintenanceLocationsForBooking(booking){
+  const listed=normalizeLocationMaintenanceLocations(booking?.maintenanceLocations);
+  if(listed.length) return listed;
+  const fallback=getMachineLocation(booking?.machineId);
+  return fallback ? [fallback] : [];
+}
+
+function buildLocationMaintenanceGroupKey(booking){
+  if(booking?.maintenanceBatchId) return `batch:${booking.maintenanceBatchId}`;
+  const locationsKey=getLocationMaintenanceLocationsForBooking(booking).join("|");
+  return [
+    "legacy",
+    booking?.date || "",
+    String(Number(booking?.start) || 0),
+    String(Number(booking?.duration) || 0),
+    booking?.user || "",
+    booking?.maintenanceReason || "",
+    locationsKey
+  ].join("::");
+}
+
+function getLocationMaintenanceGroups(){
+  const grouped=new Map();
+  for(const machineId of bscIds){
+    for(const booking of bookings[machineId] || []){
+      if(!isLocationMaintenanceBooking(booking)) continue;
+      const key=buildLocationMaintenanceGroupKey(booking);
+      let group=grouped.get(key);
+      if(!group){
+        group={
+          key,
+          batchId:booking.maintenanceBatchId || null,
+          date:booking.date,
+          start:Number(booking.start) || 9,
+          duration:Number(booking.duration) || 1,
+          operator:booking.user || "시설 점검",
+          reason:booking.maintenanceReason || "",
+          locations:getLocationMaintenanceLocationsForBooking(booking),
+          bookings:[]
+        };
+        grouped.set(key,group);
+      }else{
+        group.locations=normalizeLocationMaintenanceLocations([...group.locations,...getLocationMaintenanceLocationsForBooking(booking)]);
+      }
+      group.bookings.push({ machineId, docId: booking.docId, booking });
+    }
+  }
+  return [...grouped.values()].map(group=>({
+    ...group,
+    locations:normalizeLocationMaintenanceLocations(group.locations),
+    machineIds:group.bookings.map(item=>item.machineId).sort((a,b)=>a.localeCompare(b,undefined,{ numeric:true })),
+    machineCount:group.bookings.length
+  })).sort((a,b)=>a.date.localeCompare(b.date)||a.start-b.start||a.operator.localeCompare(b.operator,"ko"));
+}
+
+function getLocationMaintenanceGroup(groupKey){
+  if(!groupKey) return null;
+  return getLocationMaintenanceGroups().find(group=>group.key===groupKey) || null;
+}
+
+function getLocationMaintenanceTargetMachineIds(selectedLocations){
+  return bscIds
+    .filter(id=>selectedLocations.includes(getMachineLocation(id)))
+    .sort((a,b)=>a.localeCompare(b,undefined,{ numeric:true }));
+}
+
+function syncLocationMaintenanceModalMeta(group=null){
+  const title=document.getElementById("location-maintenance-title");
+  const sub=document.getElementById("location-maintenance-sub");
+  const saveBtn=document.getElementById("btn-save-location-maintenance");
+  if(title) title.textContent=group ? "장소 유지보수 예약 수정" : "장소 유지보수 예약";
+  if(sub) sub.textContent=group
+    ? "기존에 등록된 장소 유지보수 예약을 일괄 수정합니다. 변경 내용은 선택한 장소 전체에 동일하게 반영됩니다."
+    : "선택한 장소의 장비 전체에 동일한 유지보수 예약을 등록합니다.";
+  if(saveBtn) saveBtn.textContent=group ? "변경 저장" : "예약 저장";
+}
+
 function getLocationMaintenanceSelectedLocations(){
   const allToggle=document.getElementById("location-maintenance-all");
   const list=document.getElementById("location-maintenance-list");
@@ -4943,48 +5046,144 @@ function renderLocationMaintenanceImpact(){
   const impact=document.getElementById("location-maintenance-impact");
   if(!impact) return;
   const selected=getLocationMaintenanceSelectedLocations();
-  const machineCount=bscIds.filter(id=>selected.includes(getMachineLocation(id))).length;
+  const machineCount=getLocationMaintenanceTargetMachineIds(selected).length;
   impact.textContent=`선택 장소 ${selected.length}곳 / 대상 장비 ${machineCount}대`;
 }
 
-function renderLocationMaintenanceList(){
+function renderLocationMaintenanceList(selectedLocations=null){
   const list=document.getElementById("location-maintenance-list");
   const allToggle=document.getElementById("location-maintenance-all");
   if(!list || !allToggle) return;
+  const explicitSelected=selectedLocations ? new Set(normalizeLocationMaintenanceLocations(selectedLocations)) : null;
   const previousSelected=new Set(
     [...list.querySelectorAll('input[type="checkbox"][data-location-maintenance]:checked')].map(input=>input.value)
   );
   list.innerHTML=locations.map(loc=>{
-    const count=bscIds.filter(id=>getMachineLocation(id)===loc).length;
-    const checked=allToggle.checked || previousSelected.size===0 || previousSelected.has(loc);
+    const count=getLocationMaintenanceTargetMachineIds([loc]).length;
+    const sourceSet=explicitSelected || previousSelected;
+    const shouldCheck=allToggle.checked || (sourceSet.size===0 ? true : sourceSet.has(loc));
     const disabled=allToggle.checked ? "disabled" : "";
-    const checkedAttr=checked ? "checked" : "";
+    const checkedAttr=shouldCheck ? "checked" : "";
     return `<label><input type="checkbox" data-location-maintenance value="${loc}" ${checkedAttr} ${disabled} /> ${loc} (${count}대)</label>`;
   }).join("");
   renderLocationMaintenanceImpact();
 }
 
-function openLocationMaintenanceModal(){
+function renderLocationMaintenanceTable(){
+  const tbody=document.getElementById("location-maintenance-table-body");
+  if(!tbody) return;
+  tbody.innerHTML="";
+  if(!isAdminUser()) return;
+  const groups=getLocationMaintenanceGroups();
+  if(!groups.length){
+    const tr=document.createElement("tr");
+    const td=document.createElement("td");
+    td.colSpan=7;
+    td.textContent="등록된 장소 유지보수 예약이 없습니다.";
+    td.className="table-empty";
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+    return;
+  }
+  for(const group of groups){
+    const tr=document.createElement("tr");
+    const locationsText=group.locations.length ? `${group.locations.join(", ")} (${group.locations.length}곳)` : "-";
+    const timeText=`${formatTime(group.start)} ~ ${formatTime(group.start+group.duration)} (${formatDurationText(group.duration)})`;
+    const actionTd=document.createElement("td");
+    const editBtn=document.createElement("button");
+    editBtn.type="button";
+    editBtn.className="btn-edit";
+    editBtn.dataset.editLocationMaintenance=group.key;
+    editBtn.textContent="수정";
+    const delBtn=document.createElement("button");
+    delBtn.type="button";
+    delBtn.className="btn-del";
+    delBtn.dataset.delLocationMaintenance=group.key;
+    delBtn.textContent="삭제";
+    actionTd.appendChild(editBtn);
+    actionTd.appendChild(delBtn);
+    [
+      formatDateLabel(group.date),
+      timeText,
+      locationsText,
+      group.operator,
+      group.reason || "-",
+      `${group.machineCount}대`
+    ].forEach(value=>{
+      const td=document.createElement("td");
+      td.textContent=value;
+      tr.appendChild(td);
+    });
+    tr.appendChild(actionTd);
+    tbody.appendChild(tr);
+  }
+}
+function openLocationMaintenanceModal(groupKey=null){
   if(!isAdminUser()){
     showToast("관리자만 장소 유지보수 예약을 등록할 수 있습니다.","warn");
+    return;
+  }
+  const group=groupKey ? getLocationMaintenanceGroup(groupKey) : null;
+  if(groupKey && !group){
+    showToast("수정할 장소 유지보수 예약을 찾을 수 없습니다.","warn");
     return;
   }
   const modal=document.getElementById("location-maintenance-modal");
   if(!modal) return;
   modal.style.display="flex";
   const dateInput=document.getElementById("location-maintenance-date");
+  const startInput=document.getElementById("location-maintenance-start");
   const durationInput=document.getElementById("location-maintenance-duration");
   const operatorInput=document.getElementById("location-maintenance-operator");
   const reasonInput=document.getElementById("location-maintenance-reason");
   const allToggle=document.getElementById("location-maintenance-all");
+  syncLocationMaintenanceModalMeta(group);
+  if(group){
+    appState.locationMaintenanceEdit={ key:group.key, batchId:group.batchId || null };
+    if(dateInput) dateInput.value=group.date;
+    initLocationMaintenanceStartOptions(group.date);
+    if(startInput) startInput.value=String(group.start);
+    if(durationInput) durationInput.value=String(group.duration);
+    if(operatorInput) operatorInput.value=group.operator;
+    if(reasonInput) reasonInput.value=group.reason;
+    const normalized=normalizeLocationMaintenanceLocations(group.locations);
+    if(allToggle) allToggle.checked=normalized.length>0 && normalized.length===locations.length;
+    renderLocationMaintenanceList(normalized);
+    return;
+  }
+  appState.locationMaintenanceEdit=null;
   const defaultDate=getViewDate();
   if(dateInput) dateInput.value=defaultDate;
+  initLocationMaintenanceStartOptions(defaultDate);
   if(durationInput) durationInput.value="1";
   if(operatorInput) operatorInput.value="시설 점검";
   if(reasonInput) reasonInput.value="";
   if(allToggle) allToggle.checked=true;
-  initLocationMaintenanceStartOptions(defaultDate);
   renderLocationMaintenanceList();
+}
+
+async function deleteLocationMaintenanceGroup(groupKey){
+  if(!isAdminUser()){
+    showToast("관리자만 장소 유지보수 예약을 삭제할 수 있습니다.","warn");
+    return;
+  }
+  const group=getLocationMaintenanceGroup(groupKey);
+  if(!group){
+    showToast("삭제할 장소 유지보수 예약을 찾을 수 없습니다.","warn");
+    return;
+  }
+  const summary=`${formatDateLabel(group.date)} ${formatTime(group.start)} ~ ${formatTime(group.start+group.duration)} / ${group.locations.join(", ")}`;
+  if(!confirm(`선택한 장소 유지보수 예약을 삭제하시겠습니까?\n${summary}`)) return;
+  try{
+    for(const item of group.bookings){
+      if(item.docId) await deleteBookingDoc(item.docId);
+    }
+    showToast(`장소 유지보수 예약을 삭제했습니다. (${group.machineCount}대)`,`success`);
+    addAdminActivity("장소 유지보수 삭제", `${group.date} ${formatTime(group.start)} / ${group.locations.join(", ")} / ${group.machineCount}대`);
+    refreshAuditHistory(true);
+  }catch(error){
+    reportAsyncError("deleteLocationMaintenanceGroup", error, "장소 유지보수 예약 삭제에 실패했습니다.");
+  }
 }
 
 async function saveLocationMaintenance(){
@@ -4993,29 +5192,36 @@ async function saveLocationMaintenance(){
     return;
   }
   try{
+    const editing=appState.locationMaintenanceEdit ? getLocationMaintenanceGroup(appState.locationMaintenanceEdit.key) : null;
+    if(appState.locationMaintenanceEdit && !editing){
+      showToast("기존 장소 유지보수 예약 정보를 찾을 수 없습니다. 다시 시도해주세요.","warn");
+      return;
+    }
     const date=document.getElementById("location-maintenance-date")?.value || "";
     const start=Number(document.getElementById("location-maintenance-start")?.value || 0);
     const duration=Number(document.getElementById("location-maintenance-duration")?.value || 0);
     const operator=(document.getElementById("location-maintenance-operator")?.value || "").trim() || "시설 점검";
     const reason=(document.getElementById("location-maintenance-reason")?.value || "").trim();
-    const selectedLocations=getLocationMaintenanceSelectedLocations();
+    const selectedLocations=normalizeLocationMaintenanceLocations(getLocationMaintenanceSelectedLocations());
     if(!date){ showToast("날짜를 선택해주세요.","warn"); return; }
     if(selectedLocations.length===0){ showToast("유지보수 대상 장소를 선택해주세요.","warn"); return; }
     if(start<9 || start+duration>18){ showToast("운영 시간(09:00~18:00)을 벗어납니다.","warn"); return; }
-    const targetMachineIds=bscIds.filter(id=>selectedLocations.includes(getMachineLocation(id)));
+    const targetMachineIds=getLocationMaintenanceTargetMachineIds(selectedLocations);
     if(targetMachineIds.length===0){
       showToast("선택한 장소에 등록된 장비가 없습니다.","warn");
       return;
     }
-    let created=0;
-    let skippedOverlap=0;
+    const previousDocIdsByMachine=new Map((editing?.bookings || []).map(item=>[item.machineId,item.docId]));
+    const overlapIds=targetMachineIds.filter(machineId=>isOverlap(machineId,date,start,duration,previousDocIdsByMachine.get(machineId)));
+    if(overlapIds.length){
+      showToast(`중복 예약 ${overlapIds.length}대가 있어 일괄 저장할 수 없습니다. 시간을 다시 확인해주세요.`,"warn");
+      return;
+    }
+    const batchId=editing?.batchId || createLocationMaintenanceBatchId();
+    const targetSet=new Set(targetMachineIds);
     for(const machineId of targetMachineIds){
-      if(isOverlap(machineId,date,start,duration)){
-        skippedOverlap+=1;
-        continue;
-      }
-      await createBookingDoc({
-        machineId,
+      const docId=previousDocIdsByMachine.get(machineId);
+      const payload={
         user: operator,
         userId: "location-maintenance",
         createdBy: appState.currentUser.uid || null,
@@ -5026,25 +5232,33 @@ async function saveLocationMaintenance(){
         status: "confirmed",
         autoClean: false,
         locationMaintenance: true,
+        maintenanceBatchId: batchId,
         maintenanceReason: reason,
         maintenanceLocations: selectedLocations
-      });
-      created+=1;
+      };
+      if(docId){
+        await updateBookingDoc(docId, payload);
+      }else{
+        await createBookingDoc({ machineId, ...payload });
+      }
     }
-    if(created===0){
-      showToast("등록 가능한 장비가 없습니다. 기존 예약과 시간을 확인해주세요.","warn");
-      return;
+    if(editing){
+      for(const item of editing.bookings){
+        if(item.docId && !targetSet.has(item.machineId)){
+          await deleteBookingDoc(item.docId);
+        }
+      }
     }
     closeModal("location-maintenance-modal");
-    const summary=`${created}대 등록${skippedOverlap>0 ? `, ${skippedOverlap}대 중복 제외` : ""}`;
-    showToast(`장소 유지보수 예약 완료: ${summary}`,"success");
-    addAdminActivity("장소 유지보수 예약", `${date} ${formatTime(start)} ${formatDurationText(duration)} / ${selectedLocations.join(", ")} / ${summary}`);
+    const machineSummary=`${targetMachineIds.length}대 / ${selectedLocations.join(", ")}`;
+    const message=editing ? "장소 유지보수 예약을 수정했습니다." : "장소 유지보수 예약을 등록했습니다.";
+    showToast(`${message} (${machineSummary})`,`success`);
+    addAdminActivity(editing ? "장소 유지보수 수정" : "장소 유지보수 예약", `${date} ${formatTime(start)} ${formatDurationText(duration)} / ${selectedLocations.join(", ")} / ${targetMachineIds.length}대`);
     refreshAuditHistory(true);
   }catch(error){
     reportAsyncError("saveLocationMaintenance", error, "장소 유지보수 예약 저장에 실패했습니다.");
   }
 }
-
 function bindEvents(){
   const on=(id,evt,handler)=>{
     const el=document.getElementById(id);
@@ -5143,6 +5357,8 @@ function bindEvents(){
     const delSite=e.target.getAttribute("data-del-site"); if(delSite) deleteSite(delSite);
     const editRoom=e.target.getAttribute("data-edit-room"); if(editRoom) openRoomModal("edit",editRoom);
     const delRoom=e.target.getAttribute("data-del-room"); if(delRoom) deleteRoom(delRoom);
+    const editLocationMaintenance=e.target.getAttribute("data-edit-location-maintenance"); if(editLocationMaintenance) openLocationMaintenanceModal(editLocationMaintenance);
+    const delLocationMaintenance=e.target.getAttribute("data-del-location-maintenance"); if(delLocationMaintenance) deleteLocationMaintenanceGroup(delLocationMaintenance);
     const detailMachineBtn=e.target.closest("[data-detail-machine]");
     if(detailMachineBtn){
       selectMachineInMap(detailMachineBtn.getAttribute("data-detail-machine"),true);
