@@ -1,4 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { buildTimelineMachineIds, canRolePerform, canUserOperateBooking, clampHour, formatTime, hasBookingOverlap, snapToHalfHour, sortByOrderThenName, validateBookingDrop, validateBookingResize } from "./core-utils.mjs";
@@ -5123,8 +5123,9 @@ function openLocationMaintenanceModal(groupKey=null){
     showToast("관리자만 장소 유지보수 예약을 등록할 수 있습니다.","warn");
     return;
   }
-  const group=groupKey ? getLocationMaintenanceGroup(groupKey) : null;
-  if(groupKey && !group){
+  const targetKey=(typeof groupKey==="string" && groupKey.trim()) ? groupKey : null;
+  const group=targetKey ? getLocationMaintenanceGroup(targetKey) : null;
+  if(targetKey && !group){
     showToast("수정할 장소 유지보수 예약을 찾을 수 없습니다.","warn");
     return;
   }
@@ -5288,7 +5289,7 @@ function bindEvents(){
   on("btn-create-user","click",()=>refreshUsersFromDb());
   on("btn-save-user","click",saveUser);
   on("btn-create-machine","click",()=>openMachineModal("create"));
-  on("btn-location-maintenance","click",openLocationMaintenanceModal);
+  on("btn-location-maintenance","click",()=>openLocationMaintenanceModal());
   on("btn-create-site","click",()=>openSiteModal("create"));
   on("btn-create-room","click",()=>openRoomModal("create"));
   on("btn-create-purpose","click",()=>openPurposeModal("create"));
