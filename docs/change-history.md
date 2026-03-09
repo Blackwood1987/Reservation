@@ -87,3 +87,4 @@
 - 실시간 타임라인 장비 정렬 규칙 변경: 세포은행 Room의 CRF를 최상단 고정, 나머지 장비는 Room 순서 내 ID 오름차순으로 정렬.
 - 타임라인 장비 ID 필터를 문자 시작 규칙으로 강화(숫자 시작/비정상 키 제외)하고 app.js/styles.css 캐시 버전을 갱신.
 - 프로젝트 구조/기술 스택 요약 문서(docs/project-overview.md)를 신규 추가.
+- 구조 개선 권장안 문서(docs/architecture-recommendations.md)를 신규 추가.
