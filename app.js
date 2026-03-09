@@ -1,7 +1,7 @@
 ﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-import { buildTimelineMachineIds, clampHour, formatTime, hasBookingOverlap, snapToHalfHour, sortByOrderThenName } from "./core-utils.mjs";
+import { buildTimelineMachineIds, canRolePerform, canUserOperateBooking, clampHour, formatTime, hasBookingOverlap, snapToHalfHour, sortByOrderThenName, validateBookingDrop, validateBookingResize } from "./core-utils.mjs";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC3hAHfZFH6g4SjQbwdFIh-V61wezsoDnY",
@@ -893,13 +893,7 @@ function getPendingBookings(date=getViewDate()){
 }
 
 function can(action){
-  const user=appState.currentUser;
-  if(!user) return false;
-  if(user.role==="guest") return false;
-  const isManager=user.role==="admin"||user.role==="supervisor";
-  if(action==="create") return true;
-  if(action==="edit"||action==="approve"||action==="admin"||action==="print") return isManager;
-  return false;
+  return canRolePerform(appState.currentUser?.role, action);
 }
 
 function isManagerUser(user=appState.currentUser){
@@ -923,16 +917,7 @@ function isWorkerMobileMode(){
 }
 
 function canDragBooking(booking){
-  const user=appState.currentUser;
-  if(!user || !booking) return false;
-  if(user.role==="guest") return false;
-  if(booking.user==="System") return false;
-  if(isManagerUser(user)) return true;
-  if(!isWorkerUser(user)) return false;
-  if(booking.createdBy && user.uid && booking.createdBy===user.uid) return true;
-  if(booking.userId && user.id && booking.userId===user.id) return true;
-  if(booking.user && user.name && booking.user===user.name) return true;
-  return false;
+  return canUserOperateBooking(appState.currentUser, booking);
 }
 
 function canResizeBooking(booking){
@@ -2812,21 +2797,17 @@ function getFilteredScheduleGroups(date){
 }
 
 function getDropValidation(booking,targetMachineId,targetHour,docId){
-  if(!booking) return { ok:false, reason:"예약 정보를 찾을 수 없습니다." };
-  if(!canDragBooking(booking)) return { ok:false, reason:"본인 예약만 이동할 수 있습니다." };
-  if(targetHour<9 || targetHour+booking.duration>18){
-    return { ok:false, reason:"운영 시간(09:00~18:00)을 벗어납니다." };
-  }
-  if(isWorkerUser() && booking.date===todayISO()){
-    const minHour=getMinReservableHour(booking.date);
-    if(targetHour<minHour){
-      return { ok:false, reason:`오늘 예약은 ${formatTime(minHour)} 이후로만 이동할 수 있습니다.` };
-    }
-  }
-  if(isOverlap(targetMachineId,booking.date,targetHour,booking.duration,docId)){
-    return { ok:false, reason:"다른 예약과 시간이 겹칩니다." };
-  }
-  return { ok:true, reason:"이 위치로 이동 가능합니다." };
+  const canDrag=canDragBooking(booking);
+  const minHour=(isWorkerUser() && booking?.date===todayISO()) ? getMinReservableHour(booking.date) : null;
+  const overlap=booking ? isOverlap(targetMachineId,booking.date,targetHour,booking.duration,docId) : false;
+  return validateBookingDrop({
+    booking,
+    canDrag,
+    targetHour,
+    minHour,
+    overlap,
+    formatTimeFn:formatTime
+  });
 }
 
 function clearDropCellState(td){
@@ -3091,14 +3072,12 @@ async function handleDrop(e,targetMachineId,targetHour){
 }
 
 function getResizeValidation(booking,machineId,docId,newDuration){
-  if(!booking) return { ok:false, reason:"예약 정보를 찾을 수 없습니다." };
-  if(newDuration<0.5 || booking.start+newDuration>18){
-    return { ok:false, reason:"운영 시간 범위를 벗어납니다." };
-  }
-  if(isOverlap(machineId,booking.date,booking.start,newDuration,docId)){
-    return { ok:false, reason:"다른 예약과 시간이 겹칩니다." };
-  }
-  return { ok:true, reason:"변경 가능합니다." };
+  const overlap=booking ? isOverlap(machineId,booking.date,booking.start,newDuration,docId) : false;
+  return validateBookingResize({
+    booking,
+    newDuration,
+    overlap
+  });
 }
 
 function clearResizePreview(){
@@ -5221,6 +5200,7 @@ function boot(){
   }
 
 boot();
+
 
 
 

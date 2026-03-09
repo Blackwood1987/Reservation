@@ -1,10 +1,14 @@
 ﻿import assert from "node:assert/strict";
 import {
   buildTimelineMachineIds,
+  canRolePerform,
+  canUserOperateBooking,
   clampHour,
   formatTime,
   hasBookingOverlap,
-  snapToHalfHour
+  snapToHalfHour,
+  validateBookingDrop,
+  validateBookingResize
 } from "../core-utils.mjs";
 
 const tests = [
@@ -26,6 +30,27 @@ const tests = [
     }
   },
   {
+    name: "role permission helper keeps demo access boundaries",
+    run() {
+      assert.equal(canRolePerform("admin", "admin"), true);
+      assert.equal(canRolePerform("supervisor", "print"), true);
+      assert.equal(canRolePerform("worker", "create"), true);
+      assert.equal(canRolePerform("worker", "admin"), false);
+      assert.equal(canRolePerform("guest", "create"), false);
+    }
+  },
+  {
+    name: "booking ownership helper allows own worker booking only",
+    run() {
+      const booking = { user: "홍길동", userId: "worker01", createdBy: "uid-1" };
+      assert.equal(canUserOperateBooking({ role: "worker", id: "worker01", uid: "uid-2", name: "홍길동" }, booking), true);
+      assert.equal(canUserOperateBooking({ role: "worker", id: "worker02", uid: "uid-2", name: "다른사람" }, booking), false);
+      assert.equal(canUserOperateBooking({ role: "supervisor", id: "sup01" }, booking), true);
+      assert.equal(canUserOperateBooking({ role: "guest" }, booking), false);
+      assert.equal(canUserOperateBooking({ role: "worker", id: "worker01" }, { ...booking, user: "System" }), false);
+    }
+  },
+  {
     name: "hasBookingOverlap respects ignoreDocId",
     run() {
       const bookings = [
@@ -35,6 +60,42 @@ const tests = [
       assert.equal(hasBookingOverlap(bookings, 10.5, 0.5), true);
       assert.equal(hasBookingOverlap(bookings, 11, 0.5), false);
       assert.equal(hasBookingOverlap(bookings, 10, 1, "a"), false);
+    }
+  },
+  {
+    name: "drop validation blocks early move and overlap",
+    run() {
+      const booking = { duration: 1 };
+      assert.deepEqual(
+        validateBookingDrop({ booking, canDrag: true, targetHour: 9.5, minHour: 10, overlap: false }),
+        { ok: false, reason: "오늘 예약은 10:00 이후로만 이동할 수 있습니다." }
+      );
+      assert.deepEqual(
+        validateBookingDrop({ booking, canDrag: true, targetHour: 17.5, overlap: false }),
+        { ok: false, reason: "운영 시간(09:00~18:00)을 벗어납니다." }
+      );
+      assert.deepEqual(
+        validateBookingDrop({ booking, canDrag: true, targetHour: 11, overlap: true }),
+        { ok: false, reason: "다른 예약과 시간이 겹칩니다." }
+      );
+    }
+  },
+  {
+    name: "resize validation keeps booking inside operating hours",
+    run() {
+      const booking = { start: 16.5 };
+      assert.deepEqual(
+        validateBookingResize({ booking, newDuration: 2, overlap: false }),
+        { ok: false, reason: "운영 시간 범위를 벗어납니다." }
+      );
+      assert.deepEqual(
+        validateBookingResize({ booking, newDuration: 1, overlap: true }),
+        { ok: false, reason: "다른 예약과 시간이 겹칩니다." }
+      );
+      assert.deepEqual(
+        validateBookingResize({ booking, newDuration: 1, overlap: false }),
+        { ok: true, reason: "변경 가능합니다." }
+      );
     }
   },
   {

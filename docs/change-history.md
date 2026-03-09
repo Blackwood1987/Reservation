@@ -97,3 +97,4 @@
 - `docs/verification-workflow.md` 추가: 배포 전 실행 명령과 실패 시 처리 원칙 문서화
 - 검증 결과: `node --check app.js`, `node tests/run-tests.mjs` 통과
 - 후속 수정: `app.js` 공용 유틸 연결 과정에서 깨진 문자열/구문 오류를 복구하고, `app.js`가 다시 `core-utils.mjs`를 정상 참조하도록 정리
+- 검증 체계 2차: 권한 노출 규칙과 예약 이동/리사이즈 판정 로직을 `core-utils.mjs` 공용 유틸로 분리하고, 자동 테스트를 8건으로 확장
