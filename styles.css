@@ -1001,9 +1001,14 @@ body.map-layout-dragging * {
   overflow-y: scroll;
   overflow-x: hidden;
   position: relative;
+}
+
+.timeline-content {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-height: 100%;
   padding-bottom: 2px;
 }
 
@@ -1016,11 +1021,7 @@ body.map-layout-dragging * {
 }
 
 .timeline-shade.past {
-  background: rgba(149, 165, 166, 0.12);
-}
-
-.timeline-shade.future {
-  background: rgba(52, 152, 219, 0.06);
+  background: linear-gradient(90deg, rgba(149, 165, 166, 0.18), rgba(149, 165, 166, 0.08));
 }
 
 .timeline-row {

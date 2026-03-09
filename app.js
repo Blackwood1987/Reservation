@@ -2517,14 +2517,11 @@ function updateTimelineShading(container){
   if(!container) return;
   const metrics=getTimelineTrackMetrics(container);
   const pastShade=container.querySelector(".timeline-shade.past");
-  const futureShade=container.querySelector(".timeline-shade.future");
-  if(!metrics||!pastShade||!futureShade) return;
+  if(!metrics||!pastShade) return;
   const ratio=(getNowHour()-9)/9;
   const splitX=metrics.start+(metrics.width*ratio);
   pastShade.style.left=`${metrics.start}px`;
   pastShade.style.width=`${Math.max(0,splitX-metrics.start)}px`;
-  futureShade.style.left=`${splitX}px`;
-  futureShade.style.width=`${Math.max(0,metrics.end-splitX)}px`;
 }
 
 function resolveTimelineLabelCollisions(container){
@@ -2623,6 +2620,9 @@ function updateTimelineIndicators(container){
 
 function renderTimeline(container,date){
   container.innerHTML="";
+  const content=document.createElement("div");
+  content.className="timeline-content";
+  content.appendChild(createTimelineShade("past"));
   for(const id of getTimelineMachineIds()){
     const row=document.createElement("div");row.className="timeline-row";
     row.dataset.machineId=id;
@@ -2653,17 +2653,19 @@ function renderTimeline(container,date){
       event.stopPropagation();
       selectMachineInMap(id,true);
     });
-    row.appendChild(label);row.appendChild(track);container.appendChild(row);
+    row.appendChild(label);row.appendChild(track);content.appendChild(row);
   }
   const selectedIndicator=createTimelineIndicator("selected");
   const nowIndicator=createTimelineIndicator("now");
   const hoverIndicator=createTimelineIndicator("hover");
   hoverIndicator.classList.add("hidden");
-  container.appendChild(selectedIndicator);
-  container.appendChild(nowIndicator);
-  container.appendChild(hoverIndicator);
+  content.appendChild(selectedIndicator);
+  content.appendChild(nowIndicator);
+  content.appendChild(hoverIndicator);
+  container.appendChild(content);
   updateTimelineIndicators(container);
 }
+
 function renderStatusList(){
   const list=document.getElementById("status-list");
   if(!list) return;
@@ -5200,6 +5202,7 @@ function boot(){
   }
 
 boot();
+
 
 
 
