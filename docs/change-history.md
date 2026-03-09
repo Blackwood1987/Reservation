@@ -88,3 +88,11 @@
 - 타임라인 장비 ID 필터를 문자 시작 규칙으로 강화(숫자 시작/비정상 키 제외)하고 app.js/styles.css 캐시 버전을 갱신.
 - 프로젝트 구조/기술 스택 요약 문서(docs/project-overview.md)를 신규 추가.
 - 구조 개선 권장안 문서(docs/architecture-recommendations.md)를 신규 추가.
+
+## 2026-03-09 검증 체계 1차
+- `core-utils.mjs` 추가: 시간 처리, 예약 중복 판정, 타임라인 정렬 규칙을 공용 유틸로 분리
+- `app.js`에서 공용 유틸을 사용하도록 연결하여 순수 함수 검증 대상과 실제 로직을 일치시킴
+- `tests/run-tests.mjs` 추가: 포맷/시간 스냅/중복 판정/CRF 최상단 정렬 규칙 자동 확인
+- `docs/qa-checklist.md` 추가: 수동 QA 기준 문서화
+- `docs/verification-workflow.md` 추가: 배포 전 실행 명령과 실패 시 처리 원칙 문서화
+- 검증 결과: `node --check app.js`, `node tests/run-tests.mjs` 통과
