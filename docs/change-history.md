@@ -15,6 +15,7 @@
 
 | 날짜 | 커밋 | 변경 요약 | 영향 범위 | 검증 |
 |---|---|---|---|---|
+| 2026-03-10 | `507187c` | 앱 셸 한글 깨짐과 잘못된 닫힘 태그를 복구하고 변경 이력 문서 인코딩을 정상화 | `app.html`, `docs/change-history.md` | `git diff --check -- app.html`, `node --check app.js`, `node tests\run-tests.mjs` |
 | 2026-03-10 | `5e52ebe` | 사용자 메뉴얼을 로그인 사용자용 탭으로 확장하고 로그인 안내/1번 스크린샷을 제외 | `app.html`, `app.js`, `styles.css` | `node --check app.js`, `node tests\run-tests.mjs` |
 | 2026-03-04 | `a6c755c` | 관리자 장소 유지보수 예약(전체/일부 장소 선택) 기능 추가 | `app.html`, `app.js`, `styles.css` | `node --check app.js` |
 | 2026-03-04 | `8546095` | 리사이즈 프리뷰와 포인터 위치 정렬 보정(px 기준) | `app.js`, `app.html` | `node --check app.js` |
