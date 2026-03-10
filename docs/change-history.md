@@ -15,6 +15,7 @@
 
 | 날짜 | 커밋 | 변경 요약 | 영향 범위 | 검증 |
 |---|---|---|---|---|
+| 2026-03-10 | `c9f8e19` | app.js 상단 문자열/한글 인코딩 회귀를 복구하고 모바일 예약관리 카테고리 필터 로직을 안전하게 재적용 | `app.js`, `tests/run-tests.mjs` | `git diff --check -- app.js tests/run-tests.mjs`, `node --check app.js`, `node tests\run-tests.mjs` |
 | 2026-03-10 | `052237a` | 모바일 예약관리 270도 크로노그래프에 카테고리 칩 필터와 슬롯 상세 카드를 병합하고, 선택 슬롯 시간으로 예약 위저드가 이어지도록 확장 | `app.html`, `app.js`, `core-utils.mjs`, `styles.css`, `tests/run-tests.mjs` | `node --check app.js`, `node tests\run-tests.mjs` |
 | 2026-03-10 | `3920099` | 사용자 메뉴얼 스크린샷이 원본보다 확대되지 않도록 원본 크기 기준으로 표시되게 조정 | `styles.css` | `node --check app.js`, `node tests\run-tests.mjs` |
 | 2026-03-10 | `ab9029e` | 사용자 메뉴얼 기본 섹션 문자열의 줄바꿈 구문 오류를 수정해 app.js 문법 오류를 복구 | `app.js` | `node --check app.js`, `node tests\run-tests.mjs` |
