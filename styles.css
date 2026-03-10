@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg-color: #f0f2f5;
   --card-bg: #ffffff;
   --text-color: #333333;
@@ -2316,6 +2316,101 @@ body.is-resizing .resize-handle {
   font-size: 9px;
   font-weight: 900;
 }
+.mobile-chrono-center-label {
+  fill: #243748;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+#mobile-reservation-pane.active {
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-reservation-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mobile-category-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mobile-category-chip {
+  border: 1px solid #d5e0ea;
+  background: #ffffff;
+  color: #34495e;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  min-height: 32px;
+  cursor: pointer;
+}
+
+.mobile-category-chip.active {
+  border-color: #2f87db;
+  background: #eaf4ff;
+  color: #1f5b94;
+}
+
+.mobile-reservation-detail {
+  border: 1px solid #dfe7ef;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 12px;
+  box-shadow: var(--shadow-soft);
+}
+
+.mobile-reservation-detail-title {
+  font-size: 13px;
+  font-weight: 900;
+  color: #243748;
+}
+
+.mobile-reservation-detail-sub {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #607286;
+}
+
+.mobile-reservation-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.mobile-reservation-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid #eef3f7;
+  border-radius: 10px;
+  background: #f8fbfd;
+  padding: 8px 10px;
+}
+
+.mobile-reservation-detail-item strong {
+  font-size: 12px;
+  color: #243748;
+}
+
+.mobile-reservation-detail-item span,
+.mobile-reservation-detail-empty {
+  font-size: 11px;
+  font-weight: 700;
+  color: #607286;
+}
+
+.mobile-reservation-detail-empty {
+  margin-top: 8px;
+}
 
 .mobile-choice-grid {
   display: grid;
@@ -3881,7 +3976,3 @@ body.is-resizing .resize-handle {
   font-family: inherit;
   resize: vertical;
 }
-
-
-
-

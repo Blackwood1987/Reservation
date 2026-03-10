@@ -1,9 +1,11 @@
-﻿import assert from "node:assert/strict";
+import assert from "node:assert/strict";
 import {
+  buildMobileReservationCategories,
   buildTimelineMachineIds,
   canRolePerform,
   canUserOperateBooking,
   clampHour,
+  deriveMachineCategory,
   formatTime,
   hasBookingOverlap,
   snapToHalfHour,
@@ -42,9 +44,9 @@ const tests = [
   {
     name: "booking ownership helper allows own worker booking only",
     run() {
-      const booking = { user: "홍길동", userId: "worker01", createdBy: "uid-1" };
-      assert.equal(canUserOperateBooking({ role: "worker", id: "worker01", uid: "uid-2", name: "홍길동" }, booking), true);
-      assert.equal(canUserOperateBooking({ role: "worker", id: "worker02", uid: "uid-2", name: "다른사람" }, booking), false);
+      const booking = { user: "?띻만??, userId: "worker01", createdBy: "uid-1" };
+      assert.equal(canUserOperateBooking({ role: "worker", id: "worker01", uid: "uid-2", name: "?띻만?? }, booking), true);
+      assert.equal(canUserOperateBooking({ role: "worker", id: "worker02", uid: "uid-2", name: "?ㅻⅨ?щ엺" }, booking), false);
       assert.equal(canUserOperateBooking({ role: "supervisor", id: "sup01" }, booking), true);
       assert.equal(canUserOperateBooking({ role: "guest" }, booking), false);
       assert.equal(canUserOperateBooking({ role: "worker", id: "worker01" }, { ...booking, user: "System" }), false);
@@ -68,15 +70,15 @@ const tests = [
       const booking = { duration: 1 };
       assert.deepEqual(
         validateBookingDrop({ booking, canDrag: true, targetHour: 9.5, minHour: 10, overlap: false }),
-        { ok: false, reason: "오늘 예약은 10:00 이후로만 이동할 수 있습니다." }
+        { ok: false, reason: "?ㅻ뒛 ?덉빟? 10:00 ?댄썑濡쒕쭔 ?대룞?????덉뒿?덈떎." }
       );
       assert.deepEqual(
         validateBookingDrop({ booking, canDrag: true, targetHour: 17.5, overlap: false }),
-        { ok: false, reason: "운영 시간(09:00~18:00)을 벗어납니다." }
+        { ok: false, reason: "?댁쁺 ?쒓컙(09:00~18:00)??踰쀬뼱?⑸땲??" }
       );
       assert.deepEqual(
         validateBookingDrop({ booking, canDrag: true, targetHour: 11, overlap: true }),
-        { ok: false, reason: "다른 예약과 시간이 겹칩니다." }
+        { ok: false, reason: "?ㅻⅨ ?덉빟怨??쒓컙??寃뱀묩?덈떎." }
       );
     }
   },
@@ -86,15 +88,15 @@ const tests = [
       const booking = { start: 16.5 };
       assert.deepEqual(
         validateBookingResize({ booking, newDuration: 2, overlap: false }),
-        { ok: false, reason: "운영 시간 범위를 벗어납니다." }
+        { ok: false, reason: "?댁쁺 ?쒓컙 踰붿쐞瑜?踰쀬뼱?⑸땲??" }
       );
       assert.deepEqual(
         validateBookingResize({ booking, newDuration: 1, overlap: true }),
-        { ok: false, reason: "다른 예약과 시간이 겹칩니다." }
+        { ok: false, reason: "?ㅻⅨ ?덉빟怨??쒓컙??寃뱀묩?덈떎." }
       );
       assert.deepEqual(
         validateBookingResize({ booking, newDuration: 1, overlap: false }),
-        { ok: true, reason: "변경 가능합니다." }
+        { ok: true, reason: "蹂寃?媛?ν빀?덈떎." }
       );
     }
   },
@@ -103,7 +105,7 @@ const tests = [
     run() {
       const orderedRooms = [
         { id: "room-a", name: "M2-301", order: 1 },
-        { id: "room-b", name: "314호 세포은행", order: 2 },
+        { id: "room-b", name: "314???명룷???, order: 2 },
         { id: "room-c", name: "M2-401", order: 3 }
       ];
       const machineIdsByRoomId = {
@@ -123,6 +125,29 @@ const tests = [
       assert.deepEqual(
         buildTimelineMachineIds({ orderedRooms, machineIdsByRoomId, allMachineIds, machineRoomIdsById }),
         ["CRF", "CRF-02", "BSC-1540", "BSC-1541", "BSC-1542"]
+      );
+    }
+  },
+  {
+    name: "deriveMachineCategory extracts prefixes and falls back to 湲고?",
+    run() {
+      assert.equal(deriveMachineCategory("BSC-1538"), "BSC");
+      assert.equal(deriveMachineCategory("CRF"), "CRF");
+      assert.equal(deriveMachineCategory("?λ퉬A"), "?λ퉬A");
+      assert.equal(deriveMachineCategory("1234"), "湲고?");
+    }
+  },
+  {
+    name: "buildMobileReservationCategories keeps ?꾩껜 first and CRF-like groups ahead",
+    run() {
+      const categories = buildMobileReservationCategories(["BSC-1538", "CRF", "BSC-1540", "INC-01"]);
+      assert.deepEqual(
+        categories.map(item => item.key),
+        ["all", "CRF", "BSC", "INC"]
+      );
+      assert.deepEqual(
+        categories.map(item => item.count),
+        [4, 1, 2, 1]
       );
     }
   }

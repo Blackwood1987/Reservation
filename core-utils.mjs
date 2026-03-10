@@ -1,4 +1,4 @@
-﻿export function formatTime(val){
+export function formatTime(val){
   const totalMinutes=Math.max(0,Math.round((Number(val)||0)*60));
   const h=Math.floor(totalMinutes/60);
   const m=totalMinutes%60;
@@ -48,6 +48,32 @@ export function isRenderableMachineId(id){
 
 export function compareMachineIdAsc(a,b){
   return String(a).localeCompare(String(b),"ko",{ numeric:true, sensitivity:"base" });
+}
+
+export function deriveMachineCategory(machineId){
+  const id=normalizeMachineIdForRender(machineId);
+  if(!id) return "기타";
+  const hyphenIndex=id.indexOf("-");
+  if(hyphenIndex>0) return id.slice(0,hyphenIndex).toUpperCase();
+  const alphaMatch=id.match(/^[A-Za-z가-힣]+/);
+  if(alphaMatch?.[0]) return alphaMatch[0].toUpperCase();
+  return "기타";
+}
+
+export function buildMobileReservationCategories(machineIds){
+  const counts=new Map();
+  machineIds.forEach(machineId=>{
+    const key=deriveMachineCategory(machineId);
+    counts.set(key,(counts.get(key) || 0)+1);
+  });
+  const items=[...counts.entries()].map(([key,count])=>({ key, label:key, count }));
+  items.sort((a,b)=>{
+    const aPinned=isPinnedTimelineMachineId(a.key);
+    const bPinned=isPinnedTimelineMachineId(b.key);
+    if(aPinned!==bPinned) return aPinned ? -1 : 1;
+    return compareMachineIdAsc(a.key,b.key);
+  });
+  return [{ key:"all", label:"전체", count:machineIds.length }, ...items];
 }
 
 export function isCellBankRoomName(name){

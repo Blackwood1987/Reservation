@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
@@ -62,9 +62,13 @@
             </section>
 
             <section id="mobile-reservation-pane" class="mobile-pane" aria-label="모바일 예약관리">
+              <div class="mobile-reservation-tools">
+                <div id="mobile-category-filter" class="mobile-category-filter" aria-label="장비 카테고리 필터"></div>
+              </div>
               <div class="mobile-chart-wrap chrono">
                 <svg id="mobile-chrono" viewBox="0 0 240 240" class="mobile-chrono" aria-label="예약 크로노그래프"></svg>
               </div>
+              <div id="mobile-chrono-detail" class="mobile-reservation-detail" aria-live="polite"></div>
             </section>
           </div>
 
@@ -878,4 +882,3 @@
     <script type="module" src="app.js?v=20260305-51"></script>
   </body>
 </html>
-
