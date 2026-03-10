@@ -22,7 +22,7 @@ let locations = ["Room A","Room B"];
 let machineLocations = {"A-01":"Room A","A-02":"Room A","A-03":"Room A","A-04":"Room A","B-01":"Room B","B-02":"Room B","B-03":"Room B","B-04":"Room B"};
 let machineMgmtNos = {"A-01":"EQ-001","A-02":"EQ-002","A-03":"EQ-003","A-04":"EQ-004","B-01":"EQ-005","B-02":"EQ-006","B-03":"EQ-007","B-04":"EQ-008"};
 let machineDescs = {"A-01":"Class II cabinet","A-02":"Class II cabinet","A-03":"Service unit","A-04":"Service unit","B-01":"Process station","B-02":"Monitoring station","B-03":"Process station","B-04":"Cleaning station"};
-let sites = [{ id: "site-default", name: "湲곕낯 Site", order: 1, active: true }];
+let sites = [{ id: "site-default", name: "기본 Site", order: 1, active: true }];
 let rooms = [
   { id: "room-a", siteId: "site-default", name: "Room A", order: 1, active: true, layout: { x: 4, y: 6, w: 44, h: 40 } },
   { id: "room-b", siteId: "site-default", name: "Room B", order: 2, active: true, layout: { x: 52, y: 6, w: 44, h: 40 } }
@@ -33,22 +33,22 @@ let machineRoomIds = {
 };
 
 const statusMeta = {
-  free:{label:"?ъ슜 媛??,color:"var(--status-free)",tile:"tile-free"},
-  process:{label:"怨듭젙 媛??,color:"var(--status-process)",tile:"tile-process"},
-  maint:{label:"?좎?蹂댁닔",color:"var(--status-maint)",tile:"tile-maint"},
-  em:{label:"?섍꼍 紐⑤땲??,color:"var(--status-em)",tile:"tile-em"},
-  clean:{label:"泥?냼/?뚮룆",color:"var(--status-clean)",tile:"tile-clean"},
-  other:{label:"湲고?",color:"var(--status-other)",tile:"tile-other"},
-  pending:{label:"?뱀씤 ?湲?,color:"var(--status-pending)",tile:"tile-pending"},
-  system:{label:"?먮룞 ?뚮룆",color:"var(--status-system)",tile:"tile-system"}
+  free:{label:"사용 가능",color:"var(--status-free)",tile:"tile-free"},
+  process:{label:"공정 가동",color:"var(--status-process)",tile:"tile-process"},
+  maint:{label:"유지보수",color:"var(--status-maint)",tile:"tile-maint"},
+  em:{label:"환경 모니터",color:"var(--status-em)",tile:"tile-em"},
+  clean:{label:"청소/소독",color:"var(--status-clean)",tile:"tile-clean"},
+  other:{label:"기타",color:"var(--status-other)",tile:"tile-other"},
+  pending:{label:"승인 대기",color:"var(--status-pending)",tile:"tile-pending"},
+  system:{label:"자동 소독",color:"var(--status-system)",tile:"tile-system"}
 };
 
 const defaultPurposeList = [
-  { key: "process", label: "怨듭젙" },
-  { key: "maint", label: "?좎?蹂댁닔" },
+  { key: "process", label: "공정" },
+  { key: "maint", label: "유지보수" },
   { key: "em", label: "EM" },
-  { key: "clean", label: "泥?냼" },
-  { key: "other", label: "湲고?" }
+  { key: "clean", label: "청소" },
+  { key: "other", label: "기타" }
 ];
 
 let purposeList = [...defaultPurposeList];
@@ -56,26 +56,26 @@ let purposeList = [...defaultPurposeList];
 const defaultManualSections = [
   {
     id: "manual-reservation",
-    title: "?덉빟 ?깅줉 諛⑸쾿",
-    body: "1. ?곷떒 硫붾돱?먯꽌 [?덉빟 愿由?濡??대룞?⑸땲??\n2. ?λ퉬, ?좎쭨, ?쒖옉 ?쒓컙, 紐⑹쟻, ?뚯슂 ?쒓컙???낅젰?⑸땲??\n3. ???踰꾪듉???뚮윭 ?덉빟???깅줉?⑸땲??\n4. 以묐났 ?쒓컙???덉쑝硫???λ릺吏 ?딆쑝誘濡??쒓컙???ㅼ떆 議곗젙?⑸땲??",
+    title: "예약 등록 방법",
+    body: "1. 상단 메뉴에서 [예약 관리]로 이동합니다.\n2. 장비, 날짜, 시작 시간, 목적, 소요 시간을 입력합니다.\n3. 저장 버튼을 눌러 예약을 등록합니다.\n4. 중복 시간이 있으면 저장되지 않으므로 시간을 다시 조정합니다.",
     imageUrl: "manual/reservation-step-02.png",
-    imageCaption: "?덉빟 ?깅줉 ?붾㈃",
+    imageCaption: "예약 등록 화면",
     order: 1,
     active: true
   },
   {
     id: "manual-dashboard",
-    title: "??쒕낫???뺤씤 諛⑸쾿",
-    body: "1. ??쒕낫?쒖뿉???꾩옱 媛???곹깭? ?ㅼ떆媛???꾨씪?몄쓣 ?뺤씤?⑸땲??\n2. ?μ냼 ?먮뒗 ?λ퉬瑜??대┃?섎㈃ ?곸꽭 ?꾪솴???뺤씤?????덉뒿?덈떎.\n3. ?쇱씠釉?ON ?곹깭?먯꽌???꾩옱 ?쒓컖 湲곗??쇰줈 ?붾㈃??媛깆떊?⑸땲??",
+    title: "대시보드 확인 방법",
+    body: "1. 대시보드에서 현재 가동 상태와 실시간 타임라인을 확인합니다.\n2. 장소 또는 장비를 클릭하면 상세 현황을 확인할 수 있습니다.\n3. 라이브 ON 상태에서는 현재 시각 기준으로 화면이 갱신됩니다.",
     imageUrl: "manual/reservation-step-03.png",
-    imageCaption: "??쒕낫???뺤씤 ?붾㈃",
+    imageCaption: "대시보드 확인 화면",
     order: 2,
     active: true
   },
   {
     id: "manual-notes",
-    title: "?댁쁺 ?좎쓽?ы빆",
-    body: "1. ?꾩옱??踰좏? ?댁쁺 ?④퀎?대?濡??붾㈃ 援ъ꽦怨??뺤콉??蹂寃쎈맆 ???덉뒿?덈떎.\n2. ?덉빟??蹂댁씠吏 ?딄굅????λ릺吏 ?딆쑝硫??꾩닔 ?낅젰媛믨낵 ?쒓컙??癒쇱? ?뺤씤?⑸땲??\n3. ?섏젙/??젣 沅뚰븳??蹂댁씠吏 ?딆쑝硫??댁쁺 愿由ъ옄?먭쾶 ?붿껌?⑸땲??",
+    title: "운영 유의사항",
+    body: "1. 현재는 베타 운영 단계이므로 화면 구성과 정책이 변경될 수 있습니다.\n2. 예약이 보이지 않거나 저장되지 않으면 필수 입력값과 시간을 먼저 확인합니다.\n3. 수정/삭제 권한이 보이지 않으면 운영 관리자에게 요청합니다.",
     imageUrl: "",
     imageCaption: "",
     order: 3,
@@ -158,9 +158,9 @@ function formatDurationText(val){
   const totalMinutes=Math.max(30,Math.round((Number(val)||0)*60));
   const hour=Math.floor(totalMinutes/60);
   const min=totalMinutes%60;
-  if(min===0) return `${hour}?쒓컙`;
-  if(hour===0) return `${min}遺?;
-  return `${hour}?쒓컙 ${min}遺?;
+  if(min===0) return `${hour}시간`;
+  if(hour===0) return `${min}분`;
+  return `${hour}시간 ${min}분`;
 }
 function formatDateLabel(iso){return iso.replace(/-/g,". ");}
 function getNowHour(){
@@ -348,7 +348,7 @@ function expandTreePathForRoom(siteId,roomId){
 function applyLegacyMigrationData(data){
   const siteId="site-default";
   const legacyLocations=Array.isArray(data?.locations) && data.locations.length ? data.locations : locations;
-  sites=[{ id: siteId, name: "湲곕낯 Site", order: 1, active: true }];
+  sites=[{ id: siteId, name: "기본 Site", order: 1, active: true }];
   rooms=buildRoomsFromLocations(legacyLocations,siteId);
   assignAutoRoomLayouts(rooms);
   const roomByName=new Map(rooms.map(room=>[room.name,room.id]));
@@ -364,12 +364,12 @@ function applyLegacyMigrationData(data){
   configState.needsMigrationSave=true;
   if(!configState.migrationNotified){
     configState.migrationNotified=true;
-    showToast("?μ냼 ?곗씠?곌? Site/Room 援ъ“濡??먮룞 蹂?섎릺?덉뒿?덈떎.","info");
+    showToast("장소 데이터가 Site/Room 구조로 자동 변환되었습니다.","info");
   }
 }
 function ensureSiteRoomState(){
   if(!Array.isArray(sites) || sites.length===0){
-    sites=[{ id: "site-default", name: "湲곕낯 Site", order: 1, active: true }];
+    sites=[{ id: "site-default", name: "기본 Site", order: 1, active: true }];
   }
   if(!Array.isArray(rooms) || rooms.length===0){
     rooms=buildRoomsFromLocations(locations,sites[0].id);
@@ -488,7 +488,7 @@ function updateMapLayoutValidationUI(siteId){
   const hasIssue=overlaps.size>0;
   if(warning){
     warning.hidden=!hasIssue;
-    warning.textContent=hasIssue ? "Room ?곸뿭??寃뱀묩?덈떎. 寃뱀묠 ?댁냼 ????ν븯?몄슂." : "";
+    warning.textContent=hasIssue ? "Room 영역이 겹칩니다. 겹침 해소 후 저장하세요." : "";
   }
   const saveBtn=document.getElementById("btn-map-layout-save");
   if(saveBtn){
@@ -519,7 +519,7 @@ async function saveMapLayoutEdit(){
   const selectedSiteId=appState.map.selectedSiteId;
   const overlaps=getOverlappingRoomIds(selectedSiteId);
   if(overlaps.size>0){
-    showToast("Room ?곸뿭??寃뱀퀜 ??ν븷 ???놁뒿?덈떎.","warn");
+    showToast("Room 영역이 겹쳐 저장할 수 없습니다.","warn");
     updateMapLayoutValidationUI(selectedSiteId);
     return;
   }
@@ -532,10 +532,10 @@ async function saveMapLayoutEdit(){
     stopMapLayoutEditMode(true);
     await saveConfig();
     renderAll();
-    showToast("Room 諛곗튂 醫뚰몴瑜???ν뻽?듬땲??","success");
-    addAdminActivity("Room 諛곗튂 ???, `${formatDateLabel(getViewDate())} / ${getSiteById(selectedSiteId)?.name || "-"}`);
+    showToast("Room 배치 좌표를 저장했습니다.","success");
+    addAdminActivity("Room 배치 저장", `${formatDateLabel(getViewDate())} / ${getSiteById(selectedSiteId)?.name || "-"}`);
   }catch(error){
-    reportAsyncError("saveMapLayoutEdit", error, "Room 諛곗튂 ??μ뿉 ?ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("saveMapLayoutEdit", error, "Room 배치 저장에 실패했습니다.");
   }
 }
 function beginMapRoomLayoutDrag(event,roomId,mode){
@@ -622,7 +622,7 @@ function renderPurposeOptions(machineId){
   const current=sel.value;
   const options = machineId ? getPurposesForMachine(machineId) : purposeList;
   if(options.length === 0){
-    sel.innerHTML = '<option value="" disabled>?좏깮 媛?ν븳 紐⑹쟻???놁뒿?덈떎</option>';
+    sel.innerHTML = '<option value="" disabled>선택 가능한 목적이 없습니다</option>';
     return;
   }
   sel.innerHTML=options.map(p=>`<option value="${p.key}">${p.label}</option>`).join("");
@@ -637,7 +637,7 @@ function renderLocationOptions(){
   const siteOptions=sortByOrderThenName(sites);
   siteSel.innerHTML=siteOptions.map(site=>`<option value="${site.id}">${site.name}</option>`).join("");
   if(!siteOptions.length){
-    roomSel.innerHTML='<option value="">Room ?놁쓬</option>';
+    roomSel.innerHTML='<option value="">Room 없음</option>';
     return;
   }
   const siteId=siteOptions.some(site=>site.id===currentSite) ? currentSite : siteOptions[0].id;
@@ -646,7 +646,7 @@ function renderLocationOptions(){
   const roomOptions=getRoomsBySite(siteId,{includeInactive:true});
   roomSel.innerHTML=roomOptions.map(room=>`<option value="${room.id}">${room.name}</option>`).join("");
   if(!roomOptions.length){
-    roomSel.innerHTML='<option value="">Room ?놁쓬</option>';
+    roomSel.innerHTML='<option value="">Room 없음</option>';
     return;
   }
   roomSel.value=roomOptions.some(room=>room.id===currentRoom) ? currentRoom : roomOptions[0].id;
@@ -761,7 +761,7 @@ function applyConfigData(data){
       active: site.active!==false
     }));
   }else{
-    sites = [{ id: "site-default", name: "湲곕낯 Site", order: 1, active: true }];
+    sites = [{ id: "site-default", name: "기본 Site", order: 1, active: true }];
   }
   if(Array.isArray(data.rooms) && data.rooms.length){
     rooms = data.rooms.map((room,index)=>({
@@ -816,7 +816,7 @@ function handleConfigMissing(){
   configState.needsMigrationSave = false;
   purposeList = [...defaultPurposeList];
   manualSections = defaultManualSections.map(section=>({ ...section }));
-  sites=[{ id: "site-default", name: "湲곕낯 Site", order: 1, active: true }];
+  sites=[{ id: "site-default", name: "기본 Site", order: 1, active: true }];
   rooms=buildRoomsFromLocations(locations,sites[0].id);
   assignAutoRoomLayouts(rooms);
   machineRoomIds={};
@@ -829,7 +829,7 @@ function subscribeConfig(){
   configUnsub = onSnapshot(configRef, snap=>{
     if(snap.exists()) applyConfigData(snap.data());
     else handleConfigMissing();
-  }, ()=>showToast("?ㅼ젙 ?숆린?붿뿉 ?ㅽ뙣?덉뒿?덈떎.","warn"));
+  }, ()=>showToast("설정 동기화에 실패했습니다.","warn"));
 }
 
 async function ensureConfigDoc(){
@@ -846,7 +846,7 @@ async function ensureConfigDoc(){
       configState.needsMigrationSave=false;
     }
   }catch(error){
-    reportAsyncError("ensureConfigDoc", error, "?ㅼ젙 珥덇린?붿뿉 ?ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("ensureConfigDoc", error, "설정 초기화에 실패했습니다.");
   }
 }
 
@@ -855,7 +855,7 @@ async function saveConfig(){
   try{
     await setDoc(configRef, buildConfigPayload(), { merge: true });
   }catch(error){
-    reportAsyncError("saveConfig", error, "?ㅼ젙 ??μ뿉 ?ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("saveConfig", error, "설정 저장에 실패했습니다.");
     throw error;
   }
 }
@@ -922,7 +922,7 @@ function subscribeBookings(force=false){
   bookingsUnsub = onSnapshot(bookingsQuery, snapshot=>{
     syncBookingsSnapshot(snapshot);
     renderAfterBookingsChange();
-  }, ()=> showToast("?덉빟 ?숆린?붿뿉 ?ㅽ뙣?덉뒿?덈떎.","warn"));
+  }, ()=> showToast("예약 동기화에 실패했습니다.","warn"));
 }
 
 function normalizeLoginId(value){
@@ -1025,7 +1025,7 @@ function canDeleteBooking(){
   return appState.currentUser?.role === "admin";
 }
 
-function typeIcon(type){if(type==="success") return "??; if(type==="warn") return "?좑툘"; return "?뱄툘";}
+function typeIcon(type){if(type==="success") return "✅"; if(type==="warn") return "⚠️"; return "ℹ️";}
 function showToast(message,type="success"){
   const container=document.getElementById("toast-container");
   const toast=document.createElement("div");
@@ -1047,10 +1047,10 @@ function reportAsyncError(context, error, fallbackMessage){
   console.error(`[${context}]`, error);
   const text=getErrorText(error).toLowerCase();
   if(text.includes("network") || text.includes("unavailable") || text.includes("deadline-exceeded")){
-    showToast("?ㅽ듃?뚰겕 ?곹깭媛 遺덉븞?뺥빀?덈떎. ?좎떆 ???ㅼ떆 ?쒕룄?댁＜?몄슂.","warn");
+    showToast("네트워크 상태가 불안정합니다. 잠시 후 다시 시도해주세요.","warn");
     return;
   }
-  showToast(fallbackMessage || "?붿껌 泥섎━ 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.","warn");
+  showToast(fallbackMessage || "요청 처리 중 오류가 발생했습니다.","warn");
 }
 
 function getReportDateValue(){
@@ -1059,10 +1059,10 @@ function getReportDateValue(){
 }
 
 function mapStatusLabel(status){
-  if(status==="deleted") return "??젣";
-  if(status==="rejected") return "諛섎젮";
-  if(status==="pending") return "?湲?;
-  return "?뺤젙";
+  if(status==="deleted") return "삭제";
+  if(status==="rejected") return "반려";
+  if(status==="pending") return "대기";
+  return "확정";
 }
 
 function mapStatusClass(status){
@@ -1117,12 +1117,12 @@ function renderAdminActivity(){
   if(!container) return;
   const rows=readAdminActivity();
   if(rows.length===0){
-    container.innerHTML='<div class="activity-empty">理쒓렐 湲곕줉???놁뒿?덈떎.</div>';
+    container.innerHTML='<div class="activity-empty">최근 기록이 없습니다.</div>';
     return;
   }
   container.innerHTML=rows.slice(0,20).map(row=>{
     const detail=row.detail ? `<span>${row.detail}</span>` : "";
-    return `<div class="activity-item"><strong>${row.action}</strong>${detail}<span>${formatActivityTime(row.timestamp)} 쨌 ${row.actor}</span></div>`;
+    return `<div class="activity-item"><strong>${row.action}</strong>${detail}<span>${formatActivityTime(row.timestamp)} · ${row.actor}</span></div>`;
   }).join("");
 }
 
@@ -1150,13 +1150,13 @@ function initTimelineHours(){
 async function login(role){
   const demo = demoAccounts[role];
   if(!demo){
-    alert("?곕え 怨꾩젙???뺤씤?댁＜?몄슂.");
+    alert("데모 계정을 확인해주세요.");
     return;
   }
   try{
     await signInWithEmailAndPassword(auth,demo.email,demo.password);
   }catch(e){
-    alert("?곕え 怨꾩젙 濡쒓렇?몄뿉 ?ㅽ뙣?덉뒿?덈떎. 愿由ъ옄?먭쾶 臾몄쓽?섏꽭??");
+    alert("데모 계정 로그인에 실패했습니다. 관리자에게 문의하세요.");
   }
 }
 async function loginWithCredentials(){
@@ -1205,7 +1205,7 @@ function applyHeaderSession(user){
   const nameEl=document.getElementById("user-name");
   if(nameEl) nameEl.textContent=appState.currentUser.name;
   const logoutBtn=document.getElementById("btn-logout");
-  if(logoutBtn) logoutBtn.textContent=appState.currentUser.role==="guest" ? "濡쒓렇?? : "濡쒓렇?꾩썐";
+  if(logoutBtn) logoutBtn.textContent=appState.currentUser.role==="guest" ? "로그인" : "로그아웃";
   const adminTab=document.getElementById("tab-admin");
   if(adminTab) adminTab.hidden=!(appState.currentUser.role==="admin"||appState.currentUser.role==="supervisor");
   const manualTab=document.getElementById("tab-manual");
@@ -1226,7 +1226,7 @@ async function applySession(user){
 }
 
 function applyGuestSession(){
-  applyHeaderSession({id:"guest", name:"寃뚯뒪??, role:"guest"});
+  applyHeaderSession({id:"guest", name:"게스트", role:"guest"});
   ensureBookingBuckets();
   subscribeBookings(true);
   renderAll();
@@ -1242,21 +1242,21 @@ function initAuthListener(){
       const snap = await getDoc(doc(db,"users",user.uid));
       if(!snap.exists()){
         await signOut(auth);
-        alert("怨꾩젙 ?뺣낫瑜?李얠쓣 ???놁뒿?덈떎.");
+        alert("계정 정보를 찾을 수 없습니다.");
         window.location.replace("index.html");
         return;
       }
       const data = snap.data();
       if(!data.approved){
         await signOut(auth);
-        alert("?뱀씤 ?湲?以묒엯?덈떎.");
+        alert("승인 대기 중입니다.");
         window.location.replace("index.html");
         return;
       }
       const role = String(data.role||"worker").trim().toLowerCase();
       await applySession({uid:user.uid, id:data.id||user.email, name:data.name||user.email, role});
     }catch(error){
-      reportAsyncError("initAuthListener", error, "濡쒓렇???몄뀡 ?뺤씤???ㅽ뙣?덉뒿?덈떎.");
+      reportAsyncError("initAuthListener", error, "로그인 세션 확인에 실패했습니다.");
       applyGuestSession();
     }
   });
@@ -1275,8 +1275,8 @@ function switchView(view){
   if(view!=="dashboard" && appState.map.layoutEditMode){
     stopMapLayoutEditMode(true);
   }
-  if(view==="admin"&&!can("admin")){alert("?묎렐 沅뚰븳???놁뒿?덈떎.");return;}
-  if(view==="manual"&&!canReadManual()){alert("?묎렐 沅뚰븳???놁뒿?덈떎.");return;}
+  if(view==="admin"&&!can("admin")){alert("접근 권한이 없습니다.");return;}
+  if(view==="manual"&&!canReadManual()){alert("접근 권한이 없습니다.");return;}
   if(view!=="dashboard" && view!=="reservation"){
     closeReserveWizard();
   }
@@ -1386,6 +1386,7 @@ function describeArcPath(cx, cy, r, startAngle, endAngle){
   const largeArc=(endAngle-startAngle)<=180 ? "0" : "1";
   return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 0 ${end.x} ${end.y}`;
 }
+
 function getMachineIdsForCategory(category="all"){
   if(category==="all") return [...bscIds];
   return bscIds.filter(id=>deriveMachineCategory(id)===category);
@@ -1506,13 +1507,13 @@ function renderMobileDashboardDial(){
   svg.appendChild(progress);
 
   const metric=document.getElementById("mobile-donut-metric");
-  if(metric) metric.textContent=`媛?숇쪧 ${percent}%`;
+  if(metric) metric.textContent=`가동률 ${percent}%`;
 
   const canReserve=can("create") && hasAnyReservableSlot(getViewDate(),0.5);
   appState.mobile.canReserveNow=canReserve;
   const reserveState=!can("create") ? "readonly" : (canReserve ? "available" : "unavailable");
-  const reserveLabel=reserveState==="available" ? "?덉빟 媛?? : (reserveState==="unavailable" ? "?덉빟 遺덇??? : "?쎄린 ?꾩슜");
-  const reserveIcon=reserveState==="available" ? "?? : (reserveState==="unavailable" ? "!" : "??);
+  const reserveLabel=reserveState==="available" ? "예약 가능" : (reserveState==="unavailable" ? "예약 불가능" : "읽기 전용");
+  const reserveIcon=reserveState==="available" ? "✓" : (reserveState==="unavailable" ? "!" : "•");
   const centerBtn=document.getElementById("btn-mobile-center-reserve");
   const topBtn=document.getElementById("btn-mobile-center-reserve-top");
   if(centerBtn){
@@ -1524,7 +1525,7 @@ function renderMobileDashboardDial(){
     centerBtn.setAttribute("aria-label",reserveLabel);
   }
   if(topBtn){
-    topBtn.textContent=reserveState==="available" ? "?덉빟" : (reserveState==="unavailable" ? "遺덇?" : "?쎄린");
+    topBtn.textContent=reserveState==="available" ? "예약" : (reserveState==="unavailable" ? "불가" : "읽기");
     topBtn.disabled=!canReserve;
     topBtn.title=reserveLabel;
     topBtn.setAttribute("aria-label",reserveLabel);
@@ -1551,18 +1552,18 @@ function renderMobileReservationSlotDetail(date,machineIds){
   if(!container) return;
   const slotStart=appState.mobile.selectedReservationSlot;
   const category=appState.mobile.selectedReservationCategory || "all";
-  const categoryLabel=category==="all" ? "?꾩껜" : category;
+  const categoryLabel=category==="all" ? "전체" : category;
   if(typeof slotStart!=="number"){
-    container.innerHTML=`<div class="mobile-reservation-detail-title">?좏깮???쒓컙? ?놁쓬</div><div class="mobile-reservation-detail-empty">${categoryLabel} ?λ퉬 湲곗? 媛???뺣낫媛 ?놁뒿?덈떎.</div>`;
+    container.innerHTML=`<div class="mobile-reservation-detail-title">선택된 시간대 없음</div><div class="mobile-reservation-detail-empty">${categoryLabel} 장비 기준 가동 정보가 없습니다.</div>`;
     return;
   }
   const entries=getChronographSlotEntries(date,slotStart,machineIds);
   const title=`${formatTime(slotStart)}~${formatTime(slotStart+0.5)}`;
   if(!entries.length){
-    container.innerHTML=`<div class="mobile-reservation-detail-title">${title}</div><div class="mobile-reservation-detail-empty">${categoryLabel} ?λ퉬 湲곗? ?대떦 ?쒓컙? 媛???λ퉬媛 ?놁뒿?덈떎.</div>`;
+    container.innerHTML=`<div class="mobile-reservation-detail-title">${title}</div><div class="mobile-reservation-detail-empty">${categoryLabel} 장비 기준 해당 시간대 가동 장비가 없습니다.</div>`;
     return;
   }
-  container.innerHTML=`<div class="mobile-reservation-detail-title">${title}</div><div class="mobile-reservation-detail-sub">${categoryLabel} ?λ퉬 ${entries.length}? 媛??以?/div><div class="mobile-reservation-detail-list">${entries.map(entry=>`<div class="mobile-reservation-detail-item"><strong>${entry.id}</strong><span>${entry.purposeLabel} 쨌 ${entry.booking.user}</span></div>`).join("")}</div>`;
+  container.innerHTML=`<div class="mobile-reservation-detail-title">${title}</div><div class="mobile-reservation-detail-sub">${categoryLabel} 장비 ${entries.length}대 가동 중</div><div class="mobile-reservation-detail-list">${entries.map(entry=>`<div class="mobile-reservation-detail-item"><strong>${entry.id}</strong><span>${entry.purposeLabel} · ${entry.booking.user}</span></div>`).join("")}</div>`;
 }
 
 function renderMobileChronograph270(){
@@ -1626,12 +1627,12 @@ function renderMobileChronograph270(){
       appState.mobile.selectedReservationSlot=slotStart;
       renderMobileChronograph270();
     });
-    path.setAttribute("title",`${formatTime(slotStart)}~${formatTime(slotStart+0.5)} 쨌 ${slotState.label}`);
+    path.setAttribute("title",`${formatTime(slotStart)}~${formatTime(slotStart+0.5)} · ${slotState.label}`);
     svg.appendChild(path);
   }
 
   const categoryLabel=createSvgNode("text",{ x:cx, y:cy-4, "text-anchor":"middle", class:"mobile-chrono-center-label" });
-  categoryLabel.textContent=selectedCategory==="all" ? "?꾩껜" : selectedCategory;
+  categoryLabel.textContent=selectedCategory==="all" ? "전체" : selectedCategory;
   svg.appendChild(categoryLabel);
 
   [9,12,15,18].forEach(hour=>{
@@ -1657,7 +1658,7 @@ function renderMobileChronograph270(){
     svg.appendChild(line);
     svg.appendChild(dot);
     const label=createSvgNode("text",{ x:cx, y:cy+12, "text-anchor":"middle", class:"mobile-chrono-now-label" });
-    label.textContent=`?꾩옱 ${formatTime(nowHour)}`;
+    label.textContent=`현재 ${formatTime(nowHour)}`;
     svg.appendChild(label);
   }
 
@@ -1685,7 +1686,7 @@ function renderMobileShell(){
   if(appState.mobile.layoutMode==="rail") appState.mobile.drawerOpen=false;
 
   const title=document.getElementById("mobile-pane-title");
-  if(title) title.textContent=appState.mobile.activePane==="reservation" ? "?덉빟 愿由? : "??쒕낫??;
+  if(title) title.textContent=appState.mobile.activePane==="reservation" ? "예약 관리" : "대시보드";
 
   document.body.classList.toggle("mobile-layout-drawer",appState.mobile.layoutMode==="drawer");
   document.body.classList.toggle("mobile-layout-rail",appState.mobile.layoutMode==="rail");
@@ -1863,80 +1864,80 @@ function getActiveAdminView(){
 function getAdminFilterConfig(view){
   const map={
     users:{
-      placeholder:"?대쫫/?꾩씠??沅뚰븳 寃??,
+      placeholder:"이름/아이디/권한 검색",
       statuses:[
-        {value:"all",label:"?곹깭 ?꾩껜"},
-        {value:"approved",label:"?뱀씤??},
-        {value:"pending",label:"?뱀씤?湲?},
-        {value:"role-admin",label:"愿由ъ옄"},
-        {value:"role-supervisor",label:"媛먮룆??},
-        {value:"role-worker",label:"?묒뾽??}
+        {value:"all",label:"상태 전체"},
+        {value:"approved",label:"승인됨"},
+        {value:"pending",label:"승인대기"},
+        {value:"role-admin",label:"관리자"},
+        {value:"role-supervisor",label:"감독자"},
+        {value:"role-worker",label:"작업자"}
       ],
       sorts:[
-        {value:"default",label:"湲곕낯??},
-        {value:"name-asc",label:"?대쫫 ?ㅻ쫫李⑥닚"},
-        {value:"name-desc",label:"?대쫫 ?대┝李⑥닚"}
+        {value:"default",label:"기본순"},
+        {value:"name-asc",label:"이름 오름차순"},
+        {value:"name-desc",label:"이름 내림차순"}
       ]
     },
     machines:{
-      placeholder:"?λ퉬ID/愿由щ쾲???μ냼/?ㅻ챸 寃??,
+      placeholder:"장비ID/관리번호/장소/설명 검색",
       statuses:[
-        {value:"all",label:"?곹깭 ?꾩껜"},
-        {value:"booked",label:"?덉빟 ?덉쓬"},
-        {value:"unbooked",label:"?덉빟 ?놁쓬"}
+        {value:"all",label:"상태 전체"},
+        {value:"booked",label:"예약 있음"},
+        {value:"unbooked",label:"예약 없음"}
       ],
       sorts:[
-        {value:"default",label:"湲곕낯??},
-        {value:"id-asc",label:"ID ?ㅻ쫫李⑥닚"},
-        {value:"id-desc",label:"ID ?대┝李⑥닚"},
-        {value:"count-desc",label:"?덉빟 ??留롮???}
+        {value:"default",label:"기본순"},
+        {value:"id-asc",label:"ID 오름차순"},
+        {value:"id-desc",label:"ID 내림차순"},
+        {value:"count-desc",label:"예약 수 많은순"}
       ]
     },
     locations:{
-      placeholder:"Site/Room 寃??,
+      placeholder:"Site/Room 검색",
       statuses:[
-        {value:"all",label:"?곹깭 ?꾩껜"},
-        {value:"active",label:"?쒖꽦 Room"},
-        {value:"inactive",label:"鍮꾪솢??Room"},
-        {value:"used",label:"?λ퉬 諛곗젙??},
-        {value:"empty",label:"?λ퉬 ?놁쓬"}
+        {value:"all",label:"상태 전체"},
+        {value:"active",label:"활성 Room"},
+        {value:"inactive",label:"비활성 Room"},
+        {value:"used",label:"장비 배정됨"},
+        {value:"empty",label:"장비 없음"}
       ],
       sorts:[
-        {value:"default",label:"湲곕낯??},
-        {value:"site-asc",label:"Site ?ㅻ쫫李⑥닚"},
-        {value:"name-asc",label:"Room ?ㅻ쫫李⑥닚"},
-        {value:"name-desc",label:"Room ?대┝李⑥닚"},
-        {value:"count-desc",label:"?λ퉬 ??留롮???}
+        {value:"default",label:"기본순"},
+        {value:"site-asc",label:"Site 오름차순"},
+        {value:"name-asc",label:"Room 오름차순"},
+        {value:"name-desc",label:"Room 내림차순"},
+        {value:"count-desc",label:"장비 수 많은순"}
       ]
     },
     purposes:{
-      placeholder:"紐⑹쟻 肄붾뱶/?쒖떆紐?寃??,
+      placeholder:"목적 코드/표시명 검색",
       statuses:[
-        {value:"all",label:"?곹깭 ?꾩껜"},
-        {value:"global",label:"?꾩껜 ?곸슜"},
-        {value:"scoped",label:"?λ퉬 吏??},
-        {value:"used",label:"?덉빟 ?ъ슜以?},
-        {value:"unused",label:"誘몄궗??}
+        {value:"all",label:"상태 전체"},
+        {value:"global",label:"전체 적용"},
+        {value:"scoped",label:"장비 지정"},
+        {value:"used",label:"예약 사용중"},
+        {value:"unused",label:"미사용"}
       ],
       sorts:[
-        {value:"default",label:"湲곕낯??},
-        {value:"code-asc",label:"肄붾뱶 ?ㅻ쫫李⑥닚"},
-        {value:"label-asc",label:"?쒖떆紐??ㅻ쫫李⑥닚"}
+        {value:"default",label:"기본순"},
+        {value:"code-asc",label:"코드 오름차순"},
+        {value:"label-asc",label:"표시명 오름차순"}
       ]
     },
     audit:{
-      placeholder:"?λ퉬/?묒뾽??紐⑹쟻/?ъ쑀 寃??,
+      placeholder:"장비/작업자/목적/사유 검색",
       statuses:[
-        {value:"all",label:"?꾩껜"},
-        {value:"confirmed",label:"?뺤젙"},
-        {value:"deleted",label:"??젣"},
-        {value:"rejected",label:"諛섎젮"}
+        {value:"all",label:"전체"},
+        {value:"confirmed",label:"확정"},
+        {value:"deleted",label:"삭제"},
+        {value:"rejected",label:"반려"}
       ],
       sorts:[
-        {value:"default",label:"?쒓컙 ?ㅻ쫫李⑥닚"},
-        {value:"time-desc",label:"?쒓컙 ?대┝李⑥닚"},
-        {value:"user-asc",label:"?묒뾽???ㅻ쫫李⑥닚"},
-        {value:"machine-asc",label:"?λ퉬 ?ㅻ쫫李⑥닚"}
+        {value:"default",label:"시간 오름차순"},
+        {value:"time-desc",label:"시간 내림차순"},
+        {value:"user-asc",label:"작업자 오름차순"},
+        {value:"machine-asc",label:"장비 오름차순"}
       ]
     }
   };
@@ -1962,7 +1963,7 @@ function renderAdminToolbar(view=getActiveAdminView()){
   }
   const compactBtn=document.getElementById("btn-admin-compact");
   if(compactBtn){
-    compactBtn.textContent=appState.adminCompact ? "湲곕낯 媛꾧꺽" : "??媛꾧꺽 異뺤냼";
+    compactBtn.textContent=appState.adminCompact ? "기본 간격" : "행 간격 축소";
   }
   if(!config) return;
 
@@ -2095,11 +2096,11 @@ function syncLiveModeUI(){
   const liveBtn=document.getElementById("btn-live");
   if(!liveBtn) return;
   if(appState.isLiveMode){
-    liveBtn.textContent="?쇱씠釉?ON";
+    liveBtn.textContent="라이브 ON";
     liveBtn.classList.add("active");
     liveBtn.disabled=true;
   }else{
-    liveBtn.textContent="?쇱씠釉?蹂듦?";
+    liveBtn.textContent="라이브 복귀";
     liveBtn.classList.remove("active");
     liveBtn.disabled=false;
   }
@@ -2167,10 +2168,10 @@ function renderDashboardSummary(){
   if(!container) return;
   const stats=getDashboardSummaryStats();
   container.innerHTML=
-    `<div class="summary-item"><div class="summary-label">?꾩껜 ?λ퉬</div><div class="summary-value">${stats.total}</div><div class="summary-sub">?깅줉 ?λ퉬 ??/div></div>`+
-    `<div class="summary-item"><div class="summary-label">媛?숈쨷</div><div class="summary-value">${stats.running}</div><div class="summary-sub">?꾩옱 ?쒓컖 湲곗?</div></div>`+
-    `<div class="summary-item"><div class="summary-label">媛?숇쪧</div><div class="summary-value">${stats.utilization}%</div><div class="summary-sub">${stats.running}/${stats.total}?</div></div>`+
-    `<div class="summary-item"><div class="summary-label">?덉빟 ?덉젙</div><div class="summary-value">${stats.upcoming}</div><div class="summary-sub">${formatDateLabel(getViewDate())}</div></div>`;
+    `<div class="summary-item"><div class="summary-label">전체 장비</div><div class="summary-value">${stats.total}</div><div class="summary-sub">등록 장비 수</div></div>`+
+    `<div class="summary-item"><div class="summary-label">가동중</div><div class="summary-value">${stats.running}</div><div class="summary-sub">현재 시각 기준</div></div>`+
+    `<div class="summary-item"><div class="summary-label">가동률</div><div class="summary-value">${stats.utilization}%</div><div class="summary-sub">${stats.running}/${stats.total}대</div></div>`+
+    `<div class="summary-item"><div class="summary-label">예약 예정</div><div class="summary-value">${stats.upcoming}</div><div class="summary-sub">${formatDateLabel(getViewDate())}</div></div>`;
 }
 
 function renderDashboardLegend(){
@@ -2184,8 +2185,8 @@ function renderDashboardLegend(){
 function renderDateLabels(){
   const label=formatDateLabel(getViewDate());
   document.getElementById("reservation-date-label").textContent=label;
-  const modeLabel=appState.isLiveMode ? "?쇱씠釉? : "議고쉶";
-  document.getElementById("timeline-date-label").textContent=`${label} 쨌 ${modeLabel} ${formatTime(appState.currentHour)}`;
+  const modeLabel=appState.isLiveMode ? "라이브" : "조회";
+  document.getElementById("timeline-date-label").textContent=`${label} · ${modeLabel} ${formatTime(appState.currentHour)}`;
   const detailLabel=document.getElementById("detail-date-label");
   if(detailLabel) detailLabel.textContent=label;
 }
@@ -2205,7 +2206,7 @@ function renderDashboard(){
 
 function renderTimeLabels(){
   const time=formatTime(appState.currentHour);
-  const prefix=appState.isLiveMode ? "?꾩옱 ?쒓컖" : "議고쉶 ?쒓컖";
+  const prefix=appState.isLiveMode ? "현재 시각" : "조회 시각";
   document.getElementById("map-time-label").textContent=`${prefix}: ${time}`;
   document.getElementById("time-slider-label").textContent=time;
   syncLiveModeUI();
@@ -2229,9 +2230,9 @@ function renderMap(){
   }
   const activeSites=getActiveSites();
   if(!activeSites.length){
-    tree.innerHTML='<p class="map-empty-text">?쒖꽦 Site媛 ?놁뒿?덈떎.</p>';
-    canvas.innerHTML='<p class="map-empty-text">?쒖떆??Room???놁뒿?덈떎.</p>';
-    if(titleEl) titleEl.textContent="Room 諛곗튂";
+    tree.innerHTML='<p class="map-empty-text">활성 Site가 없습니다.</p>';
+    canvas.innerHTML='<p class="map-empty-text">표시할 Room이 없습니다.</p>';
+    if(titleEl) titleEl.textContent="Room 배치";
     if(subtitleEl) subtitleEl.textContent="";
     return;
   }
@@ -2255,7 +2256,7 @@ function renderMap(){
     actionWrap.hidden=!canEdit;
   }
   if(editBtn){
-    editBtn.textContent=appState.map.layoutEditMode ? "?몄쭛 醫낅즺" : "諛곗튂 ?몄쭛";
+    editBtn.textContent=appState.map.layoutEditMode ? "편집 종료" : "배치 편집";
   }
   if(cancelBtn){
     cancelBtn.hidden=!appState.map.layoutEditMode;
@@ -2289,8 +2290,8 @@ function renderMap(){
     siteBtn.type="button";
     siteBtn.className=`map-site-btn ${site.id===appState.map.selectedSiteId?"active":""}`;
     siteBtn.innerHTML=
-      `<span class="tree-node-main"><span class="tree-node-toggle">${siteExpanded?"??:"??}</span><span class="tree-node-label">${site.name}</span></span>`+
-      `<span class="tree-node-meta">${siteMachineTotal}?</span>`;
+      `<span class="tree-node-main"><span class="tree-node-toggle">${siteExpanded?"▾":"▸"}</span><span class="tree-node-label">${site.name}</span></span>`+
+      `<span class="tree-node-meta">${siteMachineTotal}대</span>`;
     siteBtn.addEventListener("click",()=>{
       appState.map.selectedSiteId=site.id;
       appState.map.selectedMachineId=null;
@@ -2323,8 +2324,8 @@ function renderMap(){
         roomBtn.type="button";
         roomBtn.className=`map-room-btn ${room.id===appState.map.selectedRoomId?"active":""}`;
         roomBtn.innerHTML=
-          `<span class="tree-node-main"><span class="tree-node-toggle">${roomExpanded?"??:"??}</span><span class="tree-node-label">${room.name}</span></span>`+
-          `<span class="tree-node-meta">${machineIds.length}? / 媛??${runningCount}?</span>`;
+          `<span class="tree-node-main"><span class="tree-node-toggle">${roomExpanded?"▾":"▸"}</span><span class="tree-node-label">${room.name}</span></span>`+
+          `<span class="tree-node-meta">${machineIds.length}대 / 가동 ${runningCount}대</span>`;
         roomBtn.addEventListener("click",event=>{
           event.stopPropagation();
           appState.map.selectedSiteId=site.id;
@@ -2350,7 +2351,7 @@ function renderMap(){
           const machineRows=query ? row.matchedMachineIds : machineIds;
           machineRows.forEach(id=>{
             const booking=getCurrentBooking(id);
-            const statusLabel=booking ? (booking.user==="System" ? "?뚮룆" : getPurposeMeta(booking.purpose).label) : "?ъ슜 媛??;
+            const statusLabel=booking ? (booking.user==="System" ? "소독" : getPurposeMeta(booking.purpose).label) : "사용 가능";
             const machineBtn=document.createElement("button");
             machineBtn.type="button";
             machineBtn.className=`map-machine-node ${appState.map.selectedMachineId===id?"active":""}`;
@@ -2366,7 +2367,7 @@ function renderMap(){
           if(!machineRows.length){
             const empty=document.createElement("p");
             empty.className="map-empty-text";
-            empty.textContent="?쒖떆???λ퉬媛 ?놁뒿?덈떎.";
+            empty.textContent="표시할 장비가 없습니다.";
             machineList.appendChild(empty);
           }
           roomList.appendChild(machineList);
@@ -2375,7 +2376,7 @@ function renderMap(){
       if(!roomList.childElementCount){
         const empty=document.createElement("p");
         empty.className="map-empty-text";
-        empty.textContent="議곌굔??留욌뒗 Room???놁뒿?덈떎.";
+        empty.textContent="조건에 맞는 Room이 없습니다.";
         roomList.appendChild(empty);
       }
       siteBlock.appendChild(roomList);
@@ -2383,14 +2384,14 @@ function renderMap(){
     tree.appendChild(siteBlock);
   }
   if(!tree.childElementCount){
-    tree.innerHTML='<p class="map-empty-text">寃??議곌굔??留욌뒗 Site/Room???놁뒿?덈떎.</p>';
+    tree.innerHTML='<p class="map-empty-text">검색 조건에 맞는 Site/Room이 없습니다.</p>';
   }
 
   canvas.innerHTML="";
   if(titleEl) titleEl.textContent=selectedSite.name;
   if(subtitleEl){
     const totalRooms=getRoomsBySite(selectedSite.id).length;
-    subtitleEl.textContent=appState.map.layoutEditMode ? `Room ${totalRooms}媛?쨌 諛곗튂 ?몄쭛以? : `Room ${totalRooms}媛?;
+    subtitleEl.textContent=appState.map.layoutEditMode ? `Room ${totalRooms}개 · 배치 편집중` : `Room ${totalRooms}개`;
   }
   const visibleRooms=getRoomsBySite(selectedSite.id).filter(room=>{
     const ids=getMachinesByRoomId(room.id);
@@ -2400,7 +2401,7 @@ function renderMap(){
     return matched.length>0;
   });
   if(!visibleRooms.length){
-    canvas.innerHTML='<p class="map-empty-text">寃??議곌굔??留욌뒗 Room???놁뒿?덈떎.</p>';
+    canvas.innerHTML='<p class="map-empty-text">검색 조건에 맞는 Room이 없습니다.</p>';
     return;
   }
   visibleRooms.forEach((room,index)=>{
@@ -2415,7 +2416,7 @@ function renderMap(){
     const allMachineIds=getMachinesByRoomId(room.id);
     const machineIds=getMatchedRoomMachineIds(room,allMachineIds,query,selectedSite);
     const runningCount=machineIds.filter(id=>isMachineRunning(id)).length;
-    box.innerHTML=`<header><strong>${room.name}</strong><span>${machineIds.length}? / 媛??${runningCount}?</span></header>`;
+    box.innerHTML=`<header><strong>${room.name}</strong><span>${machineIds.length}대 / 가동 ${runningCount}대</span></header>`;
     box.addEventListener("click",()=>{
       appState.map.selectedSiteId=room.siteId;
       appState.map.selectedRoomId=room.id;
@@ -2445,7 +2446,7 @@ function renderMap(){
         button.className=`map-machine-chip ${meta.tile} ${appState.map.selectedMachineId===id?"selected":""}`;
         button.dataset.machineId=id;
         button.textContent=id;
-        button.title=getBookingTooltipText(booking) || `${id}: ?ъ슜 媛??;
+        button.title=getBookingTooltipText(booking) || `${id}: 사용 가능`;
         button.addEventListener("click",event=>{
           event.stopPropagation();
           handleTileClick(id);
@@ -2463,7 +2464,7 @@ function renderMap(){
     if(!machineWrap.childElementCount){
       const empty=document.createElement("span");
       empty.className="map-empty-inline";
-      empty.textContent=revealMachines ? "?쒖떆???λ퉬 ?놁쓬" : "Room ?대┃ ???λ퉬 ?쒖떆";
+      empty.textContent=revealMachines ? "표시할 장비 없음" : "Room 클릭 시 장비 표시";
       machineWrap.appendChild(empty);
     }
     if(appState.map.layoutEditMode){
@@ -2474,7 +2475,7 @@ function renderMap(){
       const handle=document.createElement("button");
       handle.type="button";
       handle.className="map-room-resize-handle";
-      handle.setAttribute("aria-label","Room ?ш린 議곗젅");
+      handle.setAttribute("aria-label","Room 크기 조절");
       handle.addEventListener("mousedown",event=>{
         if(event.button!==0) return;
         beginMapRoomLayoutDrag(event,room.id,"resize");
@@ -2505,10 +2506,10 @@ function isMachineRunning(machineId){
 
 function getTileMeta(booking){
   if(!booking) return {tile:statusMeta.free.tile,labelText:statusMeta.free.label};
-  if(booking.status==="pending") return {tile:statusMeta.pending.tile,labelText:`${statusMeta.pending.label} 쨌 ${booking.user}`};
+  if(booking.status==="pending") return {tile:statusMeta.pending.tile,labelText:`${statusMeta.pending.label} · ${booking.user}`};
   if(booking.user==="System") return {tile:statusMeta.system.tile,labelText:statusMeta.system.label};
   const meta=getPurposeMeta(booking.purpose);
-  return {tile:meta.tile,labelText:`${meta.label} 쨌 ${booking.user}`};
+  return {tile:meta.tile,labelText:`${meta.label} · ${booking.user}`};
 }
 
 function handleTileClick(id){
@@ -2562,20 +2563,20 @@ function renderSelectionDetailPanel(){
     const site=getMachineSite(machineId);
     const availability=getMachineAvailabilityHint(machineId,getViewDate(),appState.currentHour);
     const bookingText=booking
-      ? `${booking.user} 쨌 ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}`
-      : "?꾩옱 ?덉빟 ?놁쓬";
+      ? `${booking.user} · ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}`
+      : "현재 예약 없음";
     const purposeText=booking
-      ? (booking.user==="System" ? "?먮룞 ?뚮룆" : getPurposeMeta(booking.purpose).label)
-      : "?ъ슜 媛??;
+      ? (booking.user==="System" ? "자동 소독" : getPurposeMeta(booking.purpose).label)
+      : "사용 가능";
     body.innerHTML=
       `<div class="detail-section">`+
       `<h4>${machineId}</h4>`+
-      `<p><strong>?꾩튂:</strong> ${site ? site.name : "-"} / ${room ? room.name : "-"}</p>`+
-      `<p><strong>愿由щ쾲??</strong> ${getMachineMgmtNo(machineId) || "-"}</p>`+
-      `<p><strong>?ㅻ챸:</strong> ${getMachineDesc(machineId) || "-"}</p>`+
-      `<p><strong>?꾩옱 ?곹깭:</strong> ${purposeText}</p>`+
-      `<p><strong>?꾩옱 ?덉빟:</strong> ${bookingText}</p>`+
-      `<p><strong>?ㅼ쓬 媛??</strong> ${availability.text}</p>`+
+      `<p><strong>위치:</strong> ${site ? site.name : "-"} / ${room ? room.name : "-"}</p>`+
+      `<p><strong>관리번호:</strong> ${getMachineMgmtNo(machineId) || "-"}</p>`+
+      `<p><strong>설명:</strong> ${getMachineDesc(machineId) || "-"}</p>`+
+      `<p><strong>현재 상태:</strong> ${purposeText}</p>`+
+      `<p><strong>현재 예약:</strong> ${bookingText}</p>`+
+      `<p><strong>다음 가능:</strong> ${availability.text}</p>`+
       `</div>`;
     return;
   }
@@ -2583,20 +2584,20 @@ function renderSelectionDetailPanel(){
     const room=getRoomById(roomId);
     const site=room ? getSiteById(room.siteId) : null;
     const summary=getRoomSummary(roomId);
-    const nextText=summary.nextAvailable===null ? "?뱀씪 異붽? 媛???쒓컙 ?놁쓬" : `${formatTime(summary.nextAvailable)}遺??媛??;
+    const nextText=summary.nextAvailable===null ? "당일 추가 가능 시간 없음" : `${formatTime(summary.nextAvailable)}부터 가능`;
     body.innerHTML=
       `<div class="detail-section">`+
       `<h4>${room ? room.name : "Room"}</h4>`+
       `<p><strong>Site:</strong> ${site ? site.name : "-"}</p>`+
-      `<p><strong>?λ퉬 ??</strong> ${summary.machineCount}?</p>`+
-      `<p><strong>媛??以?</strong> ${summary.running}?</p>`+
-      `<p><strong>?덉빟 ?덉젙:</strong> ${summary.upcoming}嫄?/p>`+
-      `<p><strong>?ㅼ쓬 鍮??щ’:</strong> ${nextText}</p>`+
+      `<p><strong>장비 수:</strong> ${summary.machineCount}대</p>`+
+      `<p><strong>가동 중:</strong> ${summary.running}대</p>`+
+      `<p><strong>예약 예정:</strong> ${summary.upcoming}건</p>`+
+      `<p><strong>다음 빈 슬롯:</strong> ${nextText}</p>`+
       `</div>`+
       `<div class="detail-machine-list">`+
       summary.machineIds.map(id=>{
         const booking=getCurrentBooking(id);
-        const badge=booking ? (booking.user==="System" ? "?뚮룆" : getPurposeMeta(booking.purpose).label) : "?ъ슜 媛??;
+        const badge=booking ? (booking.user==="System" ? "소독" : getPurposeMeta(booking.purpose).label) : "사용 가능";
         return `<button type="button" class="detail-machine-btn ${appState.map.selectedMachineId===id?"active":""}" data-detail-machine="${id}" data-machine-id="${id}">${id}<span>${badge}</span></button>`;
       }).join("")+
       `</div>`;
@@ -2610,14 +2611,14 @@ function renderSelectionDetailPanel(){
     body.innerHTML=
       `<div class="detail-section">`+
       `<h4>${site ? site.name : "Site"}</h4>`+
-      `<p><strong>Room ??</strong> ${siteRooms.length}媛?/p>`+
-      `<p><strong>?λ퉬 ??</strong> ${machineCount}?</p>`+
-      `<p><strong>媛??以?</strong> ${runningCount}?</p>`+
-      `<p><strong>?덈궡:</strong> 醫뚯륫?먯꽌 Room???댁뼱 ?λ퉬瑜??좏깮?섏꽭??</p>`+
+      `<p><strong>Room 수:</strong> ${siteRooms.length}개</p>`+
+      `<p><strong>장비 수:</strong> ${machineCount}대</p>`+
+      `<p><strong>가동 중:</strong> ${runningCount}대</p>`+
+      `<p><strong>안내:</strong> 좌측에서 Room을 열어 장비를 선택하세요.</p>`+
       `</div>`;
     return;
   }
-  body.innerHTML='<p class="detail-empty">醫뚯륫 ?몃━?먯꽌 Site/Room ?먮뒗 ?λ퉬瑜??좏깮?섏꽭??</p>';
+  body.innerHTML='<p class="detail-empty">좌측 트리에서 Site/Room 또는 장비를 선택하세요.</p>';
 }
 
 function showTooltip(event,id,booking){
@@ -2627,12 +2628,12 @@ function showTooltip(event,id,booking){
   tooltip.style.display="block";
   tooltip.style.left=`${event.clientX-rect.left+14}px`;
   tooltip.style.top=`${event.clientY-rect.top+14}px`;
-  tooltip.textContent=booking?`${id}: ${booking.user} 쨌 ${booking.status==="pending"?"?뱀씤 ?湲?:getPurposeMeta(booking.purpose).label}`:`${id}: ?ъ슜 媛??;
+  tooltip.textContent=booking?`${id}: ${booking.user} · ${booking.status==="pending"?"승인 대기":getPurposeMeta(booking.purpose).label}`:`${id}: 사용 가능`;
 }
 function hideTooltip(){document.getElementById("map-tooltip").style.display="none";}
 function getBookingTooltipText(booking){
   if(!booking) return "";
-  return `?덉빟?? ${booking.user}\n?ъ슜?쒓컙: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}`;
+  return `예약자: ${booking.user}\n사용시간: ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}`;
 }
 
 function isMachineBusyAt(id,date,hour){
@@ -2641,27 +2642,27 @@ function isMachineBusyAt(id,date,hour){
 
 function formatWaitText(diffHour){
   const rounded=Math.max(0,Math.round(diffHour*2)/2);
-  if(rounded===0) return "吏湲?;
+  if(rounded===0) return "지금";
   const minutes=Math.round(rounded*60);
-  if(minutes<60) return `${minutes}遺???;
+  if(minutes<60) return `${minutes}분 후`;
   const h=Math.floor(minutes/60);
   const m=minutes%60;
-  if(m===0) return `${h}?쒓컙 ??;
-  return `${h}?쒓컙 ${m}遺???;
+  if(m===0) return `${h}시간 후`;
+  return `${h}시간 ${m}분 후`;
 }
 
 function getMachineAvailabilityHint(id,date,referenceHour){
   const hour=clampHour(referenceHour);
   if(!isMachineBusyAt(id,date,hour)){
-    if(date===todayISO()) return { busy:false, text:"吏湲??ъ슜 媛?? };
-    return { busy:false, text:`${formatTime(hour)}遺???ъ슜 媛?? };
+    if(date===todayISO()) return { busy:false, text:"지금 사용 가능" };
+    return { busy:false, text:`${formatTime(hour)}부터 사용 가능` };
   }
   const nextStart=findFirstAvailableStart(id,date,hour+0.5);
   if(nextStart===null){
-    return { busy:true, text:"?뱀씪 異붽? ?ъ슜 媛???쒓컙???놁뒿?덈떎." };
+    return { busy:true, text:"당일 추가 사용 가능 시간이 없습니다." };
   }
   const wait=Math.max(0,nextStart-hour);
-  return { busy:true, text:`${formatTime(nextStart)}遺??媛??(${formatWaitText(wait)})` };
+  return { busy:true, text:`${formatTime(nextStart)}부터 가능 (${formatWaitText(wait)})` };
 }
 
 function createTimelineIndicator(type){
@@ -2752,7 +2753,7 @@ function setTimelineHoverIndicator(container,hour){
   hoverIndicator.classList.remove("hidden");
   setTimelineIndicatorPosition(container,".time-indicator.hover",hour);
   const label=hoverIndicator.querySelector(".time-indicator-label");
-  if(label) label.textContent=`媛?대뱶 ${formatTime(hour)}`;
+  if(label) label.textContent=`가이드 ${formatTime(hour)}`;
   resolveTimelineLabelCollisions(container);
 }
 
@@ -2789,7 +2790,7 @@ function updateTimelineIndicators(container){
   if(nowIndicator){
     setTimelineIndicatorPosition(container,".time-indicator.now",nowHour);
     const nowLabel=nowIndicator.querySelector(".time-indicator-label");
-    if(nowLabel) nowLabel.textContent=`?꾩옱 ${formatTime(nowHour)}`;
+    if(nowLabel) nowLabel.textContent=`현재 ${formatTime(nowHour)}`;
   }
   if(selectedIndicator){
     const showSelected=!appState.isLiveMode && Math.abs(selectedHour-nowHour)>=(1/120);
@@ -2797,7 +2798,7 @@ function updateTimelineIndicators(container){
     if(showSelected){
       setTimelineIndicatorPosition(container,".time-indicator.selected",selectedHour);
       const selectedLabel=selectedIndicator.querySelector(".time-indicator-label");
-      if(selectedLabel) selectedLabel.textContent=`議고쉶 ${formatTime(selectedHour)}`;
+      if(selectedLabel) selectedLabel.textContent=`조회 ${formatTime(selectedHour)}`;
     }
   }
   resolveTimelineLabelCollisions(container);
@@ -2822,7 +2823,7 @@ function renderTimeline(container,date){
       bar.title=getBookingTooltipText(booking);
       bar.dataset.machineId=id;
       if(booking.status!=="pending") bar.style.background=booking.user==="System"?statusMeta.system.color:getPurposeMeta(booking.purpose).color;
-      bar.textContent=booking.status==="pending"?`${booking.user} (?湲?`:booking.user;
+      bar.textContent=booking.status==="pending"?`${booking.user} (대기)`:booking.user;
       bar.addEventListener("click",event=>{
         event.stopPropagation();
         selectMachineInMap(id,true);
@@ -2864,7 +2865,7 @@ function renderStatusList(){
     const availability=showAvailabilityHint ? getMachineAvailabilityHint(id,statusDate,statusHour) : null;
     const item=document.createElement("div");item.className="status-item";item.style.borderLeftColor=meta.color;
     item.dataset.machineId=id;
-    item.innerHTML=`<div class="status-icon" style="color:${meta.color}">??/div><div class="status-info"><div class="status-id">${id}</div><div class="status-text">${meta.text}</div>${availability?`<div class="status-next">${availability.text}</div>`:""}</div><div class="status-badge" style="background:${meta.color}">${meta.label}</div>`;
+    item.innerHTML=`<div class="status-icon" style="color:${meta.color}">●</div><div class="status-info"><div class="status-id">${id}</div><div class="status-text">${meta.text}</div>${availability?`<div class="status-next">${availability.text}</div>`:""}</div><div class="status-badge" style="background:${meta.color}">${meta.label}</div>`;
     item.addEventListener("mouseenter",()=>setMachineFocus(id,true));
     item.addEventListener("mouseleave",()=>setMachineFocus(null,false));
     list.appendChild(item);
@@ -2872,11 +2873,11 @@ function renderStatusList(){
 }
 
 function getStatusMeta(booking){
-  if(!booking) return {color:statusMeta.free.color,label:statusMeta.free.label,text:"?湲?以?};
-  if(booking.status==="pending") return {color:statusMeta.pending.color,label:statusMeta.pending.label,text:`${booking.user} (?뱀씤 ?湲?`};
-  if(booking.user==="System") return {color:statusMeta.system.color,label:statusMeta.system.label,text:"?쒖뒪???뚮룆"};
+  if(!booking) return {color:statusMeta.free.color,label:statusMeta.free.label,text:"대기 중"};
+  if(booking.status==="pending") return {color:statusMeta.pending.color,label:statusMeta.pending.label,text:`${booking.user} (승인 대기)`};
+  if(booking.user==="System") return {color:statusMeta.system.color,label:statusMeta.system.label,text:"시스템 소독"};
   const meta=getPurposeMeta(booking.purpose);
-  return {color:meta.color,label:meta.label,text:`${booking.user} ?묒뾽 以?};
+  return {color:meta.color,label:meta.label,text:`${booking.user} 작업 중`};
 }
 
 function renderChart(){
@@ -2908,7 +2909,7 @@ function renderChart(){
     circle.setAttribute("stroke-dashoffset",String(25-startAngle));
     svg.appendChild(circle);
     const legendItem=document.createElement("div");legendItem.className="legend-item";
-    legendItem.innerHTML=`<span class="legend-dot" style="background:${meta.color}"></span><span>${meta.label} (${counts[key]}?)</span>`;
+    legendItem.innerHTML=`<span class="legend-dot" style="background:${meta.color}"></span><span>${meta.label} (${counts[key]}대)</span>`;
     legend.appendChild(legendItem);
     startAngle+=percent;
   }
@@ -2923,7 +2924,7 @@ function renderScheduleFilterControls(){
   const locationSelect=document.getElementById("schedule-location-filter");
   if(locationSelect){
     const current=locationSelect.value||"all";
-    const options=['<option value="all">?꾩껜 ?μ냼</option>', ...locations.map(loc=>`<option value="${loc}">${loc}</option>`)];
+    const options=['<option value="all">전체 장소</option>', ...locations.map(loc=>`<option value="${loc}">${loc}</option>`)];
     locationSelect.innerHTML=options.join("");
     locationSelect.value=locations.includes(current)?current:"all";
   }
@@ -3016,13 +3017,13 @@ function renderScheduleMobile(date,groups){
   if(!container) return;
   container.innerHTML="";
   if(groups.length===0){
-    container.innerHTML='<div class="schedule-mobile-empty">議곌굔??留욌뒗 ?λ퉬媛 ?놁뒿?덈떎.</div>';
+    container.innerHTML='<div class="schedule-mobile-empty">조건에 맞는 장비가 없습니다.</div>';
     return;
   }
   for(const group of groups){
     const section=document.createElement("section");
     section.className="mobile-location-section";
-    section.innerHTML=`<h4 class="mobile-location-title">${group.location} <span>${group.ids.length}?</span></h4>`;
+    section.innerHTML=`<h4 class="mobile-location-title">${group.location} <span>${group.ids.length}대</span></h4>`;
     const list=document.createElement("div");
     list.className="mobile-machine-list";
     const referenceHour=date===todayISO() ? getNowHour() : 9;
@@ -3034,21 +3035,21 @@ function renderScheduleMobile(date,groups){
       const activeBooking=bookingsForDay.find(b=>b.start<=referenceHour && referenceHour<(b.start+b.duration));
       const nextBooking=bookingsForDay.find(b=>b.start>referenceHour) || null;
       const currentText=activeBooking
-        ? `${formatTime(activeBooking.start)}-${formatTime(activeBooking.start+activeBooking.duration)} 쨌 ${activeBooking.user}`
-        : "?꾩옱 媛???놁쓬";
+        ? `${formatTime(activeBooking.start)}-${formatTime(activeBooking.start+activeBooking.duration)} · ${activeBooking.user}`
+        : "현재 가동 없음";
       const nextText=nextBooking
-        ? `${formatTime(nextBooking.start)} ?쒖옉 쨌 ${nextBooking.user}`
-        : "?ㅼ쓬 ?덉빟 ?놁쓬";
+        ? `${formatTime(nextBooking.start)} 시작 · ${nextBooking.user}`
+        : "다음 예약 없음";
       const windowText=bookingsForDay.length
         ? `${formatTime(bookingsForDay[0].start)}-${formatTime(bookingsForDay[bookingsForDay.length-1].start+bookingsForDay[bookingsForDay.length-1].duration)}`
-        : "?덉빟 ?놁쓬";
-      card.innerHTML=`<div class="mobile-machine-head"><strong>${id}</strong><span>${getMachineMgmtNo(id)||"-"}</span></div><div class="mobile-availability ${availability.busy?"busy":"free"}">${availability.text}</div><div class="mobile-machine-brief"><span>?꾩옱</span><strong>${currentText}</strong></div><div class="mobile-machine-brief"><span>?ㅼ쓬</span><strong>${nextText}</strong></div><div class="mobile-machine-count">?ㅻ뒛 ?덉빟 ${bookingsForDay.length}嫄?쨌 ?댁쁺 ${windowText}</div>`;
+        : "예약 없음";
+      card.innerHTML=`<div class="mobile-machine-head"><strong>${id}</strong><span>${getMachineMgmtNo(id)||"-"}</span></div><div class="mobile-availability ${availability.busy?"busy":"free"}">${availability.text}</div><div class="mobile-machine-brief"><span>현재</span><strong>${currentText}</strong></div><div class="mobile-machine-brief"><span>다음</span><strong>${nextText}</strong></div><div class="mobile-machine-count">오늘 예약 ${bookingsForDay.length}건 · 운영 ${windowText}</div>`;
       if(can("create")){
         const nextStart=findFirstAvailableStart(id,date,getMinReservableHour(date));
         const addBtn=document.createElement("button");
         addBtn.type="button";
         addBtn.className="mobile-add-booking";
-        addBtn.textContent=nextStart===null?"?덉빟 遺덇?":"?덉빟 異붽?";
+        addBtn.textContent=nextStart===null?"예약 불가":"예약 추가";
         addBtn.disabled=nextStart===null;
         if(nextStart!==null) addBtn.addEventListener("click",()=>openBookingModal(id,nextStart));
         card.appendChild(addBtn);
@@ -3067,7 +3068,7 @@ function renderSchedule(){
   const groups=getFilteredScheduleGroups(date);
   if(groups.length===0){
     const tr=document.createElement("tr");
-    tr.innerHTML='<td colspan="19" class="schedule-empty">議곌굔??留욌뒗 ?λ퉬/?덉빟???놁뒿?덈떎.</td>';
+    tr.innerHTML='<td colspan="19" class="schedule-empty">조건에 맞는 장비/예약이 없습니다.</td>';
     tbody.appendChild(tr);
     renderScheduleMobile(date,groups);
     return;
@@ -3080,7 +3081,7 @@ function renderSchedule(){
     const locCell=document.createElement("td");
     locCell.className="schedule-location";
     locCell.colSpan=19;
-    locCell.innerHTML=`<span class="schedule-location-name">${loc}</span><span class="schedule-location-count">${ids.length}?</span>`;
+    locCell.innerHTML=`<span class="schedule-location-name">${loc}</span><span class="schedule-location-count">${ids.length}대</span>`;
     locRow.appendChild(locCell);
     tbody.appendChild(locRow);
     for(const id of ids){
@@ -3096,9 +3097,9 @@ function renderSchedule(){
           block.title=getBookingTooltipText(booking);
           if(booking.status==="pending"){
             block.classList.add("pending");block.style.backgroundColor=statusMeta.pending.color;
-            block.innerHTML=`<span>${booking.user} (?湲?</span>`;
+            block.innerHTML=`<span>${booking.user} (대기)</span>`;
           }else if(booking.user==="System"){
-            block.style.backgroundColor=statusMeta.system.color;block.innerHTML="<span>?뚮룆</span>";
+            block.style.backgroundColor=statusMeta.system.color;block.innerHTML="<span>소독</span>";
           }else{
             const purposeMeta=getPurposeMeta(booking.purpose);
             block.style.backgroundColor=purposeMeta.color;
@@ -3115,7 +3116,7 @@ function renderSchedule(){
             const delBtn=document.createElement("button");
             delBtn.type="button";
             delBtn.className="booking-delete";
-            delBtn.textContent="??젣";
+            delBtn.textContent="삭제";
             delBtn.addEventListener("click",(e)=>{
               e.stopPropagation();
               openDeleteModal(id, booking.docId);
@@ -3226,18 +3227,18 @@ async function handleDrop(e,targetMachineId,targetHour){
   try{
     const payloadRaw=e.dataTransfer.getData("text");
     if(!payloadRaw){
-      showToast("?쒕옒洹??뺣낫媛 鍮꾩뼱 ?덉뒿?덈떎.","warn");
+      showToast("드래그 정보가 비어 있습니다.","warn");
       return;
     }
     let payload;
     try{
       payload=JSON.parse(payloadRaw);
     }catch(parseError){
-      reportAsyncError("handleDrop:parse", parseError, "?쒕옒洹??뺣낫瑜??쎌? 紐삵뻽?듬땲??");
+      reportAsyncError("handleDrop:parse", parseError, "드래그 정보를 읽지 못했습니다.");
       return;
     }
     if(!payload || typeof payload.machineId!=="string" || typeof payload.docId!=="string"){
-      showToast("?좏슚?섏? ?딆? ?쒕옒洹??곗씠?곗엯?덈떎.","warn");
+      showToast("유효하지 않은 드래그 데이터입니다.","warn");
       return;
     }
     const sourceMachineId=payload.machineId;
@@ -3252,9 +3253,9 @@ async function handleDrop(e,targetMachineId,targetHour){
     if(targetMachineId!==sourceMachineId) updates.machineId=targetMachineId;
     await updateBookingDoc(docId,updates);
     const movedMachine = targetMachineId!==sourceMachineId;
-    showToast(movedMachine ? "?덉빟 ?λ퉬/?쒓컙??蹂寃쏀뻽?듬땲??" : "?덉빟 ?쒓컙??蹂寃쏀뻽?듬땲??","success");
+    showToast(movedMachine ? "예약 장비/시간을 변경했습니다." : "예약 시간을 변경했습니다.","success");
   }catch(error){
-    reportAsyncError("handleDrop", error, "?덉빟 ?대룞???ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("handleDrop", error, "예약 이동에 실패했습니다.");
   }
 }
 
@@ -3302,7 +3303,7 @@ function handleResizeMove(event){
   block.classList.add("resizing");
   const endText=formatTime(booking.start+snapDuration);
   const durationText=formatDurationText(snapDuration);
-  block.setAttribute("data-resize-label",`${endText} 쨌 ${durationText}${validation.ok?"":" (遺덇?)"}`);
+  block.setAttribute("data-resize-label",`${endText} · ${durationText}${validation.ok?"":" (불가)"}`);
 }
 
 function handleResizeStart(event,id,docId,duration,sourceBlock){
@@ -3333,7 +3334,7 @@ function handleResizeStart(event,id,docId,duration,sourceBlock){
   document.body.style.userSelect="none";
   document.body.classList.add("is-resizing");
   block.classList.add("resizing");
-  block.setAttribute("data-resize-label",`${formatTime(booking.start+duration)} 쨌 ${formatDurationText(duration)}`);
+  block.setAttribute("data-resize-label",`${formatTime(booking.start+duration)} · ${formatDurationText(duration)}`);
 }
 
 async function handleResizeEnd(event){
@@ -3356,9 +3357,9 @@ async function handleResizeEnd(event){
       return;
     }
     await updateBookingDoc(docId,{duration:newDuration});
-    showToast("?덉빟 ?쒓컙??議곗젙?덉뒿?덈떎.","success");
+    showToast("예약 시간을 조정했습니다.","success");
   }catch(error){
-    reportAsyncError("handleResizeEnd", error, "?덉빟 ?쒓컙 議곗젙???ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("handleResizeEnd", error, "예약 시간 조정에 실패했습니다.");
   }finally{
     clearResizePreview();
     appState.resizeTarget=null;
@@ -3375,7 +3376,7 @@ async function handleResizeEnd(event){
 
 function printReport(dateOverride){
   if(!can("print")){
-    alert("沅뚰븳???놁뒿?덈떎.");
+    alert("권한이 없습니다.");
     return;
   }
   const dateInput=document.getElementById("report-date");
@@ -3390,11 +3391,11 @@ function printReport(dateOverride){
   const now=new Date();
   const reportId=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2,10)).toUpperCase();
   const tableRows=rows.length?rows.map(b=>{
-    const purpose=b.user==="System"?"?먮룞 ?뚮룆":getPurposeMeta(b.purpose).label;
-    const status=b.status==="pending"?"?뱀씤 ?湲?:"?뺤젙";
+    const purpose=b.user==="System"?"자동 소독":getPurposeMeta(b.purpose).label;
+    const status=b.status==="pending"?"승인 대기":"확정";
     return `<tr><td>${b.id}</td><td>${b.user}</td><td>${purpose}</td><td>${status}</td><td>${b.date}</td><td>${formatTime(b.start)}</td><td>${formatTime(b.start+b.duration)}</td></tr>`;
-  }).join(""):'<tr><td colspan="7">?대떦 ?좎쭨???덉빟???놁뒿?덈떎.</td></tr>';
-  const html=`<!doctype html><html lang="ko"><head><meta charset="UTF-8" /><title>?λ퉬 ?쇱씪 ?댁쁺 由ы룷??/title><style>body{font-family:"Malgun Gothic",sans-serif;padding:24px;color:#222}h1{text-align:center;border-bottom:2px solid #333;padding-bottom:10px}.meta{text-align:right;font-size:12px;color:#555;margin-bottom:12px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}th,td{border:1px solid #999;padding:8px;text-align:center}th{background:#f0f0f0}.footer{margin-top:40px;display:flex;justify-content:space-between}.sign{width:45%;border-bottom:1px solid #ccc;height:36px;margin-top:30px}</style></head><body><h1>?λ퉬 ?쇱씪 ?댁쁺 由ы룷??/h1><div class="meta">湲곗? ?좎쭨: ${date}<br />?앹꽦 ?쒓컖: ${now.toLocaleString()}<br />由ы룷??ID: ${reportId}<br />異쒕젰?? ${appState.currentUser.name}</div><table><thead><tr><th>?λ퉬</th><th>?묒뾽??/th><th>紐⑹쟻</th><th>?곹깭</th><th>?좎쭨</th><th>?쒖옉</th><th>醫낅즺</th></tr></thead><tbody>${tableRows}</tbody></table><div class="footer"><div style="width:45%"><strong>?섑뻾??/strong><div class="sign"></div></div><div style="width:45%"><strong>寃?좎옄</strong><div class="sign"></div></div></div><script>window.onload=()=>window.print();<\/script></body></html>`;
+  }).join(""):'<tr><td colspan="7">해당 날짜에 예약이 없습니다.</td></tr>';
+  const html=`<!doctype html><html lang="ko"><head><meta charset="UTF-8" /><title>장비 일일 운영 리포트</title><style>body{font-family:"Malgun Gothic",sans-serif;padding:24px;color:#222}h1{text-align:center;border-bottom:2px solid #333;padding-bottom:10px}.meta{text-align:right;font-size:12px;color:#555;margin-bottom:12px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}th,td{border:1px solid #999;padding:8px;text-align:center}th{background:#f0f0f0}.footer{margin-top:40px;display:flex;justify-content:space-between}.sign{width:45%;border-bottom:1px solid #ccc;height:36px;margin-top:30px}</style></head><body><h1>장비 일일 운영 리포트</h1><div class="meta">기준 날짜: ${date}<br />생성 시각: ${now.toLocaleString()}<br />리포트 ID: ${reportId}<br />출력자: ${appState.currentUser.name}</div><table><thead><tr><th>장비</th><th>작업자</th><th>목적</th><th>상태</th><th>날짜</th><th>시작</th><th>종료</th></tr></thead><tbody>${tableRows}</tbody></table><div class="footer"><div style="width:45%"><strong>수행자</strong><div class="sign"></div></div><div style="width:45%"><strong>검토자</strong><div class="sign"></div></div></div><script>window.onload=()=>window.print();<\/script></body></html>`;
   const win=window.open("","_blank","width=980,height=820");
   if(!win) return;
   win.document.write(html);
@@ -3424,7 +3425,7 @@ function computeDaySummary(date){
     slotUsage.push({ h, count });
   }
   const peak=slotUsage.reduce((best,item)=>item.count>best.count?item:best,{h:9,count:0});
-  const peakLabel=peak.count>0 ? `${formatTime(peak.h)}-${formatTime(peak.h+1)}` : "?놁쓬";
+  const peakLabel=peak.count>0 ? `${formatTime(peak.h)}-${formatTime(peak.h+1)}` : "없음";
   const utilClass=utilization>75?"util-high":utilization>40?"util-mid":"util-low";
   const firstStart=sorted.length ? sorted[0].start : null;
   const lastEnd=sorted.length ? Math.max(...sorted.map(item=>item.start+item.duration)) : null;
@@ -3440,7 +3441,7 @@ function renderCalendarMobile(dayEntries){
     ? dayEntries.filter(entry=>entry.isToday || entry.summary.total>0)
     : dayEntries;
   if(mobileEntries.length===0){
-    container.innerHTML='<div class="calendar-mobile-empty">?쒖떆???좎쭨媛 ?놁뒿?덈떎.</div>';
+    container.innerHTML='<div class="calendar-mobile-empty">표시할 날짜가 없습니다.</div>';
     return;
   }
   for(const entry of mobileEntries){
@@ -3449,11 +3450,11 @@ function renderCalendarMobile(dayEntries){
     item.type="button";
     item.className=`calendar-mobile-item ${isToday?"today":""}`.trim();
     const rangeText=(summary.firstStart===null || summary.lastEnd===null)
-      ? "?덉빟 ?놁쓬"
+      ? "예약 없음"
       : `${formatTime(summary.firstStart)}-${formatTime(summary.lastEnd)}`;
-    const utilText=isCompactWorker ? "" : `<span>媛?숇쪧 ${summary.utilization}%</span>`;
-    const pendingText=summary.pending>0 ? `<span class="pending-text">?湲?${summary.pending}嫄?/span>` : "";
-    item.innerHTML=`<div class="calendar-mobile-head"><strong>${dateKey.replace(/-/g,". ")}</strong><span class="calendar-mobile-count">?덉빟 ${summary.total}嫄?/span></div><div class="calendar-mobile-meta"><span>?댁쁺 ?쒓컙? ${rangeText}</span>${utilText}${pendingText}</div>`;
+    const utilText=isCompactWorker ? "" : `<span>가동률 ${summary.utilization}%</span>`;
+    const pendingText=summary.pending>0 ? `<span class="pending-text">대기 ${summary.pending}건</span>` : "";
+    item.innerHTML=`<div class="calendar-mobile-head"><strong>${dateKey.replace(/-/g,". ")}</strong><span class="calendar-mobile-count">예약 ${summary.total}건</span></div><div class="calendar-mobile-meta"><span>운영 시간대 ${rangeText}</span>${utilText}${pendingText}</div>`;
     item.addEventListener("click",()=>openDayModal(dateKey));
     container.appendChild(item);
   }
@@ -3484,7 +3485,7 @@ function renderCalendar(){
     const summary=computeDaySummary(key);
     const isToday=key===todayKey;
     if(isToday) cell.classList.add("today");
-    cell.innerHTML=`<div class="cal-day-head"><span class="cal-day-num">${d}</span>${summary.pending>0?'<span class="cal-pending-dot" title="?뱀씤 ?湲??덉빟 ?덉쓬"></span>':''}</div><div class="cal-day-badges"><span class="cal-badge">?덉빟 ${summary.total}嫄?/span><span class="cal-badge ${summary.pending>0?"pending":""}">?湲?${summary.pending}嫄?/span><span class="cal-badge">?쇳겕 ${summary.peakLabel}</span></div><div class="util-indicator"><span class="util-value ${summary.utilClass}">${summary.utilization}%</span><div class="util-bar-bg"><div class="util-bar-fill ${summary.utilClass}" style="width:${summary.utilization}%"></div></div></div>`;
+    cell.innerHTML=`<div class="cal-day-head"><span class="cal-day-num">${d}</span>${summary.pending>0?'<span class="cal-pending-dot" title="승인 대기 예약 있음"></span>':''}</div><div class="cal-day-badges"><span class="cal-badge">예약 ${summary.total}건</span><span class="cal-badge ${summary.pending>0?"pending":""}">대기 ${summary.pending}건</span><span class="cal-badge">피크 ${summary.peakLabel}</span></div><div class="util-indicator"><span class="util-value ${summary.utilClass}">${summary.utilization}%</span><div class="util-bar-bg"><div class="util-bar-fill ${summary.utilClass}" style="width:${summary.utilization}%"></div></div></div>`;
     cell.addEventListener("click",()=>openDayModal(key));
     grid.appendChild(cell);
     dayEntries.push({ dateKey:key, day:d, summary, isToday });
@@ -3501,7 +3502,7 @@ function computeUtilizationForDay(date){
 function openDayModal(date){
   appState.dayModalDate=date;
   document.getElementById("day-modal").style.display="flex";
-  document.getElementById("day-modal-title").textContent=`${date.replace(/-/g,". ")} ?곸꽭 ?쇱젙`;
+  document.getElementById("day-modal-title").textContent=`${date.replace(/-/g,". ")} 상세 일정`;
   const printBtn=document.querySelector('[data-day-action="print"]');
   if(printBtn) printBtn.hidden=!can("print");
   const reportDate=document.getElementById("report-date");
@@ -3529,7 +3530,7 @@ function handleDayAction(action){
     applyDateContext(date);
     switchView("reservation");
     closeModal("day-modal");
-    showToast("?덉빟 愿由??붾㈃?쇰줈 ?대룞?덉뒿?덈떎.","info");
+    showToast("예약 관리 화면으로 이동했습니다.","info");
     return;
   }
   if(action==="print"){
@@ -3567,7 +3568,7 @@ function renderManualToc(tocId="manual-toc", contentId="manual-content"){
   if(!sections.length){
     const empty=document.createElement("div");
     empty.className="manual-empty";
-    empty.textContent="?몄텧 以묒씤 硫붾돱???뱀뀡???놁뒿?덈떎.";
+    empty.textContent="노출 중인 메뉴얼 섹션이 없습니다.";
     container.appendChild(empty);
     return;
   }
@@ -3591,8 +3592,8 @@ function renderManualViewer(contentId="manual-content", isAdminView=false){
     const empty=document.createElement("div");
     empty.className="manual-empty manual-content-empty";
     empty.textContent=isAdminView
-      ? "硫붾돱??肄섑뀗痢좉? ?놁뒿?덈떎. 愿由ъ옄 ?붾㈃?먯꽌 ?뱀뀡??異붽??섏꽭??"
-      : "?꾩옱 ?대엺 媛?ν븳 硫붾돱?쇱씠 ?놁뒿?덈떎.";
+      ? "메뉴얼 콘텐츠가 없습니다. 관리자 화면에서 섹션을 추가하세요."
+      : "현재 열람 가능한 메뉴얼이 없습니다.";
     container.appendChild(empty);
     return;
   }
@@ -3608,7 +3609,7 @@ function renderManualViewer(contentId="manual-content", isAdminView=false){
 
     const body=document.createElement("div");
     body.className="manual-body";
-    body.textContent=section.body || "?댁슜 ?놁쓬";
+    body.textContent=section.body || "내용 없음";
     article.appendChild(body);
 
     if(section.imageUrl){
@@ -3644,7 +3645,7 @@ function renderManualSectionTable(){
     const td=document.createElement("td");
     td.colSpan=5;
     td.className="table-empty";
-    td.textContent="?깅줉??硫붾돱???뱀뀡???놁뒿?덈떎.";
+    td.textContent="등록된 메뉴얼 섹션이 없습니다.";
     tr.appendChild(td);
     tbody.appendChild(tr);
     return;
@@ -3654,8 +3655,8 @@ function renderManualSectionTable(){
     const values=[
       String(section.order || 0),
       section.title,
-      section.imageUrl ? "?곌껐?? : "?놁쓬",
-      section.active!==false ? "?몄텧" : "?④?"
+      section.imageUrl ? "연결됨" : "없음",
+      section.active!==false ? "노출" : "숨김"
     ];
     values.forEach(value=>{
       const td=document.createElement("td");
@@ -3667,12 +3668,12 @@ function renderManualSectionTable(){
     editBtn.type="button";
     editBtn.className="btn-edit";
     editBtn.dataset.editManualSection=section.id;
-    editBtn.textContent="?섏젙";
+    editBtn.textContent="수정";
     const delBtn=document.createElement("button");
     delBtn.type="button";
     delBtn.className="btn-del";
     delBtn.dataset.delManualSection=section.id;
-    delBtn.textContent="??젣";
+    delBtn.textContent="삭제";
     actionTd.appendChild(editBtn);
     actionTd.appendChild(delBtn);
     tr.appendChild(actionTd);
@@ -3688,7 +3689,7 @@ function jumpToManualSection(sectionId, contentId="manual-content"){
 
 function openManualSectionModal(mode,sectionId=""){
   if(!isAdminUser()){
-    showToast("愿由ъ옄留?硫붾돱?쇱쓣 ?몄쭛?????덉뒿?덈떎.","warn");
+    showToast("관리자만 메뉴얼을 편집할 수 있습니다.","warn");
     return;
   }
   const modal=document.getElementById("manual-section-modal");
@@ -3703,7 +3704,7 @@ function openManualSectionModal(mode,sectionId=""){
   const activeInput=document.getElementById("manual-section-active");
   modal.style.display="flex";
   if(mode==="create"){
-    if(title) title.textContent="硫붾돱???뱀뀡 ?깅줉";
+    if(title) title.textContent="메뉴얼 섹션 등록";
     if(original) original.value="";
     if(titleInput) titleInput.value="";
     if(bodyInput) bodyInput.value="";
@@ -3716,10 +3717,10 @@ function openManualSectionModal(mode,sectionId=""){
   const section=manualSections.find(item=>item.id===sectionId);
   if(!section){
     closeModal("manual-section-modal");
-    showToast("?섏젙??硫붾돱???뱀뀡??李얠쓣 ???놁뒿?덈떎.","warn");
+    showToast("수정할 메뉴얼 섹션을 찾을 수 없습니다.","warn");
     return;
   }
-  if(title) title.textContent="硫붾돱???뱀뀡 ?섏젙";
+  if(title) title.textContent="메뉴얼 섹션 수정";
   if(original) original.value=section.id;
   if(titleInput) titleInput.value=section.title;
   if(bodyInput) bodyInput.value=section.body || "";
@@ -3731,7 +3732,7 @@ function openManualSectionModal(mode,sectionId=""){
 
 async function saveManualSection(){
   if(!isAdminUser()){
-    showToast("愿由ъ옄留?硫붾돱?쇱쓣 ?몄쭛?????덉뒿?덈떎.","warn");
+    showToast("관리자만 메뉴얼을 편집할 수 있습니다.","warn");
     return;
   }
   try{
@@ -3742,11 +3743,11 @@ async function saveManualSection(){
     const imageCaption=(document.getElementById("manual-section-caption")?.value || "").trim();
     const order=Math.max(1,Number(document.getElementById("manual-section-order")?.value || 1));
     const active=document.getElementById("manual-section-active")?.checked ?? true;
-    if(!title){ alert("?쒕ぉ???낅젰?섏꽭??"); return; }
-    if(!body){ alert("蹂몃Ц???낅젰?섏꽭??"); return; }
+    if(!title){ alert("제목을 입력하세요."); return; }
+    if(!body){ alert("본문을 입력하세요."); return; }
     if(originalId){
       const idx=manualSections.findIndex(section=>section.id===originalId);
-      if(idx<0){ alert("硫붾돱???뱀뀡 ?뺣낫瑜?李얠쓣 ???놁뒿?덈떎."); return; }
+      if(idx<0){ alert("메뉴얼 섹션 정보를 찾을 수 없습니다."); return; }
       manualSections[idx]={ ...manualSections[idx], title, body, imageUrl, imageCaption, order, active };
     }else{
       let nextId=makeSafeId(title,"manual");
@@ -3760,29 +3761,29 @@ async function saveManualSection(){
     closeModal("manual-section-modal");
     await saveConfig();
     renderManualAdmin();
-    addAdminActivity(originalId ? "硫붾돱???섏젙" : "硫붾돱???깅줉", title);
-    showToast(originalId ? "硫붾돱???뱀뀡???섏젙?덉뒿?덈떎." : "硫붾돱???뱀뀡???깅줉?덉뒿?덈떎.","success");
+    addAdminActivity(originalId ? "메뉴얼 수정" : "메뉴얼 등록", title);
+    showToast(originalId ? "메뉴얼 섹션을 수정했습니다." : "메뉴얼 섹션을 등록했습니다.","success");
   }catch(error){
-    reportAsyncError("saveManualSection", error, "硫붾돱???뱀뀡 ??μ뿉 ?ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("saveManualSection", error, "메뉴얼 섹션 저장에 실패했습니다.");
   }
 }
 
 async function deleteManualSection(sectionId){
   if(!isAdminUser()){
-    showToast("愿由ъ옄留?硫붾돱?쇱쓣 ??젣?????덉뒿?덈떎.","warn");
+    showToast("관리자만 메뉴얼을 삭제할 수 있습니다.","warn");
     return;
   }
   const section=manualSections.find(item=>item.id===sectionId);
   if(!section) return;
-  if(!confirm(`硫붾돱???뱀뀡 [${section.title}] ????젣?섏떆寃좎뒿?덇퉴?`)) return;
+  if(!confirm(`메뉴얼 섹션 [${section.title}] 을 삭제하시겠습니까?`)) return;
   try{
     manualSections=manualSections.filter(item=>item.id!==sectionId);
     await saveConfig();
     renderManualAdmin();
-    addAdminActivity("硫붾돱????젣", section.title);
-    showToast("硫붾돱???뱀뀡????젣?덉뒿?덈떎.","success");
+    addAdminActivity("메뉴얼 삭제", section.title);
+    showToast("메뉴얼 섹션을 삭제했습니다.","success");
   }catch(error){
-    reportAsyncError("deleteManualSection", error, "硫붾돱???뱀뀡 ??젣???ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("deleteManualSection", error, "메뉴얼 섹션 삭제에 실패했습니다.");
   }
 }
 
@@ -3840,7 +3841,7 @@ async function refreshUsersFromDb(force=false){
       await usersFetchPromise;
       renderUserTable();
     }catch(error){
-      reportAsyncError("refreshUsersFromDb", error, "?ъ슜??紐⑸줉??遺덈윭?ㅼ? 紐삵뻽?듬땲??");
+      reportAsyncError("refreshUsersFromDb", error, "사용자 목록을 불러오지 못했습니다.");
     }
     return;
   }
@@ -3853,7 +3854,7 @@ async function refreshUsersFromDb(force=false){
     await usersFetchPromise;
     renderUserTable();
   }catch(error){
-    reportAsyncError("refreshUsersFromDb", error, "?ъ슜??紐⑸줉??遺덈윭?ㅼ? 紐삵뻽?듬땲??");
+    reportAsyncError("refreshUsersFromDb", error, "사용자 목록을 불러오지 못했습니다.");
   }finally{
     usersFetchPromise=null;
   }
@@ -3863,9 +3864,9 @@ async function approveUser(uid){
   try{
     await updateDoc(doc(db,"users",uid),{approved:true});
     await refreshUsersFromDb(true);
-    addAdminActivity("怨꾩젙 ?뱀씤", `uid: ${uid}`);
+    addAdminActivity("계정 승인", `uid: ${uid}`);
   }catch(error){
-    reportAsyncError("approveUser", error, "怨꾩젙 ?뱀씤???ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("approveUser", error, "계정 승인에 실패했습니다.");
   }
 }
 function renderUserTable(){
@@ -3893,7 +3894,7 @@ function renderUserTable(){
     const statusLabel=user.approved?"\uC2B9\uC778\uB428":"\uC2B9\uC778\uB300\uAE30";
     const statusColor=user.approved?"#2ecc71":"#f39c12";
     const approveBtn = user.approved ? "" : `<button class="btn-edit" data-approve-user="${user.uid}">\uC2B9\uC778</button>`;
-    tr.innerHTML=`<td>${user.name}</td><td>${user.id}</td><td><span class="status-badge role-${user.role}">${user.role.toUpperCase()}</span></td><td><span style="color:${statusColor};font-weight:900">??${statusLabel}</span></td><td>${approveBtn}<button class="btn-edit" data-edit-user="${user.uid}">\uC218\uC815</button>${canDelete?`<button class="btn-del" data-del-user="${user.uid}">\uC0AD\uC81C</button>`:""}</td>`;
+    tr.innerHTML=`<td>${user.name}</td><td>${user.id}</td><td><span class="status-badge role-${user.role}">${user.role.toUpperCase()}</span></td><td><span style="color:${statusColor};font-weight:900">● ${statusLabel}</span></td><td>${approveBtn}<button class="btn-edit" data-edit-user="${user.uid}">\uC218\uC815</button>${canDelete?`<button class="btn-del" data-del-user="${user.uid}">\uC0AD\uC81C</button>`:""}</td>`;
     tbody.appendChild(tr);
   }
 }
@@ -3904,7 +3905,7 @@ function renderAuditHistory(){
   renderAuditSummary(auditHistoryRows);
   const rows=getFilteredAuditRows();
   if(rows.length===0){
-    tbody.innerHTML='<tr><td colspan="6">議고쉶???댁쁺 ?대젰???놁뒿?덈떎.</td></tr>';
+    tbody.innerHTML='<tr><td colspan="6">조회된 운영 이력이 없습니다.</td></tr>';
     return;
   }
   tbody.innerHTML=rows.map(row=>
@@ -3953,10 +3954,10 @@ function renderAuditSummary(rows){
   const deleted=safeRows.filter(row=>row.status==="deleted").length;
   const rejected=safeRows.filter(row=>row.status==="rejected").length;
   container.innerHTML=
-    `<span class="audit-summary-chip"><span class="audit-summary-dot" style="background:#3498db"></span>?꾩껜 ${total}嫄?/span>`+
-    `<span class="audit-summary-chip"><span class="audit-summary-dot" style="background:#2ecc71"></span>?뺤젙 ${confirmed}嫄?/span>`+
-    `<span class="audit-summary-chip"><span class="audit-summary-dot" style="background:#e74c3c"></span>??젣 ${deleted}嫄?/span>`+
-    `<span class="audit-summary-chip"><span class="audit-summary-dot" style="background:#9b59b6"></span>諛섎젮 ${rejected}嫄?/span>`;
+    `<span class="audit-summary-chip"><span class="audit-summary-dot" style="background:#3498db"></span>전체 ${total}건</span>`+
+    `<span class="audit-summary-chip"><span class="audit-summary-dot" style="background:#2ecc71"></span>확정 ${confirmed}건</span>`+
+    `<span class="audit-summary-chip"><span class="audit-summary-dot" style="background:#e74c3c"></span>삭제 ${deleted}건</span>`+
+    `<span class="audit-summary-chip"><span class="audit-summary-dot" style="background:#9b59b6"></span>반려 ${rejected}건</span>`;
 }
 
 function escapeCsvCell(value){
@@ -3984,10 +3985,10 @@ async function exportAuditHistoryCsv(){
   }
   const rows=[...auditHistoryRows].sort((a,b)=>a.machineId.localeCompare(b.machineId)||a.start-b.start);
   if(rows.length===0){
-    showToast("諛깆뾽???댁쁺 ?대젰???놁뒿?덈떎.","warn");
+    showToast("백업할 운영 이력이 없습니다.","warn");
     return;
   }
-  const headers=["?좎쭨","?λ퉬","?묒뾽??,"紐⑹쟻","?곹깭","?쒖옉","醫낅즺","?ъ쑀"];
+  const headers=["날짜","장비","작업자","목적","상태","시작","종료","사유"];
   const body=rows.map(row=>[
     date,
     row.machineId,
@@ -4000,15 +4001,15 @@ async function exportAuditHistoryCsv(){
   ].map(escapeCsvCell).join(","));
   const csv="\ufeff"+[headers.map(escapeCsvCell).join(","), ...body].join("\r\n");
   downloadFile(`audit-history-${date}.csv`, csv, "text/csv;charset=utf-8");
-  showToast("?댁쁺 ?대젰 CSV 諛깆뾽????ν뻽?듬땲??","success");
-  addAdminActivity("?댁쁺 ?대젰 諛깆뾽", `${date} ${rows.length}嫄?);
+  showToast("운영 이력 CSV 백업을 저장했습니다.","success");
+  addAdminActivity("운영 이력 백업", `${date} ${rows.length}건`);
 }
 
 function exportAdminActivityJson(){
   if(!can("admin")) return;
   const rows=readAdminActivity();
   if(rows.length===0){
-    showToast("諛깆뾽??愿由ъ옄 ?묒뾽 ?대젰???놁뒿?덈떎.","warn");
+    showToast("백업할 관리자 작업 이력이 없습니다.","warn");
     return;
   }
   const payload={
@@ -4019,8 +4020,8 @@ function exportAdminActivityJson(){
   };
   const json=JSON.stringify(payload, null, 2);
   downloadFile(`admin-activity-${todayISO()}.json`, json, "application/json;charset=utf-8");
-  showToast("?묒뾽 ?대젰 JSON 諛깆뾽????ν뻽?듬땲??","success");
-  addAdminActivity("?묒뾽 ?대젰 諛깆뾽", `${rows.length}嫄?);
+  showToast("작업 이력 JSON 백업을 저장했습니다.","success");
+  addAdminActivity("작업 이력 백업", `${rows.length}건`);
 }
 
 async function refreshAuditHistory(force=false){
@@ -4035,7 +4036,7 @@ async function refreshAuditHistory(force=false){
   auditHistoryRows=[];
   renderAuditSummary(auditHistoryRows);
   const tbody=document.getElementById("audit-history-body");
-  if(tbody) tbody.innerHTML='<tr><td colspan="6">?댁쁺 ?대젰??遺덈윭?ㅻ뒗 以?..</td></tr>';
+  if(tbody) tbody.innerHTML='<tr><td colspan="6">운영 이력을 불러오는 중...</td></tr>';
   try{
     const q=query(collection(db,"bookings"), where("date","==",date));
     const snap=await getDocs(q);
@@ -4051,7 +4052,7 @@ async function refreshAuditHistory(force=false){
         docId:docSnap.id,
         machineId:data.machineId || "-",
         user:data.user || "-",
-        purposeLabel:data.user==="System" ? "?먮룞 ?뚮룆" : getPurposeMeta(data.purpose).label,
+        purposeLabel:data.user==="System" ? "자동 소독" : getPurposeMeta(data.purpose).label,
         status,
         statusLabel:mapStatusLabel(status),
         start:Number(data.start||0),
@@ -4063,8 +4064,8 @@ async function refreshAuditHistory(force=false){
     auditHistoryDate=date;
     renderAuditHistory();
   }catch(error){
-    reportAsyncError("refreshAuditHistory", error, "?댁쁺 ?대젰??遺덈윭?ㅼ? 紐삵뻽?듬땲??");
-    if(tbody) tbody.innerHTML='<tr><td colspan="6">?댁쁺 ?대젰??遺덈윭?ㅼ? 紐삵뻽?듬땲??</td></tr>';
+    reportAsyncError("refreshAuditHistory", error, "운영 이력을 불러오지 못했습니다.");
+    if(tbody) tbody.innerHTML='<tr><td colspan="6">운영 이력을 불러오지 못했습니다.</td></tr>';
   }finally{
     auditHistoryLoading=false;
   }
@@ -4117,16 +4118,16 @@ function renderStats(){
   if(monthLabelEl) monthLabelEl.textContent=monthLabel;
   const capacityNote=document.getElementById("stats-capacity-note");
   if(capacityNote){
-    capacityNote.textContent=`媛?숇쪧 湲곗? ?⑸웾: ${bscIds.length}? 횞 ${monthDays}??횞 9?쒓컙 = ${capacityHours.toFixed(1)}?쒓컙`;
+    capacityNote.textContent=`가동률 기준 용량: ${bscIds.length}대 × ${monthDays}일 × 9시간 = ${capacityHours.toFixed(1)}시간`;
   }
 
   const kpiList=document.getElementById("stats-kpi-list");
   if(kpiList){
     kpiList.innerHTML=
-      `<div class="stats-kpi-item"><span class="stats-kpi-label">珥??덉빟 嫄댁닔</span><span class="stats-kpi-value">${totalCount}嫄?/span></div>`+
-      `<div class="stats-kpi-item"><span class="stats-kpi-label">珥??ъ슜 ?쒓컙</span><span class="stats-kpi-value">${totalHours.toFixed(1)}h</span></div>`+
-      `<div class="stats-kpi-item"><span class="stats-kpi-label">?됯퇏 ?덉빟 ?쒓컙</span><span class="stats-kpi-value">${avgDuration.toFixed(2)}h</span></div>`+
-      `<div class="stats-kpi-item"><span class="stats-kpi-label">?ㅻ퉬 媛?숇쪧</span><span class="stats-kpi-value">${utilization.toFixed(1)}%</span></div>`;
+      `<div class="stats-kpi-item"><span class="stats-kpi-label">총 예약 건수</span><span class="stats-kpi-value">${totalCount}건</span></div>`+
+      `<div class="stats-kpi-item"><span class="stats-kpi-label">총 사용 시간</span><span class="stats-kpi-value">${totalHours.toFixed(1)}h</span></div>`+
+      `<div class="stats-kpi-item"><span class="stats-kpi-label">평균 예약 시간</span><span class="stats-kpi-value">${avgDuration.toFixed(2)}h</span></div>`+
+      `<div class="stats-kpi-item"><span class="stats-kpi-label">설비 가동률</span><span class="stats-kpi-value">${utilization.toFixed(1)}%</span></div>`;
   }
 
   const purposeBars=document.getElementById("stats-purpose-bars");
@@ -4138,7 +4139,7 @@ function renderStats(){
       return { label:meta.label, hours, percent, color:meta.color };
     }).sort((a,b)=>b.hours-a.hours);
     if(!purposeRows.some(row=>row.hours>0)){
-      purposeBars.innerHTML='<div class="stats-empty">?좏깮 ???덉빟 ?곗씠?곌? ?놁뒿?덈떎.</div>';
+      purposeBars.innerHTML='<div class="stats-empty">선택 월 예약 데이터가 없습니다.</div>';
     }else{
       purposeBars.innerHTML=purposeRows.filter(row=>row.hours>0).map(row=>
         `<div class="stats-purpose-row">
@@ -4158,8 +4159,8 @@ function renderStats(){
     locationBody.innerHTML=locRows.map(row=>
       `<tr>
         <td>${row.loc}</td>
-        <td>${row.machines}?</td>
-        <td>${row.count}嫄?/td>
+        <td>${row.machines}대</td>
+        <td>${row.count}건</td>
         <td>${row.hours.toFixed(1)}h</td>
       </tr>`
     ).join("");
@@ -4173,7 +4174,7 @@ function renderStats(){
       .slice(0,5)
       .filter(row=>row.hours>0);
     if(topRows.length===0){
-      topMachinesEl.innerHTML='<li class="stats-empty">?좏깮 ???덉빟 ?곗씠?곌? ?놁뒿?덈떎.</li>';
+      topMachinesEl.innerHTML='<li class="stats-empty">선택 월 예약 데이터가 없습니다.</li>';
     }else{
       topMachinesEl.innerHTML=topRows.map(row=>
         `<li><span>${row.id}</span><span class="stats-top-hours">${row.hours.toFixed(1)}h</span></li>`
@@ -4206,7 +4207,7 @@ function handleMobileReserveTrigger(){
 
 function openReserveWizard(source="dashboard",presetTime=null,categoryFilter="all"){
   if(!can("create")){
-    showToast("?덉빟 沅뚰븳???놁뒿?덈떎.","warn");
+    showToast("예약 권한이 없습니다.","warn");
     return;
   }
   const date=getViewDate();
@@ -4252,7 +4253,7 @@ function renderReserveWizardStep(){
   btnSubmit.style.display=isConfirm ? "inline-flex" : "none";
 
   if(step==="timePurpose"){
-    label.textContent=state.source==="chronograph" ? "1/4 ?쒓컙쨌紐⑹쟻 ?좏깮 (?쒓컙 ?먮룞 ?낅젰??" : "3/4 ?쒓컙쨌紐⑹쟻 ?좏깮";
+    label.textContent=state.source==="chronograph" ? "1/4 시간·목적 선택 (시간 자동 입력됨)" : "3/4 시간·목적 선택";
     const minHour=getMinReservableHour(fields.date);
     if(fields.time<minHour && fields.date===todayISO()) fields.time=minHour;
     const timeOptions=[];
@@ -4261,20 +4262,20 @@ function renderReserveWizardStep(){
       timeOptions.push(`<option value="${h}">${formatTime(h)}</option>`);
     }
     const durationOptions=[
-      { value:0.5, label:"30遺? },
-      { value:1, label:"1?쒓컙" },
-      { value:1.5, label:"1?쒓컙 30遺? },
-      { value:2, label:"2?쒓컙" },
-      { value:3, label:"3?쒓컙" },
-      { value:4, label:"4?쒓컙" }
+      { value:0.5, label:"30분" },
+      { value:1, label:"1시간" },
+      { value:1.5, label:"1시간 30분" },
+      { value:2, label:"2시간" },
+      { value:3, label:"3시간" },
+      { value:4, label:"4시간" }
     ];
     const purposeOptions=(fields.machineId ? getPurposesForMachine(fields.machineId) : purposeList);
     if(purposeOptions.length && !purposeOptions.some(p=>p.key===fields.purpose)) fields.purpose=purposeOptions[0].key;
     body.innerHTML=`<div class="mobile-field-grid">
-      <div class="form-group"><label for="wizard-date">?좎쭨</label><input id="wizard-date" type="date" value="${fields.date}" /></div>
-      <div class="form-group"><label for="wizard-time">?쒖옉 ?쒓컙</label><select id="wizard-time">${timeOptions.join("")}</select></div>
-      <div class="form-group"><label for="wizard-duration">?뚯슂 ?쒓컙</label><select id="wizard-duration">${durationOptions.map(opt=>`<option value="${opt.value}">${opt.label}</option>`).join("")}</select></div>
-      <div class="form-group"><label for="wizard-purpose">紐⑹쟻</label><select id="wizard-purpose">${purposeOptions.map(opt=>`<option value="${opt.key}">${opt.label}</option>`).join("")}</select></div>
+      <div class="form-group"><label for="wizard-date">날짜</label><input id="wizard-date" type="date" value="${fields.date}" /></div>
+      <div class="form-group"><label for="wizard-time">시작 시간</label><select id="wizard-time">${timeOptions.join("")}</select></div>
+      <div class="form-group"><label for="wizard-duration">소요 시간</label><select id="wizard-duration">${durationOptions.map(opt=>`<option value="${opt.value}">${opt.label}</option>`).join("")}</select></div>
+      <div class="form-group"><label for="wizard-purpose">목적</label><select id="wizard-purpose">${purposeOptions.map(opt=>`<option value="${opt.key}">${opt.label}</option>`).join("")}</select></div>
     </div>`;
     const dateInput=document.getElementById("wizard-date");
     const timeSel=document.getElementById("wizard-time");
@@ -4291,14 +4292,14 @@ function renderReserveWizardStep(){
   }
 
   if(step==="location"){
-    label.textContent=state.source==="chronograph" ? "2/4 ?μ냼 ?좏깮" : "1/4 ?μ냼 ?좏깮";
+    label.textContent=state.source==="chronograph" ? "2/4 장소 선택" : "1/4 장소 선택";
     const list=getReservableLocationsByTime(fields.date,fields.time,fields.duration,state.categoryFilter || "all");
     if(!list.length){
-      body.innerHTML='<div class="mobile-warn-text">?좏깮???쒓컙???덉빟 媛?ν븳 ?μ냼媛 ?놁뒿?덈떎. ?쒓컙??癒쇱? 蹂寃쏀빐二쇱꽭??</div>';
+      body.innerHTML='<div class="mobile-warn-text">선택한 시간에 예약 가능한 장소가 없습니다. 시간을 먼저 변경해주세요.</div>';
       return;
     }
     if(!fields.location || !list.some(item=>item.location===fields.location)) fields.location=list[0].location;
-    body.innerHTML=`<div class="mobile-choice-grid">${list.map(item=>`<button type="button" class="mobile-choice-btn ${fields.location===item.location?"active":""}" data-wizard-location="${item.location}">${item.location} <span style="float:right;color:#607286">${item.count}? 媛??/span></button>`).join("")}</div>`;
+    body.innerHTML=`<div class="mobile-choice-grid">${list.map(item=>`<button type="button" class="mobile-choice-btn ${fields.location===item.location?"active":""}" data-wizard-location="${item.location}">${item.location} <span style="float:right;color:#607286">${item.count}대 가능</span></button>`).join("")}</div>`;
     body.querySelectorAll("[data-wizard-location]").forEach(btn=>{
       btn.addEventListener("click",()=>{
         fields.location=btn.dataset.wizardLocation || "";
@@ -4310,10 +4311,10 @@ function renderReserveWizardStep(){
   }
 
   if(step==="machine"){
-    label.textContent=state.source==="chronograph" ? "3/4 ?λ퉬 ?좏깮" : "2/4 ?λ퉬 ?좏깮";
+    label.textContent=state.source==="chronograph" ? "3/4 장비 선택" : "2/4 장비 선택";
     const machineList=getReservableMachinesByTime(fields.date,fields.time,fields.duration,fields.location,state.categoryFilter || "all");
     if(!machineList.length){
-      body.innerHTML='<div class="mobile-warn-text">?대떦 ?쒓컙/?μ냼???덉빟 媛?ν븳 ?λ퉬媛 ?놁뒿?덈떎. ?댁쟾 ?④퀎?먯꽌 ?ㅼ떆 ?좏깮?댁＜?몄슂.</div>';
+      body.innerHTML='<div class="mobile-warn-text">해당 시간/장소에 예약 가능한 장비가 없습니다. 이전 단계에서 다시 선택해주세요.</div>';
       return;
     }
     if(!fields.machineId || !machineList.some(item=>item.id===fields.machineId)) fields.machineId=machineList[0].id;
@@ -4329,13 +4330,13 @@ function renderReserveWizardStep(){
     return;
   }
 
-  label.textContent="4/4 ?덉빟 ?뺤씤";
+  label.textContent="4/4 예약 확인";
   body.innerHTML=`<div class="mobile-summary-box">
-    <div>?좎쭨: <strong>${fields.date}</strong></div>
-    <div>?쒓컙: <strong>${formatTime(fields.time)} ~ ${formatTime(fields.time+fields.duration)}</strong></div>
-    <div>?μ냼: <strong>${fields.location || "-"}</strong></div>
-    <div>?λ퉬: <strong>${fields.machineId || "-"}</strong></div>
-    <div>紐⑹쟻: <strong>${getPurposeMeta(fields.purpose).label}</strong></div>
+    <div>날짜: <strong>${fields.date}</strong></div>
+    <div>시간: <strong>${formatTime(fields.time)} ~ ${formatTime(fields.time+fields.duration)}</strong></div>
+    <div>장소: <strong>${fields.location || "-"}</strong></div>
+    <div>장비: <strong>${fields.machineId || "-"}</strong></div>
+    <div>목적: <strong>${getPurposeMeta(fields.purpose).label}</strong></div>
   </div>`;
 }
 
@@ -4353,19 +4354,19 @@ function handleReserveWizardNext(){
   const step=state.steps[state.stepIndex];
   const fields=state.fields;
   if(step==="timePurpose"){
-    if(!fields.date){ showToast("?좎쭨瑜??좏깮?댁＜?몄슂.","warn"); return; }
-    if(fields.time<9 || fields.time+fields.duration>18){ showToast("?댁쁺 ?쒓컙(09:00~18:00)??踰쀬뼱?ъ뒿?덈떎.","warn"); return; }
+    if(!fields.date){ showToast("날짜를 선택해주세요.","warn"); return; }
+    if(fields.time<9 || fields.time+fields.duration>18){ showToast("운영 시간(09:00~18:00)을 벗어났습니다.","warn"); return; }
     if(fields.date===todayISO()){
       const minHour=getMinReservableHour(fields.date);
-      if(fields.time<minHour){ showToast(`?ㅻ뒛 ?덉빟? ${formatTime(minHour)} ?댄썑濡?媛?ν빀?덈떎.`,"warn"); return; }
+      if(fields.time<minHour){ showToast(`오늘 예약은 ${formatTime(minHour)} 이후로 가능합니다.`,"warn"); return; }
     }
   }
   if(step==="location" && !fields.location){
-    showToast("?μ냼瑜??좏깮?댁＜?몄슂.","warn");
+    showToast("장소를 선택해주세요.","warn");
     return;
   }
   if(step==="machine" && !fields.machineId){
-    showToast("?λ퉬瑜??좏깮?댁＜?몄슂.","warn");
+    showToast("장비를 선택해주세요.","warn");
     return;
   }
   if(state.stepIndex>=state.steps.length-1) return;
@@ -4377,17 +4378,17 @@ async function submitReserveWizard(){
   const state=appState.reserveWizard;
   if(!state) return;
   const { date, time, duration, purpose, machineId } = state.fields;
-  if(!machineId){ showToast("?λ퉬瑜??좏깮?댁＜?몄슂.","warn"); return; }
-  if(time<9 || time+duration>18){ showToast("?댁쁺 ?쒓컙(09:00~18:00)??踰쀬뼱?ъ뒿?덈떎.","warn"); return; }
+  if(!machineId){ showToast("장비를 선택해주세요.","warn"); return; }
+  if(time<9 || time+duration>18){ showToast("운영 시간(09:00~18:00)을 벗어났습니다.","warn"); return; }
   if(isOverlap(machineId,date,time,duration)){
-    showToast("?좏깮 ?쒓컙???대? ?덉빟???덉뒿?덈떎. ?쒓컙???ㅼ떆 ?뺤씤?댁＜?몄슂.","warn");
+    showToast("선택 시간에 이미 예약이 있습니다. 시간을 다시 확인해주세요.","warn");
     const idx=state.steps.indexOf("timePurpose");
     if(idx>=0){ state.stepIndex=idx; renderReserveWizardStep(); }
     return;
   }
   const allowedPurposes=getPurposesForMachine(machineId);
   if(allowedPurposes.length && !allowedPurposes.some(item=>item.key===purpose)){
-    showToast("?좏깮??紐⑹쟻? ?대떦 ?λ퉬?먯꽌 ?ъ슜?????놁뒿?덈떎.","warn");
+    showToast("선택한 목적은 해당 장비에서 사용할 수 없습니다.","warn");
     return;
   }
   try{
@@ -4403,23 +4404,23 @@ async function submitReserveWizard(){
       status: "confirmed",
       autoClean: false
     });
-    addAdminActivity("紐⑤컮???덉빟 ?깅줉", `${machineId} ${date} ${formatTime(time)}-${formatTime(time+duration)}`);
+    addAdminActivity("모바일 예약 등록", `${machineId} ${date} ${formatTime(time)}-${formatTime(time+duration)}`);
     closeReserveWizard();
     appState.mobile.drawerOpen=false;
     switchView("dashboard");
-    showToast("?덉빟???깅줉?섏뿀?듬땲??");
+    showToast("예약이 등록되었습니다.");
   }catch(error){
-    reportAsyncError("submitReserveWizard", error, "紐⑤컮???덉빟 ??μ뿉 ?ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("submitReserveWizard", error, "모바일 예약 저장에 실패했습니다.");
   }
 }
 
 function openBookingModal(id,start){
-  if(!can("create")){showToast("?덉빟 ?앹꽦 沅뚰븳???놁뒿?덈떎.","warn");return;}
+  if(!can("create")){showToast("예약 생성 권한이 없습니다.","warn");return;}
   appState.bookingEditTarget=null;
   appState.bookingTarget={id,start};
   setBookingModalMode(false);
   document.getElementById("booking-modal").style.display="flex";
-  document.getElementById("booking-sub").textContent=`${id} / ${formatTime(start)} ?쒖옉`;
+  document.getElementById("booking-sub").textContent=`${id} / ${formatTime(start)} 시작`;
   document.getElementById("booking-start").value=String(start);
   document.getElementById("booking-date").value=getViewDate();
   const userInput=document.getElementById("booking-user");
@@ -4442,8 +4443,8 @@ function setBookingModalMode(isEdit){
   const saveBtn=document.getElementById("btn-save-booking");
   const recurringRow=document.getElementById("booking-recurring-row");
   const editNote=document.getElementById("booking-edit-note");
-  if(title) title.textContent=isEdit ? "?묒뾽 ?덉빟 ?섏젙" : "?묒뾽 ?덉빟 ?깅줉";
-  if(saveBtn) saveBtn.textContent=isEdit ? "蹂寃???? : "?덉빟 ???;
+  if(title) title.textContent=isEdit ? "작업 예약 수정" : "작업 예약 등록";
+  if(saveBtn) saveBtn.textContent=isEdit ? "변경 저장" : "예약 저장";
   if(recurringRow) recurringRow.hidden=isEdit;
   if(editNote) editNote.hidden=!isEdit;
 }
@@ -4451,18 +4452,18 @@ function setBookingModalMode(isEdit){
 function openBookingEditModal(id,docId){
   const booking=findBookingByDocId(id,docId);
   if(!booking || booking.user==="System"){
-    showToast("?섏젙 媛?ν븳 ?덉빟??李얠쓣 ???놁뒿?덈떎.","warn");
+    showToast("수정 가능한 예약을 찾을 수 없습니다.","warn");
     return;
   }
   if(!canEditBooking(booking)){
-    showToast("蹂몄씤 ?덉빟留??섏젙?????덉뒿?덈떎.","warn");
+    showToast("본인 예약만 수정할 수 있습니다.","warn");
     return;
   }
   appState.bookingTarget={id,start:booking.start};
   appState.bookingEditTarget={id,docId};
   setBookingModalMode(true);
   document.getElementById("booking-modal").style.display="flex";
-  document.getElementById("booking-sub").textContent=`${id} / ${booking.date} ${formatTime(booking.start)} ?쒖옉`;
+  document.getElementById("booking-sub").textContent=`${id} / ${booking.date} ${formatTime(booking.start)} 시작`;
   document.getElementById("booking-start").value=String(booking.start);
   document.getElementById("booking-date").value=booking.date;
   const userInput=document.getElementById("booking-user");
@@ -4497,7 +4498,7 @@ function closeModal(id){
 }
 
 function openDeleteModal(id, docId){
-  if(!can("edit")){showToast("??젣 沅뚰븳???놁뒿?덈떎.","warn");return;}
+  if(!can("edit")){showToast("삭제 권한이 없습니다.","warn");return;}
   appState.deleteTarget = { id, docId };
   const reason = document.getElementById("delete-reason");
   if(reason) reason.value = "";
@@ -4507,8 +4508,8 @@ function openDeleteModal(id, docId){
     const linkedBuffer=(booking.autoClean)
       ? getBookingsForDate(id, booking.date).find(b=>b.user==="System" && b.start===booking.start+booking.duration && b.duration===0.5)
       : null;
-    const linkedText=linkedBuffer ? "?곕룞 ?먮룞?뚮룆 1嫄댁씠 ?④퍡 ??젣?⑸땲??" : "?곕룞 ?먮룞?뚮룆 ??젣 ?놁쓬.";
-    impactEl.innerHTML=`??? ${id} / ${booking.user}<br>?쒓컙: ${booking.date} ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}<br>?곹뼢: ${linkedText}`;
+    const linkedText=linkedBuffer ? "연동 자동소독 1건이 함께 삭제됩니다." : "연동 자동소독 삭제 없음.";
+    impactEl.innerHTML=`대상: ${id} / ${booking.user}<br>시간: ${booking.date} ${formatTime(booking.start)} - ${formatTime(booking.start+booking.duration)}<br>영향: ${linkedText}`;
   }else if(impactEl){
     impactEl.textContent="";
   }
@@ -4522,7 +4523,7 @@ async function confirmDelete(){
     const reasonEl = document.getElementById("delete-reason");
     const reason = reasonEl ? reasonEl.value.trim() : "";
     if(!reason){
-      showToast("??젣 ?ъ쑀瑜??낅젰?댁＜?몄슂.","warn");
+      showToast("삭제 사유를 입력해주세요.","warn");
       return;
     }
     const { id, docId } = target;
@@ -4542,7 +4543,7 @@ async function confirmDelete(){
       if(buffer?.docId){
         await updateDoc(doc(db,"bookings",buffer.docId),{
           status: "deleted",
-          deleteReason: "?곕룞 ?덉빟 ??젣",
+          deleteReason: "연동 예약 삭제",
           deletedBy,
           deletedAt: serverTimestamp()
         });
@@ -4550,11 +4551,11 @@ async function confirmDelete(){
     }
     closeModal("delete-modal");
     appState.deleteTarget = null;
-    showToast("?덉빟????젣?섏뿀?듬땲??","info");
-    addAdminActivity("?덉빟 ??젣", `${id} ${booking.user} ${booking.date} ${formatTime(booking.start)}~${formatTime(booking.start+booking.duration)}`);
+    showToast("예약이 삭제되었습니다.","info");
+    addAdminActivity("예약 삭제", `${id} ${booking.user} ${booking.date} ${formatTime(booking.start)}~${formatTime(booking.start+booking.duration)}`);
     refreshAuditHistory(true);
   }catch(error){
-    reportAsyncError("confirmDelete", error, "?덉빟 ??젣???ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("confirmDelete", error, "예약 삭제에 실패했습니다.");
   }
 }
 
@@ -4566,7 +4567,7 @@ async function markBookingDeleted(docId,reason){
   if(!docId) return;
   await updateDoc(doc(db,"bookings",docId),{
     status:"deleted",
-    deleteReason:reason || "?덉빟 蹂寃쎌쑝濡???젣",
+    deleteReason:reason || "예약 변경으로 삭제",
     deletedBy: appState.currentUser?.uid || "system",
     deletedAt: serverTimestamp()
   });
@@ -4581,7 +4582,7 @@ async function syncAutoCleanAfterEdit(machineId,beforeBooking,afterState){
   if(beforeAuto){
     const oldBuffer=findLinkedAutoCleanBooking(machineId,beforeBooking.date,beforeEnd);
     if(oldBuffer?.docId && (!afterAuto || anchorChanged)){
-      await markBookingDeleted(oldBuffer.docId,"?곕룞 ?덉빟 蹂寃?);
+      await markBookingDeleted(oldBuffer.docId,"연동 예약 변경");
     }
   }
   if(afterAuto && (!beforeAuto || anchorChanged)){
@@ -4595,24 +4596,24 @@ async function updateExistingBooking({ user, date, start, duration, purpose, aut
   const { id, docId }=target;
   const booking=findBookingByDocId(id,docId);
   if(!booking){
-    showToast("?섏젙???덉빟??李얠쓣 ???놁뒿?덈떎.","warn");
+    showToast("수정할 예약을 찾을 수 없습니다.","warn");
     return false;
   }
   if(!canEditBooking(booking)){
-    showToast("蹂몄씤 ?덉빟留??섏젙?????덉뒿?덈떎.","warn");
+    showToast("본인 예약만 수정할 수 있습니다.","warn");
     return false;
   }
   if(isWorkerUser() && booking.date===todayISO() && booking.start<=getNowHour()){
-    showToast("?대? ?쒖옉???덉빟? ?섏젙?????놁뒿?덈떎.","warn");
+    showToast("이미 시작된 예약은 수정할 수 없습니다.","warn");
     return false;
   }
   if(isOverlap(id,date,start,duration,docId)){
-    showToast("?대떦 ?좎쭨/?쒓컙???덉빟??以묐났?⑸땲??","warn");
+    showToast("해당 날짜/시간에 예약이 중복됩니다.","warn");
     return false;
   }
   const allowedPurposes=getPurposesForMachine(id);
   if(allowedPurposes.length && !allowedPurposes.some(p=>p.key===purpose)){
-    showToast("?좏깮??紐⑹쟻? ?대떦 ?λ퉬???ъ슜?????놁뒿?덈떎.","warn");
+    showToast("선택한 목적은 해당 장비에 사용할 수 없습니다.","warn");
     return false;
   }
   const userId=isManagerUser() ? (booking.userId || user) : (appState.currentUser.id || appState.currentUser.name || user);
@@ -4626,8 +4627,8 @@ async function updateExistingBooking({ user, date, start, duration, purpose, aut
     autoClean: !!autoClean
   });
   await syncAutoCleanAfterEdit(id,booking,{date,start,duration,autoClean: !!autoClean});
-  showToast("?덉빟??蹂寃쎈릺?덉뒿?덈떎.","success");
-  addAdminActivity("?덉빟 ?섏젙", `${id} ${date} ${formatTime(start)} ${formatTime(start+duration)}`);
+  showToast("예약이 변경되었습니다.","success");
+  addAdminActivity("예약 수정", `${id} ${date} ${formatTime(start)} ${formatTime(start+duration)}`);
   return true;
 }
 
@@ -4640,18 +4641,18 @@ async function confirmBooking(){
     const purpose=document.getElementById("booking-purpose").value;
     const recurring=document.getElementById("booking-recurring").checked;
     const autoClean=document.getElementById("booking-autoclean")?.checked || false;
-    if(!user||!date){showToast("?뺣낫瑜?紐⑤몢 ?낅젰?댁＜?몄슂.","warn");return;}
-    if(start < 9 || start+duration>18){showToast("?댁쁺 ?쒓컙(09:00~18:00)??珥덇낵?⑸땲??","warn");return;}
+    if(!user||!date){showToast("정보를 모두 입력해주세요.","warn");return;}
+    if(start < 9 || start+duration>18){showToast("운영 시간(09:00~18:00)을 초과합니다.","warn");return;}
     if(isWorkerUser() && date===todayISO()){
       const minHour=getMinReservableHour(date);
       if(start<minHour){
-        showToast(`?ㅻ뒛 ?덉빟? ${formatTime(minHour)} ?댄썑濡쒕쭔 ?깅줉?????덉뒿?덈떎.`,"warn");
+        showToast(`오늘 예약은 ${formatTime(minHour)} 이후로만 등록할 수 있습니다.`,"warn");
         return;
       }
     }
     const allowedPurposes = getPurposesForMachine(appState.bookingTarget.id);
     if(allowedPurposes.length && !allowedPurposes.some(p=>p.key===purpose)){
-      showToast("?좏깮??紐⑹쟻? ?대떦 ?λ퉬???ъ슜?????놁뒿?덈떎.","warn");
+      showToast("선택한 목적은 해당 장비에 사용할 수 없습니다.","warn");
       return;
     }
     if(appState.bookingEditTarget){
@@ -4668,7 +4669,7 @@ async function confirmBooking(){
       const dateObj=new Date(date);dateObj.setDate(dateObj.getDate()+i*7);
       const targetDate=dateObj.toISOString().slice(0,10);
       if(isOverlap(appState.bookingTarget.id,targetDate,start,duration)){
-        if(!recurring){showToast("?대떦 ?좎쭨/?쒓컙???덉빟??以묐났?⑸땲??","warn");return;}
+        if(!recurring){showToast("해당 날짜/시간에 예약이 중복됩니다.","warn");return;}
         continue;
       }
       await createBookingDoc({
@@ -4689,13 +4690,13 @@ async function confirmBooking(){
       }
     }
     closeModal("booking-modal");
-    if(success===0){showToast("紐⑤뱺 諛섎났 ?덉빟??以묐났?쇰줈 ?명빐 ?ㅽ뙣?덉뒿?덈떎.","warn");return;}
-    showToast(status==="pending"?"?덉빟 ?붿껌???깅줉?섏뿀?듬땲??":"?덉빟???뺤젙?섏뿀?듬땲??");
-    if(recurring) showToast(`${success}嫄댁쓽 諛섎났 ?덉빟???깅줉?섏뿀?듬땲??`,"info");
-    addAdminActivity("?덉빟 ?깅줉", `${appState.bookingTarget.id} ${date} ${formatTime(start)} ${success}嫄?);
+    if(success===0){showToast("모든 반복 예약이 중복으로 인해 실패했습니다.","warn");return;}
+    showToast(status==="pending"?"예약 요청이 등록되었습니다.":"예약이 확정되었습니다.");
+    if(recurring) showToast(`${success}건의 반복 예약이 등록되었습니다.`,"info");
+    addAdminActivity("예약 등록", `${appState.bookingTarget.id} ${date} ${formatTime(start)} ${success}건`);
     refreshAuditHistory(true);
   }catch(error){
-    reportAsyncError("confirmBooking", error, "?덉빟 ??μ뿉 ?ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("confirmBooking", error, "예약 저장에 실패했습니다.");
   }
 }
 
@@ -4719,7 +4720,7 @@ async function addSystemBuffer(id,date,bufferStart,ignoreDocId){
 }
 
 async function deleteMachine(id){
-  if(!confirm(`?λ퉬 ${id}瑜???젣?섏떆寃좎뒿?덇퉴?`)) return;
+  if(!confirm(`장비 ${id}를 삭제하시겠습니까?`)) return;
   try{
     const existing=bookings[id]||[];
     for(const booking of existing){
@@ -4734,9 +4735,9 @@ async function deleteMachine(id){
     await saveConfig();
     ensureBookingBuckets();
     renderAll();
-    addAdminActivity("?λ퉬 ??젣", id);
+    addAdminActivity("장비 삭제", id);
   }catch(error){
-    reportAsyncError("deleteMachine", error, "?λ퉬 ??젣???ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("deleteMachine", error, "장비 삭제에 실패했습니다.");
   }
 }
 
@@ -4763,7 +4764,7 @@ function openMachineModal(mode,id){
     };
   }
   if(mode==="create"){
-    if(title) title.textContent="?λ퉬 ?깅줉";
+    if(title) title.textContent="장비 등록";
     if(original) original.value="";
     if(input){input.value=""; input.disabled=false;}
     if(mgmtInput) mgmtInput.value="";
@@ -4774,7 +4775,7 @@ function openMachineModal(mode,id){
     }
     return;
   }
-  if(title) title.textContent="?λ퉬 ?섏젙";
+  if(title) title.textContent="장비 수정";
   if(original) original.value=id;
   if(input){input.value=id; input.disabled=false;}
   if(mgmtInput) mgmtInput.value=getMachineMgmtNo(id);
@@ -4798,12 +4799,12 @@ async function saveMachine(){
     const nextRoomId=document.getElementById("machine-room")?.value || "";
     const nextRoom=getRoomById(nextRoomId);
     const nextLocation=nextRoom?.name || "";
-    if(!nextId){alert("?λ퉬 ID瑜??낅젰?섏꽭??");return;}
-    if(!nextRoomId || !nextRoom){alert("Room???좏깮?섏꽭??");return;}
+    if(!nextId){alert("장비 ID를 입력하세요.");return;}
+    if(!nextRoomId || !nextRoom){alert("Room을 선택하세요.");return;}
     const isEdit=!!originalId;
     if(originalId){
       if(originalId!==nextId && bscIds.includes(nextId)){
-        alert("?대? 議댁옱?섎뒗 ?λ퉬 ID?낅땲??");
+        alert("이미 존재하는 장비 ID입니다.");
         return;
       }
       if(originalId!==nextId){
@@ -4829,7 +4830,7 @@ async function saveMachine(){
       }
     }else{
       if(bscIds.includes(nextId)){
-        alert("?대? 議댁옱?섎뒗 ?λ퉬 ID?낅땲??");
+        alert("이미 존재하는 장비 ID입니다.");
         return;
       }
       bscIds=[...bscIds,nextId];
@@ -4840,13 +4841,13 @@ async function saveMachine(){
       bookings[nextId]=[];
     }
     closeModal("machine-modal");
-    showToast("?λ퉬 紐⑸줉??媛깆떊?섏뿀?듬땲??","info");
+    showToast("장비 목록이 갱신되었습니다.","info");
     await saveConfig();
     ensureBookingBuckets();
     renderAll();
-    addAdminActivity(isEdit ? "?λ퉬 ?섏젙" : "?λ퉬 ?깅줉", nextId);
+    addAdminActivity(isEdit ? "장비 수정" : "장비 등록", nextId);
   }catch(error){
-    reportAsyncError("saveMachine", error, "?λ퉬 ??μ뿉 ?ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("saveMachine", error, "장비 저장에 실패했습니다.");
   }
 }
 
@@ -4879,7 +4880,7 @@ function renderMachineTable(){
   for(const row of rows){
     const tr=document.createElement("tr");
     const descShort=row.desc.length>24?`${row.desc.slice(0,24)}...`:row.desc;
-    tr.innerHTML=`<td>${row.id}</td><td>${row.mgmt}</td><td>${row.location}</td><td title="${row.desc.replace(/"/g,"&quot;")}">${descShort}</td><td>${row.count}</td><td><button class="btn-edit" data-edit-machine="${row.id}">?섏젙</button><button class="btn-del" data-del-machine="${row.id}">??젣</button></td>`;
+    tr.innerHTML=`<td>${row.id}</td><td>${row.mgmt}</td><td>${row.location}</td><td title="${row.desc.replace(/"/g,"&quot;")}">${descShort}</td><td>${row.count}</td><td><button class="btn-edit" data-edit-machine="${row.id}">수정</button><button class="btn-del" data-del-machine="${row.id}">삭제</button></td>`;
     tbody.appendChild(tr);
   }
 }
@@ -4905,7 +4906,7 @@ function renderRoomSiteFilterOptions(){
   if(!sel) return;
   const current=sel.value;
   const allSites=sortByOrderThenName(sites);
-  const options=['<option value="all">?꾩껜 Site</option>',...allSites.map(site=>`<option value="${site.id}">${site.name}</option>`)];
+  const options=['<option value="all">전체 Site</option>',...allSites.map(site=>`<option value="${site.id}">${site.name}</option>`)];
   sel.innerHTML=options.join("");
   const validValues=new Set(["all",...allSites.map(site=>site.id)]);
   sel.value=validValues.has(current) ? current : "all";
@@ -4929,8 +4930,8 @@ function renderSiteTable(){
   }
   for(const row of rows){
     const tr=document.createElement("tr");
-    const status=row.active!==false ? "?쒖꽦" : "鍮꾪솢??;
-    tr.innerHTML=`<td>${row.id}</td><td>${row.name}</td><td>${row.roomCount}媛?/td><td>${status}</td><td><button class="btn-edit" data-edit-site="${row.id}">?섏젙</button><button class="btn-del" data-del-site="${row.id}">??젣</button></td>`;
+    const status=row.active!==false ? "활성" : "비활성";
+    tr.innerHTML=`<td>${row.id}</td><td>${row.name}</td><td>${row.roomCount}개</td><td>${status}</td><td><button class="btn-edit" data-edit-site="${row.id}">수정</button><button class="btn-del" data-del-site="${row.id}">삭제</button></td>`;
     tbody.appendChild(tr);
   }
 }
@@ -4971,8 +4972,8 @@ function renderRoomTable(){
   for(const row of rows){
     const tr=document.createElement("tr");
     const l=row.layout || {x:0,y:0,w:0,h:0};
-    const status=row.active!==false ? "?쒖꽦" : "鍮꾪솢??;
-    tr.innerHTML=`<td>${row.name}</td><td>${row.siteName}</td><td>${row.machineCount}?</td><td>${Math.round(l.x)}, ${Math.round(l.y)}, ${Math.round(l.w)}, ${Math.round(l.h)}</td><td>${status}</td><td><button class="btn-edit" data-edit-room="${row.id}">?섏젙</button><button class="btn-del" data-del-room="${row.id}">??젣</button></td>`;
+    const status=row.active!==false ? "활성" : "비활성";
+    tr.innerHTML=`<td>${row.name}</td><td>${row.siteName}</td><td>${row.machineCount}대</td><td>${Math.round(l.x)}, ${Math.round(l.y)}, ${Math.round(l.w)}, ${Math.round(l.h)}</td><td>${status}</td><td><button class="btn-edit" data-edit-room="${row.id}">수정</button><button class="btn-del" data-del-room="${row.id}">삭제</button></td>`;
     tbody.appendChild(tr);
   }
 }
@@ -4987,7 +4988,7 @@ function openSiteModal(mode,siteId){
   const nameInput=document.getElementById("site-name");
   const activeInput=document.getElementById("site-active");
   if(mode==="create"){
-    if(title) title.textContent="Site ?깅줉";
+    if(title) title.textContent="Site 등록";
     if(original) original.value="";
     if(idInput){idInput.value=""; idInput.disabled=false;}
     if(nameInput) nameInput.value="";
@@ -4996,7 +4997,7 @@ function openSiteModal(mode,siteId){
   }
   const site=getSiteById(siteId);
   if(!site) return;
-  if(title) title.textContent="Site ?섏젙";
+  if(title) title.textContent="Site 수정";
   if(original) original.value=site.id;
   if(idInput){idInput.value=site.id; idInput.disabled=true;}
   if(nameInput) nameInput.value=site.name;
@@ -5012,23 +5013,23 @@ async function saveSite(){
     const nextId=(idInput?.value || "").trim() || makeSafeId(nameInput?.value || "site","site");
     const nextName=(nameInput?.value || "").trim();
     const nextActive=activeInput ? !!activeInput.checked : true;
-    if(!nextName){alert("Site紐낆쓣 ?낅젰?섏꽭??");return;}
+    if(!nextName){alert("Site명을 입력하세요.");return;}
     const isEdit=!!originalId;
     if(!isEdit){
-      if(sites.some(site=>site.id===nextId)){alert("?대? 議댁옱?섎뒗 Site ID?낅땲??");return;}
+      if(sites.some(site=>site.id===nextId)){alert("이미 존재하는 Site ID입니다.");return;}
       sites=[...sites,{ id: nextId, name: nextName, order: sites.length+1, active: nextActive }];
     }else{
       const idx=sites.findIndex(site=>site.id===originalId);
-      if(idx<0){alert("Site ?뺣낫瑜?李얠쓣 ???놁뒿?덈떎.");return;}
+      if(idx<0){alert("Site 정보를 찾을 수 없습니다.");return;}
       sites[idx]={...sites[idx], name: nextName, active: nextActive};
     }
     closeModal("site-modal");
     ensureSiteRoomState();
     await saveConfig();
     renderAll();
-    addAdminActivity(isEdit ? "Site ?섏젙" : "Site ?깅줉", `${nextId} (${nextName})`);
+    addAdminActivity(isEdit ? "Site 수정" : "Site 등록", `${nextId} (${nextName})`);
   }catch(error){
-    reportAsyncError("saveSite", error, "Site ??μ뿉 ?ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("saveSite", error, "Site 저장에 실패했습니다.");
   }
 }
 
@@ -5038,17 +5039,17 @@ async function deleteSite(siteId){
     if(!site) return;
     const childRooms=getRoomsBySite(siteId,{includeInactive:true});
     if(childRooms.length>0){
-      alert("?섏쐞 Room???덈뒗 Site????젣?????놁뒿?덈떎.");
+      alert("하위 Room이 있는 Site는 삭제할 수 없습니다.");
       return;
     }
-    if(!confirm(`${site.name} Site瑜???젣?섏떆寃좎뒿?덇퉴?`)) return;
+    if(!confirm(`${site.name} Site를 삭제하시겠습니까?`)) return;
     sites=sites.filter(item=>item.id!==siteId);
     ensureSiteRoomState();
     await saveConfig();
     renderAll();
-    addAdminActivity("Site ??젣", `${siteId}`);
+    addAdminActivity("Site 삭제", `${siteId}`);
   }catch(error){
-    reportAsyncError("deleteSite", error, "Site ??젣???ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("deleteSite", error, "Site 삭제에 실패했습니다.");
   }
 }
 
@@ -5065,7 +5066,7 @@ function openRoomModal(mode,roomId){
     siteSel.innerHTML=sortByOrderThenName(sites).map(site=>`<option value="${site.id}">${site.name}</option>`).join("");
   }
   if(mode==="create"){
-    if(title) title.textContent="Room ?깅줉";
+    if(title) title.textContent="Room 등록";
     if(original) original.value="";
     if(nameInput) nameInput.value="";
     if(activeInput) activeInput.checked=true;
@@ -5080,7 +5081,7 @@ function openRoomModal(mode,roomId){
   }
   const room=getRoomById(roomId);
   if(!room) return;
-  if(title) title.textContent="Room ?섏젙";
+  if(title) title.textContent="Room 수정";
   if(original) original.value=room.id;
   if(nameInput) nameInput.value=room.name;
   if(siteSel) siteSel.value=room.siteId;
@@ -5103,15 +5104,15 @@ async function saveRoom(){
       w:Number(document.getElementById("room-layout-w")?.value || 30),
       h:Number(document.getElementById("room-layout-h")?.value || 28)
     };
-    if(!name){alert("Room紐낆쓣 ?낅젰?섏꽭??");return;}
-    if(!getSiteById(siteId)){alert("Site瑜??좏깮?섏꽭??");return;}
+    if(!name){alert("Room명을 입력하세요.");return;}
+    if(!getSiteById(siteId)){alert("Site를 선택하세요.");return;}
     const normalized=normalizeRoomLayout(layout,0,1);
     const isEdit=!!originalId;
     if(isEdit){
       const idx=rooms.findIndex(room=>room.id===originalId);
-      if(idx<0){alert("Room ?뺣낫瑜?李얠쓣 ???놁뒿?덈떎.");return;}
+      if(idx<0){alert("Room 정보를 찾을 수 없습니다.");return;}
       const duplicate=rooms.some(room=>room.id!==originalId && room.name===name);
-      if(duplicate){alert("?숈씪??Room紐낆씠 ?대? 議댁옱?⑸땲??");return;}
+      if(duplicate){alert("동일한 Room명이 이미 존재합니다.");return;}
       rooms[idx]={...rooms[idx], name, siteId, active, layout:normalized};
       bscIds.forEach(id=>{
         if(getMachineRoomId(id)===originalId){
@@ -5120,7 +5121,7 @@ async function saveRoom(){
       });
     }else{
       const duplicate=rooms.some(room=>room.name===name);
-      if(duplicate){alert("?숈씪??Room紐낆씠 ?대? 議댁옱?⑸땲??");return;}
+      if(duplicate){alert("동일한 Room명이 이미 존재합니다.");return;}
       const roomId=makeSafeId(name,"room");
       rooms=[...rooms,{ id:roomId, siteId, name, order:rooms.length+1, active, layout:normalized }];
     }
@@ -5128,9 +5129,9 @@ async function saveRoom(){
     closeModal("room-modal");
     await saveConfig();
     renderAll();
-    addAdminActivity(isEdit ? "Room ?섏젙" : "Room ?깅줉", `${name}`);
+    addAdminActivity(isEdit ? "Room 수정" : "Room 등록", `${name}`);
   }catch(error){
-    reportAsyncError("saveRoom", error, "Room ??μ뿉 ?ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("saveRoom", error, "Room 저장에 실패했습니다.");
   }
 }
 
@@ -5140,10 +5141,10 @@ async function deleteRoom(roomId){
     if(!room) return;
     const assigned=bscIds.some(id=>getMachineRoomId(id)===roomId);
     if(assigned){
-      alert("?λ퉬媛 諛곗젙??Room? ??젣?????놁뒿?덈떎.");
+      alert("장비가 배정된 Room은 삭제할 수 없습니다.");
       return;
     }
-    if(!confirm(`${room.name} Room????젣?섏떆寃좎뒿?덇퉴?`)) return;
+    if(!confirm(`${room.name} Room을 삭제하시겠습니까?`)) return;
     rooms=rooms.filter(item=>item.id!==roomId);
     if(appState.map.selectedRoomId===roomId){
       appState.map.selectedRoomId=null;
@@ -5152,9 +5153,9 @@ async function deleteRoom(roomId){
     ensureSiteRoomState();
     await saveConfig();
     renderAll();
-    addAdminActivity("Room ??젣", room.name);
+    addAdminActivity("Room 삭제", room.name);
   }catch(error){
-    reportAsyncError("deleteRoom", error, "Room ??젣???ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("deleteRoom", error, "Room 삭제에 실패했습니다.");
   }
 }
 
@@ -5183,9 +5184,9 @@ function renderPurposeTable(){
   for(const purpose of rows){
     const tr=document.createElement("tr");
     const scope = (!purpose.machines || purpose.machines.length === 0)
-      ? "?꾩껜"
-      : `${purpose.machines.length}?`;
-    tr.innerHTML=`<td>${purpose.key}</td><td>${purpose.label}</td><td>${scope}</td><td><button class="btn-edit" data-edit-purpose="${purpose.key}">?섏젙</button><button class="btn-del" data-del-purpose="${purpose.key}">??젣</button></td>`;
+      ? "전체"
+      : `${purpose.machines.length}대`;
+    tr.innerHTML=`<td>${purpose.key}</td><td>${purpose.label}</td><td>${scope}</td><td><button class="btn-edit" data-edit-purpose="${purpose.key}">수정</button><button class="btn-del" data-del-purpose="${purpose.key}">삭제</button></td>`;
     tbody.appendChild(tr);
   }
 }
@@ -5200,7 +5201,7 @@ function openPurposeModal(mode,key){
   const labelInput=document.getElementById("purpose-label");
   renderPurposeMachineList();
   if(mode==="create"){
-    if(title) title.textContent="媛??紐⑹쟻 ?깅줉";
+    if(title) title.textContent="가동 목적 등록";
     if(original) original.value="";
     if(keyInput){ keyInput.value=""; keyInput.disabled=false; }
     if(labelInput) labelInput.value="";
@@ -5209,7 +5210,7 @@ function openPurposeModal(mode,key){
   }
   const existing=purposeList.find(p=>p.key===key);
   if(!existing) return;
-  if(title) title.textContent="媛??紐⑹쟻 ?섏젙";
+  if(title) title.textContent="가동 목적 수정";
   if(original) original.value=existing.key;
   if(keyInput){ keyInput.value=existing.key; keyInput.disabled=true; }
   if(labelInput) labelInput.value=existing.label;
@@ -5270,13 +5271,13 @@ async function savePurpose(){
         if(cb.checked) selected.push(cb.value);
       });
     }
-    if(!key || !label){alert("肄붾뱶? ?쒖떆紐낆쓣 ?낅젰?섏꽭??");return;}
+    if(!key || !label){alert("코드와 표시명을 입력하세요.");return;}
     if(!applyAll && selected.length === 0){
-      alert("?곸슜???λ퉬瑜??섎굹 ?댁긽 ?좏깮?섏꽭??");
+      alert("적용할 장비를 하나 이상 선택하세요.");
       return;
     }
     if(!original){
-      if(purposeList.some(p=>p.key===key)){alert("?대? 議댁옱?섎뒗 肄붾뱶?낅땲??");return;}
+      if(purposeList.some(p=>p.key===key)){alert("이미 존재하는 코드입니다.");return;}
       purposeList=[...purposeList,{key,label,machines: applyAll ? null : selected}];
     }else{
       const idx=purposeList.findIndex(p=>p.key===original);
@@ -5285,25 +5286,25 @@ async function savePurpose(){
     closeModal("purpose-modal");
     await saveConfig();
     renderAll();
-    addAdminActivity(original ? "紐⑹쟻 ?섏젙" : "紐⑹쟻 ?깅줉", `${original || key} -> ${label}`);
+    addAdminActivity(original ? "목적 수정" : "목적 등록", `${original || key} -> ${label}`);
   }catch(error){
-    reportAsyncError("savePurpose", error, "媛??紐⑹쟻 ??μ뿉 ?ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("savePurpose", error, "가동 목적 저장에 실패했습니다.");
   }
 }
 
 async function deletePurpose(key){
   try{
     if(isPurposeUsed(key)){
-      alert("?대떦 紐⑹쟻???덉빟???ъ슜 以묒씠?댁꽌 ??젣?????놁뒿?덈떎.");
+      alert("해당 목적이 예약에 사용 중이어서 삭제할 수 없습니다.");
       return;
     }
-    if(!confirm(`${key} 紐⑹쟻????젣?섏떆寃좎뒿?덇퉴?`)) return;
+    if(!confirm(`${key} 목적을 삭제하시겠습니까?`)) return;
     purposeList=purposeList.filter(p=>p.key!==key);
     await saveConfig();
     renderAll();
-    addAdminActivity("紐⑹쟻 ??젣", key);
+    addAdminActivity("목적 삭제", key);
   }catch(error){
-    reportAsyncError("deletePurpose", error, "媛??紐⑹쟻 ??젣???ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("deletePurpose", error, "가동 목적 삭제에 실패했습니다.");
   }
 }
 
@@ -5317,7 +5318,7 @@ function openUserModal(mode,uid){
   const idInput=document.getElementById("user-id");
   const roleSelect=document.getElementById("user-role");
   if(mode==="create"){
-    if(title) title.textContent="怨꾩젙 ?앹꽦";
+    if(title) title.textContent="계정 생성";
     if(originalId) originalId.value="";
     if(nameInput) nameInput.value="";
     if(idInput){idInput.value=""; idInput.disabled=false;}
@@ -5326,7 +5327,7 @@ function openUserModal(mode,uid){
   }
   const user=users.find(u=>u.uid===uid);
   if(!user) return;
-  if(title) title.textContent="怨꾩젙 ?섏젙";
+  if(title) title.textContent="계정 수정";
   if(originalId) originalId.value=user.uid;
   if(nameInput) nameInput.value=user.name||"";
   if(idInput){idInput.value=user.id||""; idInput.disabled=true;}
@@ -5339,29 +5340,29 @@ async function saveUser(){
     const id=document.getElementById("user-id")?.value.trim() || "";
     const name=document.getElementById("user-display-name")?.value.trim() || "";
     const role=document.getElementById("user-role")?.value || "worker";
-    if(!id||!name){alert("?뺣낫瑜?紐⑤몢 ?낅젰?댁＜?몄슂.");return;}
+    if(!id||!name){alert("정보를 모두 입력해주세요.");return;}
     if(!uid){
-      alert("?뚯썝媛?낆? 濡쒓렇???붾㈃?먯꽌 吏꾪뻾?⑸땲??");
+      alert("회원가입은 로그인 화면에서 진행합니다.");
       closeModal("user-modal");
       return;
     }
     await updateDoc(doc(db,"users",uid),{name,role});
     closeModal("user-modal");
     await refreshUsersFromDb(true);
-    addAdminActivity("?ъ슜???섏젙", `${id} (${role})`);
+    addAdminActivity("사용자 수정", `${id} (${role})`);
   }catch(error){
-    reportAsyncError("saveUser", error, "?ъ슜????μ뿉 ?ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("saveUser", error, "사용자 저장에 실패했습니다.");
   }
 }
 
 async function deleteUser(uid){
   try{
-    if(!confirm("?뺣쭚 ??젣?섏떆寃좎뒿?덇퉴?")) return;
+    if(!confirm("정말 삭제하시겠습니까?")) return;
     await deleteDoc(doc(db,"users",uid));
     await refreshUsersFromDb(true);
-    addAdminActivity("?ъ슜????젣", `uid: ${uid}`);
+    addAdminActivity("사용자 삭제", `uid: ${uid}`);
   }catch(error){
-    reportAsyncError("deleteUser", error, "?ъ슜????젣???ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("deleteUser", error, "사용자 삭제에 실패했습니다.");
   }
 }
 
@@ -5438,7 +5439,7 @@ function getLocationMaintenanceGroups(){
           date:booking.date,
           start:Number(booking.start) || 9,
           duration:Number(booking.duration) || 1,
-          operator:booking.user || "?쒖꽕 ?먭?",
+          operator:booking.user || "시설 점검",
           reason:booking.maintenanceReason || "",
           locations:getLocationMaintenanceLocationsForBooking(booking),
           bookings:[]
@@ -5473,11 +5474,11 @@ function syncLocationMaintenanceModalMeta(group=null){
   const title=document.getElementById("location-maintenance-title");
   const sub=document.getElementById("location-maintenance-sub");
   const saveBtn=document.getElementById("btn-save-location-maintenance");
-  if(title) title.textContent=group ? "?μ냼 ?좎?蹂댁닔 ?덉빟 ?섏젙" : "?μ냼 ?좎?蹂댁닔 ?덉빟";
+  if(title) title.textContent=group ? "장소 유지보수 예약 수정" : "장소 유지보수 예약";
   if(sub) sub.textContent=group
-    ? "湲곗〈???깅줉???μ냼 ?좎?蹂댁닔 ?덉빟???쇨큵 ?섏젙?⑸땲?? 蹂寃??댁슜? ?좏깮???μ냼 ?꾩껜???숈씪?섍쾶 諛섏쁺?⑸땲??"
-    : "?좏깮???μ냼???λ퉬 ?꾩껜???숈씪???좎?蹂댁닔 ?덉빟???깅줉?⑸땲??";
-  if(saveBtn) saveBtn.textContent=group ? "蹂寃???? : "?덉빟 ???;
+    ? "기존에 등록된 장소 유지보수 예약을 일괄 수정합니다. 변경 내용은 선택한 장소 전체에 동일하게 반영됩니다."
+    : "선택한 장소의 장비 전체에 동일한 유지보수 예약을 등록합니다.";
+  if(saveBtn) saveBtn.textContent=group ? "변경 저장" : "예약 저장";
 }
 
 function getLocationMaintenanceSelectedLocations(){
@@ -5493,7 +5494,7 @@ function renderLocationMaintenanceImpact(){
   if(!impact) return;
   const selected=getLocationMaintenanceSelectedLocations();
   const machineCount=getLocationMaintenanceTargetMachineIds(selected).length;
-  impact.textContent=`?좏깮 ?μ냼 ${selected.length}怨?/ ????λ퉬 ${machineCount}?`;
+  impact.textContent=`선택 장소 ${selected.length}곳 / 대상 장비 ${machineCount}대`;
 }
 
 function renderLocationMaintenanceList(selectedLocations=null){
@@ -5510,7 +5511,7 @@ function renderLocationMaintenanceList(selectedLocations=null){
     const shouldCheck=allToggle.checked || (sourceSet.size===0 ? true : sourceSet.has(loc));
     const disabled=allToggle.checked ? "disabled" : "";
     const checkedAttr=shouldCheck ? "checked" : "";
-    return `<label><input type="checkbox" data-location-maintenance value="${loc}" ${checkedAttr} ${disabled} /> ${loc} (${count}?)</label>`;
+    return `<label><input type="checkbox" data-location-maintenance value="${loc}" ${checkedAttr} ${disabled} /> ${loc} (${count}대)</label>`;
   }).join("");
   renderLocationMaintenanceImpact();
 }
@@ -5525,7 +5526,7 @@ function renderLocationMaintenanceTable(){
     const tr=document.createElement("tr");
     const td=document.createElement("td");
     td.colSpan=7;
-    td.textContent="?깅줉???μ냼 ?좎?蹂댁닔 ?덉빟???놁뒿?덈떎.";
+    td.textContent="등록된 장소 유지보수 예약이 없습니다.";
     td.className="table-empty";
     tr.appendChild(td);
     tbody.appendChild(tr);
@@ -5533,19 +5534,19 @@ function renderLocationMaintenanceTable(){
   }
   for(const group of groups){
     const tr=document.createElement("tr");
-    const locationsText=group.locations.length ? `${group.locations.join(", ")} (${group.locations.length}怨?` : "-";
+    const locationsText=group.locations.length ? `${group.locations.join(", ")} (${group.locations.length}곳)` : "-";
     const timeText=`${formatTime(group.start)} ~ ${formatTime(group.start+group.duration)} (${formatDurationText(group.duration)})`;
     const actionTd=document.createElement("td");
     const editBtn=document.createElement("button");
     editBtn.type="button";
     editBtn.className="btn-edit";
     editBtn.dataset.editLocationMaintenance=group.key;
-    editBtn.textContent="?섏젙";
+    editBtn.textContent="수정";
     const delBtn=document.createElement("button");
     delBtn.type="button";
     delBtn.className="btn-del";
     delBtn.dataset.delLocationMaintenance=group.key;
-    delBtn.textContent="??젣";
+    delBtn.textContent="삭제";
     actionTd.appendChild(editBtn);
     actionTd.appendChild(delBtn);
     [
@@ -5554,7 +5555,7 @@ function renderLocationMaintenanceTable(){
       locationsText,
       group.operator,
       group.reason || "-",
-      `${group.machineCount}?`
+      `${group.machineCount}대`
     ].forEach(value=>{
       const td=document.createElement("td");
       td.textContent=value;
@@ -5566,13 +5567,13 @@ function renderLocationMaintenanceTable(){
 }
 function openLocationMaintenanceModal(groupKey=null){
   if(!isAdminUser()){
-    showToast("愿由ъ옄留??μ냼 ?좎?蹂댁닔 ?덉빟???깅줉?????덉뒿?덈떎.","warn");
+    showToast("관리자만 장소 유지보수 예약을 등록할 수 있습니다.","warn");
     return;
   }
   const targetKey=(typeof groupKey==="string" && groupKey.trim()) ? groupKey : null;
   const group=targetKey ? getLocationMaintenanceGroup(targetKey) : null;
   if(targetKey && !group){
-    showToast("?섏젙???μ냼 ?좎?蹂댁닔 ?덉빟??李얠쓣 ???놁뒿?덈떎.","warn");
+    showToast("수정할 장소 유지보수 예약을 찾을 수 없습니다.","warn");
     return;
   }
   const modal=document.getElementById("location-maintenance-modal");
@@ -5603,7 +5604,7 @@ function openLocationMaintenanceModal(groupKey=null){
   if(dateInput) dateInput.value=defaultDate;
   initLocationMaintenanceStartOptions(defaultDate);
   if(durationInput) durationInput.value="1";
-  if(operatorInput) operatorInput.value="?쒖꽕 ?먭?";
+  if(operatorInput) operatorInput.value="시설 점검";
   if(reasonInput) reasonInput.value="";
   if(allToggle) allToggle.checked=true;
   renderLocationMaintenanceList();
@@ -5611,57 +5612,57 @@ function openLocationMaintenanceModal(groupKey=null){
 
 async function deleteLocationMaintenanceGroup(groupKey){
   if(!isAdminUser()){
-    showToast("愿由ъ옄留??μ냼 ?좎?蹂댁닔 ?덉빟????젣?????덉뒿?덈떎.","warn");
+    showToast("관리자만 장소 유지보수 예약을 삭제할 수 있습니다.","warn");
     return;
   }
   const group=getLocationMaintenanceGroup(groupKey);
   if(!group){
-    showToast("??젣???μ냼 ?좎?蹂댁닔 ?덉빟??李얠쓣 ???놁뒿?덈떎.","warn");
+    showToast("삭제할 장소 유지보수 예약을 찾을 수 없습니다.","warn");
     return;
   }
   const summary=`${formatDateLabel(group.date)} ${formatTime(group.start)} ~ ${formatTime(group.start+group.duration)} / ${group.locations.join(", ")}`;
-  if(!confirm(`?좏깮???μ냼 ?좎?蹂댁닔 ?덉빟????젣?섏떆寃좎뒿?덇퉴?\n${summary}`)) return;
+  if(!confirm(`선택한 장소 유지보수 예약을 삭제하시겠습니까?\n${summary}`)) return;
   try{
     for(const item of group.bookings){
       if(item.docId) await deleteBookingDoc(item.docId);
     }
-    showToast(`?μ냼 ?좎?蹂댁닔 ?덉빟????젣?덉뒿?덈떎. (${group.machineCount}?)`,`success`);
-    addAdminActivity("?μ냼 ?좎?蹂댁닔 ??젣", `${group.date} ${formatTime(group.start)} / ${group.locations.join(", ")} / ${group.machineCount}?`);
+    showToast(`장소 유지보수 예약을 삭제했습니다. (${group.machineCount}대)`,`success`);
+    addAdminActivity("장소 유지보수 삭제", `${group.date} ${formatTime(group.start)} / ${group.locations.join(", ")} / ${group.machineCount}대`);
     refreshAuditHistory(true);
   }catch(error){
-    reportAsyncError("deleteLocationMaintenanceGroup", error, "?μ냼 ?좎?蹂댁닔 ?덉빟 ??젣???ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("deleteLocationMaintenanceGroup", error, "장소 유지보수 예약 삭제에 실패했습니다.");
   }
 }
 
 async function saveLocationMaintenance(){
   if(!isAdminUser()){
-    showToast("愿由ъ옄留??μ냼 ?좎?蹂댁닔 ?덉빟???깅줉?????덉뒿?덈떎.","warn");
+    showToast("관리자만 장소 유지보수 예약을 등록할 수 있습니다.","warn");
     return;
   }
   try{
     const editing=appState.locationMaintenanceEdit ? getLocationMaintenanceGroup(appState.locationMaintenanceEdit.key) : null;
     if(appState.locationMaintenanceEdit && !editing){
-      showToast("湲곗〈 ?μ냼 ?좎?蹂댁닔 ?덉빟 ?뺣낫瑜?李얠쓣 ???놁뒿?덈떎. ?ㅼ떆 ?쒕룄?댁＜?몄슂.","warn");
+      showToast("기존 장소 유지보수 예약 정보를 찾을 수 없습니다. 다시 시도해주세요.","warn");
       return;
     }
     const date=document.getElementById("location-maintenance-date")?.value || "";
     const start=Number(document.getElementById("location-maintenance-start")?.value || 0);
     const duration=Number(document.getElementById("location-maintenance-duration")?.value || 0);
-    const operator=(document.getElementById("location-maintenance-operator")?.value || "").trim() || "?쒖꽕 ?먭?";
+    const operator=(document.getElementById("location-maintenance-operator")?.value || "").trim() || "시설 점검";
     const reason=(document.getElementById("location-maintenance-reason")?.value || "").trim();
     const selectedLocations=normalizeLocationMaintenanceLocations(getLocationMaintenanceSelectedLocations());
-    if(!date){ showToast("?좎쭨瑜??좏깮?댁＜?몄슂.","warn"); return; }
-    if(selectedLocations.length===0){ showToast("?좎?蹂댁닔 ????μ냼瑜??좏깮?댁＜?몄슂.","warn"); return; }
-    if(start<9 || start+duration>18){ showToast("?댁쁺 ?쒓컙(09:00~18:00)??踰쀬뼱?⑸땲??","warn"); return; }
+    if(!date){ showToast("날짜를 선택해주세요.","warn"); return; }
+    if(selectedLocations.length===0){ showToast("유지보수 대상 장소를 선택해주세요.","warn"); return; }
+    if(start<9 || start+duration>18){ showToast("운영 시간(09:00~18:00)을 벗어납니다.","warn"); return; }
     const targetMachineIds=getLocationMaintenanceTargetMachineIds(selectedLocations);
     if(targetMachineIds.length===0){
-      showToast("?좏깮???μ냼???깅줉???λ퉬媛 ?놁뒿?덈떎.","warn");
+      showToast("선택한 장소에 등록된 장비가 없습니다.","warn");
       return;
     }
     const previousDocIdsByMachine=new Map((editing?.bookings || []).map(item=>[item.machineId,item.docId]));
     const overlapIds=targetMachineIds.filter(machineId=>isOverlap(machineId,date,start,duration,previousDocIdsByMachine.get(machineId)));
     if(overlapIds.length){
-      showToast(`以묐났 ?덉빟 ${overlapIds.length}?媛 ?덉뼱 ?쇨큵 ??ν븷 ???놁뒿?덈떎. ?쒓컙???ㅼ떆 ?뺤씤?댁＜?몄슂.`,"warn");
+      showToast(`중복 예약 ${overlapIds.length}대가 있어 일괄 저장할 수 없습니다. 시간을 다시 확인해주세요.`,"warn");
       return;
     }
     const batchId=editing?.batchId || createLocationMaintenanceBatchId();
@@ -5697,13 +5698,13 @@ async function saveLocationMaintenance(){
       }
     }
     closeModal("location-maintenance-modal");
-    const machineSummary=`${targetMachineIds.length}? / ${selectedLocations.join(", ")}`;
-    const message=editing ? "?μ냼 ?좎?蹂댁닔 ?덉빟???섏젙?덉뒿?덈떎." : "?μ냼 ?좎?蹂댁닔 ?덉빟???깅줉?덉뒿?덈떎.";
+    const machineSummary=`${targetMachineIds.length}대 / ${selectedLocations.join(", ")}`;
+    const message=editing ? "장소 유지보수 예약을 수정했습니다." : "장소 유지보수 예약을 등록했습니다.";
     showToast(`${message} (${machineSummary})`,`success`);
-    addAdminActivity(editing ? "?μ냼 ?좎?蹂댁닔 ?섏젙" : "?μ냼 ?좎?蹂댁닔 ?덉빟", `${date} ${formatTime(start)} ${formatDurationText(duration)} / ${selectedLocations.join(", ")} / ${targetMachineIds.length}?`);
+    addAdminActivity(editing ? "장소 유지보수 수정" : "장소 유지보수 예약", `${date} ${formatTime(start)} ${formatDurationText(duration)} / ${selectedLocations.join(", ")} / ${targetMachineIds.length}대`);
     refreshAuditHistory(true);
   }catch(error){
-    reportAsyncError("saveLocationMaintenance", error, "?μ냼 ?좎?蹂댁닔 ?덉빟 ??μ뿉 ?ㅽ뙣?덉뒿?덈떎.");
+    reportAsyncError("saveLocationMaintenance", error, "장소 유지보수 예약 저장에 실패했습니다.");
   }
 }
 function bindEvents(){
