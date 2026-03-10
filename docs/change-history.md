@@ -15,6 +15,7 @@
 
 | 날짜 | 커밋 | 변경 요약 | 영향 범위 | 검증 |
 |---|---|---|---|---|
+| 2026-03-10 | `ab9029e` | 사용자 메뉴얼 기본 섹션 문자열의 줄바꿈 구문 오류를 수정해 app.js 문법 오류를 복구 | `app.js` | `node --check app.js`, `node tests\run-tests.mjs` |
 | 2026-03-10 | `507187c` | 앱 셸 한글 깨짐과 잘못된 닫힘 태그를 복구하고 변경 이력 문서 인코딩을 정상화 | `app.html`, `docs/change-history.md` | `git diff --check -- app.html`, `node --check app.js`, `node tests\run-tests.mjs` |
 | 2026-03-10 | `5e52ebe` | 사용자 메뉴얼을 로그인 사용자용 탭으로 확장하고 로그인 안내/1번 스크린샷을 제외 | `app.html`, `app.js`, `styles.css` | `node --check app.js`, `node tests\run-tests.mjs` |
 | 2026-03-04 | `a6c755c` | 관리자 장소 유지보수 예약(전체/일부 장소 선택) 기능 추가 | `app.html`, `app.js`, `styles.css` | `node --check app.js` |
@@ -110,3 +111,4 @@
 - 메뉴얼 설정 저장 추가: `config/app`에 `manualSections`를 저장하고, 관리자만 섹션 등록/수정/삭제할 수 있도록 편집 모달을 연결
 - 초기 사용자 메뉴얼 초안 반영: 접속/예약/대시보드/운영 유의사항 기본 섹션을 추가하고, 이미지가 없을 때는 스크린샷 대기 플레이스홀더를 표시
 - 관리자 사용자 메뉴얼 기본 섹션에 실제 스크린샷 경로(manual/reservation-step-01~03.png)를 연결하고, 이미지가 없는 섹션은 플레이스홀더 없이 본문만 표시하도록 정리
+
