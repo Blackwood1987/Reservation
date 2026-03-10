@@ -1,4 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { buildTimelineMachineIds, canRolePerform, canUserOperateBooking, clampHour, formatTime, hasBookingOverlap, snapToHalfHour, sortByOrderThenName, validateBookingDrop, validateBookingResize } from "./core-utils.mjs";
@@ -57,10 +57,7 @@ const defaultManualSections = [
   {
     id: "manual-reservation",
     title: "예약 등록 방법",
-    body: "1. 상단 메뉴에서 [예약 관리]로 이동합니다.
-2. 장비, 날짜, 시작 시간, 목적, 소요 시간을 입력합니다.
-3. 저장 버튼을 눌러 예약을 등록합니다.
-4. 중복 시간이 있으면 저장되지 않으므로 시간을 다시 조정합니다.",
+    body: "1. 상단 메뉴에서 [예약 관리]로 이동합니다.\n2. 장비, 날짜, 시작 시간, 목적, 소요 시간을 입력합니다.\n3. 저장 버튼을 눌러 예약을 등록합니다.\n4. 중복 시간이 있으면 저장되지 않으므로 시간을 다시 조정합니다.",
     imageUrl: "manual/reservation-step-02.png",
     imageCaption: "예약 등록 화면",
     order: 1,
@@ -69,9 +66,7 @@ const defaultManualSections = [
   {
     id: "manual-dashboard",
     title: "대시보드 확인 방법",
-    body: "1. 대시보드에서 현재 가동 상태와 실시간 타임라인을 확인합니다.
-2. 장소 또는 장비를 클릭하면 상세 현황을 확인할 수 있습니다.
-3. 라이브 ON 상태에서는 현재 시각 기준으로 화면이 갱신됩니다.",
+    body: "1. 대시보드에서 현재 가동 상태와 실시간 타임라인을 확인합니다.\n2. 장소 또는 장비를 클릭하면 상세 현황을 확인할 수 있습니다.\n3. 라이브 ON 상태에서는 현재 시각 기준으로 화면이 갱신됩니다.",
     imageUrl: "manual/reservation-step-03.png",
     imageCaption: "대시보드 확인 화면",
     order: 2,
@@ -80,9 +75,7 @@ const defaultManualSections = [
   {
     id: "manual-notes",
     title: "운영 유의사항",
-    body: "1. 현재는 베타 운영 단계이므로 화면 구성과 정책이 변경될 수 있습니다.
-2. 예약이 보이지 않거나 저장되지 않으면 필수 입력값과 시간을 먼저 확인합니다.
-3. 수정/삭제 권한이 보이지 않으면 운영 관리자에게 요청합니다.",
+    body: "1. 현재는 베타 운영 단계이므로 화면 구성과 정책이 변경될 수 있습니다.\n2. 예약이 보이지 않거나 저장되지 않으면 필수 입력값과 시간을 먼저 확인합니다.\n3. 수정/삭제 권한이 보이지 않으면 운영 관리자에게 요청합니다.",
     imageUrl: "",
     imageCaption: "",
     order: 3,
@@ -5768,6 +5761,7 @@ function boot(){
   }
 
 boot();
+
 
 
 
