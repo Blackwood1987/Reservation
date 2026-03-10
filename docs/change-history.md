@@ -15,6 +15,7 @@
 
 | 날짜 | 커밋 | 변경 요약 | 영향 범위 | 검증 |
 |---|---|---|---|---|
+| 2026-03-10 | 739f4aa | 앱 전반의 알림/토스트/권한 안내 문구를 ui-text.mjs의 uiMessages로 추가 분리해 기능 로직과 사용자 노출 문자열의 결합을 낮춤 | app.js, ui-text.mjs | node --check app.js, node tests/run-tests.mjs, node tests/check-text-integrity.mjs, git diff --check |
 | 2026-03-10 | `44a3e07` | 검증 절차를 한 번에 실행하는 verify-demo 스크립트(.ps1/.cmd)를 추가하고 텍스트 검사 대상과 실행 문서를 갱신 | `scripts/verify-demo.ps1`, `scripts/verify-demo.cmd`, `tests/check-text-integrity.mjs`, `docs/verification-workflow.md`, `.gitattributes` | `cmd /c scripts\verify-demo.cmd` |
 | 2026-03-10 | `3511a87` | 인코딩 정책(.editorconfig/.gitattributes)과 텍스트 무결성 검사, 문자열 상수 분리(ui-text.mjs), 임시파일 격리(.codex-temp)로 회귀 방지 장치를 추가 | .editorconfig, .gitattributes, .gitignore, app.js, ui-text.mjs, tests/check-text-integrity.mjs, docs/verification-workflow.md, docs/qa-checklist.md 외 정규화 파일 | node --check app.js, node tests/run-tests.mjs, node tests/check-text-integrity.mjs, git diff --check |
 | 2026-03-10 | `c9f8e19` | app.js 상단 문자열/한글 인코딩 회귀를 복구하고 모바일 예약관리 카테고리 필터 로직을 안전하게 재적용 | `app.js`, `tests/run-tests.mjs` | `git diff --check -- app.js tests/run-tests.mjs`, `node --check app.js`, `node tests\run-tests.mjs` |
