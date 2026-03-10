@@ -15,6 +15,7 @@
 
 | 날짜 | 커밋 | 변경 요약 | 영향 범위 | 검증 |
 |---|---|---|---|---|
+| 2026-03-10 | `052237a` | 모바일 예약관리 270도 크로노그래프에 카테고리 칩 필터와 슬롯 상세 카드를 병합하고, 선택 슬롯 시간으로 예약 위저드가 이어지도록 확장 | `app.html`, `app.js`, `core-utils.mjs`, `styles.css`, `tests/run-tests.mjs` | `node --check app.js`, `node tests\run-tests.mjs` |
 | 2026-03-10 | `3920099` | 사용자 메뉴얼 스크린샷이 원본보다 확대되지 않도록 원본 크기 기준으로 표시되게 조정 | `styles.css` | `node --check app.js`, `node tests\run-tests.mjs` |
 | 2026-03-10 | `ab9029e` | 사용자 메뉴얼 기본 섹션 문자열의 줄바꿈 구문 오류를 수정해 app.js 문법 오류를 복구 | `app.js` | `node --check app.js`, `node tests\run-tests.mjs` |
 | 2026-03-10 | `507187c` | 앱 셸 한글 깨짐과 잘못된 닫힘 태그를 복구하고 변경 이력 문서 인코딩을 정상화 | `app.html`, `docs/change-history.md` | `git diff --check -- app.html`, `node --check app.js`, `node tests\run-tests.mjs` |
@@ -75,11 +76,11 @@
 - `docs/history-backup-handover.md`: 백업/이관 운영 정책
 
 ## 2026-03-04 WIP
-- Dashboard ����� Site/Room split view�� ��ü.
-- ���� ���¸��/���� ī�带 �����ϰ� ���� ��� �� �гη� ����ȭ.
-- ��� ���信 ������(���� %) ��ǥ�� �߰�.
-- config/app�� configVersion:2, sites, rooms, machines[*].roomId �߰� �� legacy location �ڵ� �̰� ���� �ݿ�.
-- ������ ��Ұ����� Site/Room �̿� ������ �����ϰ� ��� ��� ����� Site -> Room ���� �������� ������Ʈ.
+- 대시보드 룸맵을 Site/Room split view로 교체.
+- 우측 상태 목록/가동 분석 카드를 제거하고 선택 대상 상세 패널로 통합.
+- 상단 개요에 가동률(숫자 %) 지표를 추가.
+- `config/app`에 `configVersion:2`, `sites`, `rooms`, `machines[*].roomId`를 추가하고 legacy `location` 데이터 자동 이관을 반영.
+- 관리자 장소/장비 설정을 Site/Room 구조와 연동하고, 장비 배정을 `Site -> Room` 기준으로 재구성.
 - 관리자 전용 룸 배치 편집 UX 추가(드래그 이동/크기 조절, 겹침 경고, 저장/취소).
 - 대시보드 룸맵 트리를 파일 탐색기형 계층(Site > Room > 장비)으로 전환하고 클릭 확장 UX를 적용.
 - 작업자/게스트/감독자 계정에서 룸맵 배치 편집 버튼을 숨기고(관리자 전용), 대시보드 범례에서 승인 대기/자동 소독 항목을 제외.
