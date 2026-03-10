@@ -19,6 +19,11 @@ node tests/check-text-integrity.mjs
 git diff --check
 ```
 
+## 3-1. 단축 실행
+```powershell
+.\scripts\verify-demo.cmd
+```
+
 ## 4. 수동 QA 최소 항목
 - 로그인 후 주요 탭 진입 여부 확인
 - 예약 생성/수정/삭제 기본 흐름 확인

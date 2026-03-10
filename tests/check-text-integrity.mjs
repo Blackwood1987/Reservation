@@ -17,7 +17,9 @@ const baseTargets = [
   ".gitattributes",
   "src.code-workspace",
   "tests/run-tests.mjs",
-  "tests/check-text-integrity.mjs"
+  "tests/check-text-integrity.mjs",
+  "scripts/verify-demo.ps1",
+  "scripts/verify-demo.cmd"
 ];
 
 const mojibakeRules = [
