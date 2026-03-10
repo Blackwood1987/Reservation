@@ -1,111 +1,108 @@
-# 변경 이력 통합 문서
+﻿# 蹂寃??대젰 ?듯빀 臾몄꽌
 
-## 문서 목적
-- 이 문서는 프로젝트의 **유일한 변경 이력 문서**입니다.
-- 앞으로 기능/UX/권한/배포 관련 주요 변경은 이 문서에만 기록합니다.
-- 기존 분산 변경 이력 문서는 정리(삭제)하고, 운영 정책 문서만 별도로 유지합니다.
+## 臾몄꽌 紐⑹쟻
+- ??臾몄꽌???꾨줈?앺듃??**?좎씪??蹂寃??대젰 臾몄꽌**?낅땲??
+- ?욎쑝濡?湲곕뒫/UX/沅뚰븳/諛고룷 愿??二쇱슂 蹂寃쎌? ??臾몄꽌?먮쭔 湲곕줉?⑸땲??
+- 湲곗〈 遺꾩궛 蹂寃??대젰 臾몄꽌???뺣━(??젣)?섍퀬, ?댁쁺 ?뺤콉 臾몄꽌留?蹂꾨룄濡??좎??⑸땲??
 
-## 기록 규칙
-- 기록 위치: `docs/change-history.md` 단일 파일
-- 기록 순서: 최신 변경이 위로 오도록(역순)
-- 필수 항목: 날짜, 커밋, 변경 요약, 영향 범위, 검증
-- 최소 검증: `node --check app.js`
+## 湲곕줉 洹쒖튃
+- 湲곕줉 ?꾩튂: `docs/change-history.md` ?⑥씪 ?뚯씪
+- 湲곕줉 ?쒖꽌: 理쒖떊 蹂寃쎌씠 ?꾨줈 ?ㅻ룄濡???닚)
+- ?꾩닔 ??ぉ: ?좎쭨, 而ㅻ컠, 蹂寃??붿빟, ?곹뼢 踰붿쐞, 寃利?- 理쒖냼 寃利? `node --check app.js`
 
-## 누적 변경 이력
+## ?꾩쟻 蹂寃??대젰
 
-| 날짜 | 커밋 | 변경 요약 | 영향 범위 | 검증 |
+| ?좎쭨 | 而ㅻ컠 | 蹂寃??붿빟 | ?곹뼢 踰붿쐞 | 寃利?|
 |---|---|---|---|---|
-| 2026-03-10 | `TBD` | 사용자 메뉴얼을 로그인 사용자 탭으로 확장하고 로그인 안내 섹션/스크린샷을 제외 | `app.html`, `app.js`, `styles.css` | `node --check app.js`, `node tests\run-tests.mjs` |
-| 2026-03-04 | `a6c755c` | 관리자 장소 유지보수 예약(전체/일부 장소 선택) 기능 추가 | `app.html`, `app.js`, `styles.css` | `node --check app.js` |
-| 2026-03-04 | `8546095` | 리사이즈 프리뷰와 포인터 위치 정렬 보정(px 기준) | `app.js`, `app.html` | `node --check app.js` |
-| 2026-03-04 | `80baf37` | 리사이즈 의도잠금 + 실시간 프리뷰/가이드 UX 추가 | `app.js`, `styles.css` | `node --check app.js` |
-| 2026-03-04 | `f890e93` | 작업자 본인 예약 클릭 수정 모달 + 드래그/리사이즈 안정화 | `app.js`, `app.html`, `styles.css` | `node --check app.js` |
-| 2026-03-04 | `78a77c6` | 모바일 도넛 수치 위치 조정, 월간 일정 기준일 적용 액션 제거 | `app.js`, `app.html`, `styles.css` | `node --check app.js` |
-| 2026-03-03 | `5194f9d` | 모바일 Shell UX v2 적용 | `app.js`, `app.html`, `styles.css` | `node --check app.js` |
-| 2026-03-03 | `d81c757` | 작업자 모바일 UX 단순화 | `app.js`, `styles.css` | `node --check app.js` |
-| 2026-03-03 | `93c9382` | 모바일 예약/월간 일정 UX 단순화 | `app.js`, `styles.css` | `node --check app.js` |
-| 2026-03-03 | `3b7aa2d` | 대시보드 하이라이트 포커스 UX 자연화 | `app.js`, `styles.css` | `node --check app.js` |
-| 2026-03-03 | `512fd18` | 관리자 통계 확장 + 이력 관리 기반 강화 | `app.js`, `app.html` | `node --check app.js` |
-| 2026-03-03 | `bf479a7` | 관리자 승인/보고 영역을 운영 이력 중심으로 재구성 | `app.js`, `app.html`, `styles.css` | `node --check app.js` |
-| 2026-03-03 | `195f40a` | 관리자 필터/리스크 가시성 개선 | `app.js`, `styles.css` | `node --check app.js` |
-| 2026-03-03 | `17032af` | 로그인 폼 경고 수정, favicon 추가 | `app.html`, `styles.css` | `node --check app.js` |
-| 2026-03-03 | `4d432e3` | 대시보드 가독성 및 모바일 포커스 UX 개선 | `app.js`, `styles.css` | `node --check app.js` |
-| 2026-03-03 | `968e8bc` | 대시보드 요약/우측 패널 UX 정리 | `app.js`, `app.html`, `styles.css` | `node --check app.js` |
-| 2026-03-03 | `060dd7c` | 예약 흐름 안정화 및 네트워크 대응 문서화 | `app.js`, `docs/network-resilience-plan.md` | `node --check app.js` |
-| 2026-01-30 | `bf583ba` | 작업자 예약 자동확정 + 09~18 시간 제한 | `app.js` | `node --check app.js` |
-| 2026-01-30 | `5efca01` | 중복 선언 함수 제거(`renderPurposeOptions`) | `app.js` | `node --check app.js` |
-| 2026-01-30 | `bd3364d` | 목적을 장비별로 제한 가능하도록 변경 | `app.js`, `app.html` | `node --check app.js` |
-| 2026-01-30 | `851a359` | 관리자 목적 관리 기능 추가 | `app.js`, `app.html` | `node --check app.js` |
-| 2026-01-30 | `9e3aa77` | 룸맵/타임라인 강제 스크롤바 적용 | `styles.css` | `node --check app.js` |
-| 2026-01-30 | `8144ea3` | 예약관리 화면 스크롤 처리 | `styles.css`, `app.html` | `node --check app.js` |
-| 2026-01-30 | `602293c` | 일일 리포트 날짜 선택 인쇄 | `app.js`, `app.html` | `node --check app.js` |
-| 2026-01-30 | `cf2843c` | 반려 사유 입력 강제 | `app.js`, `app.html` | `node --check app.js` |
-| 2026-01-30 | `43053bd` | 관리자 삭제 사유 입력 강제 | `app.js`, `app.html` | `node --check app.js` |
-| 2026-01-30 | `467c160` | 자동 소독을 선택 옵션으로 변경 | `app.js`, `app.html` | `node --check app.js` |
-| 2026-01-30 | `1cda7e3` | 1366x768 기준 대시보드 균형 조정(룸맵 축소 포함) | `styles.css` | `node --check app.js` |
-| 2026-01-30 | `7c3510d` | 전체 레이아웃 스케일 재조정 | `styles.css` | `node --check app.js` |
-| 2026-01-30 | `f0880c0` | 예약표 장비 열 폭 확장/텍스트 조정 | `styles.css` | `node --check app.js` |
-| 2026-01-30 | `826fe38` | 룸맵 타일 축소 + 타임라인 확장 | `styles.css` | `node --check app.js` |
-| 2026-01-30 | `3c62cb9` | 타임라인 잘림 방지 레이아웃 조정 | `styles.css`, `app.html` | `node --check app.js` |
-| 2026-01-30 | `5065cb6` | 전반 레이아웃/반응형 개선 | `styles.css`, `app.html` | `node --check app.js` |
-| 2026-01-29 | `649c8fa` | 장소/장비 설정을 Firestore config로 영속화 | `app.js`, `firestore.rules` | `node --check app.js` |
-| 2026-01-29 | `f8c3bda` | 게스트/데모 접근 재정리 + 예약관리 장소 그룹화 | `app.js`, `app.html` | `node --check app.js` |
-| 2026-01-29 | `2edd471` | 관리자 테이블 헤더 정합성/장비 렌더 복구 | `app.js`, `app.html` | `node --check app.js` |
-| 2026-01-29 | `c353397` | `printReport` 복구 | `app.js` | `node --check app.js` |
-| 2026-01-29 | `e669c89` | 드래그/리사이즈 핸들러 복구 | `app.js` | `node --check app.js` |
-| 2026-01-29 | `c681881` | 장비 핸들러/라벨 연동 오류 수정 | `app.js`, `app.html` | `node --check app.js` |
-| 2026-01-29 | `a2d86ab` | 사용자 관리 동작/배지 스타일 복구 | `app.js`, `styles.css` | `node --check app.js` |
-| 2026-01-29 | `274a0c7` | 역할 정규화, 관리자 탭 접근 가드 | `app.js` | `node --check app.js` |
-| 2026-01-29 | `38d6ecc` | 앱 메인 레이아웃 복구 | `app.html` | `node --check app.js` |
-| 2026-01-29 | `f0e69bf` | 로그인 방식 단순화(ID/비밀번호) | `index.html`, `login.js` | `node --check app.js` |
-| 2026-01-29 | `7794709` | 로그인/앱 페이지 분리 | `index.html`, `app.html` | `node --check app.js` |
-| 2026-01-29 | `2fe0d5c` | 앱 JS 캐시 버스팅 반영 | `app.html` | `node --check app.js` |
-| 2026-01-29 | `6e2aadc` | 초기 부트/이벤트 바인딩 복구 | `app.js` | `node --check app.js` |
-| 2026-01-29 | `e219a0a` | 로그아웃 문법 오류 수정 | `app.js` | `node --check app.js` |
-| 2026-01-29 | `6fd80f5` | Firestore rules/config 도입 | `firestore.rules`, `firebase.json` | `node --check app.js` |
-| 2026-01-29 | `0a7ccd5` | Firebase Auth + 공유 예약 동기화 도입 | `app.js`, `app.html` | `node --check app.js` |
-| 2026-01-29 | `1a32140` | 회원가입/승인 플로우 도입 | `login.js`, `app.js` | `node --check app.js` |
-| 2026-01-28 | `f95bf4d` | 초기 데모 UI 구성 | `index.html`, `app.html`, `app.js`, `styles.css` | - |
+| 2026-03-10 | `5e52ebe` | ?ъ슜??硫붾돱?쇱쓣 濡쒓렇???ъ슜????쑝濡??뺤옣?섍퀬 濡쒓렇???덈궡 ?뱀뀡/?ㅽ겕由곗꺑???쒖쇅 | `app.html`, `app.js`, `styles.css` | `node --check app.js`, `node tests\run-tests.mjs` |
+| 2026-03-04 | `a6c755c` | 愿由ъ옄 ?μ냼 ?좎?蹂댁닔 ?덉빟(?꾩껜/?쇰? ?μ냼 ?좏깮) 湲곕뒫 異붽? | `app.html`, `app.js`, `styles.css` | `node --check app.js` |
+| 2026-03-04 | `8546095` | 由ъ궗?댁쫰 ?꾨━酉곗? ?ъ씤???꾩튂 ?뺣젹 蹂댁젙(px 湲곗?) | `app.js`, `app.html` | `node --check app.js` |
+| 2026-03-04 | `80baf37` | 由ъ궗?댁쫰 ?섎룄?좉툑 + ?ㅼ떆媛??꾨━酉?媛?대뱶 UX 異붽? | `app.js`, `styles.css` | `node --check app.js` |
+| 2026-03-04 | `f890e93` | ?묒뾽??蹂몄씤 ?덉빟 ?대┃ ?섏젙 紐⑤떖 + ?쒕옒洹?由ъ궗?댁쫰 ?덉젙??| `app.js`, `app.html`, `styles.css` | `node --check app.js` |
+| 2026-03-04 | `78a77c6` | 紐⑤컮???꾨꽋 ?섏튂 ?꾩튂 議곗젙, ?붽컙 ?쇱젙 湲곗????곸슜 ?≪뀡 ?쒓굅 | `app.js`, `app.html`, `styles.css` | `node --check app.js` |
+| 2026-03-03 | `5194f9d` | 紐⑤컮??Shell UX v2 ?곸슜 | `app.js`, `app.html`, `styles.css` | `node --check app.js` |
+| 2026-03-03 | `d81c757` | ?묒뾽??紐⑤컮??UX ?⑥닚??| `app.js`, `styles.css` | `node --check app.js` |
+| 2026-03-03 | `93c9382` | 紐⑤컮???덉빟/?붽컙 ?쇱젙 UX ?⑥닚??| `app.js`, `styles.css` | `node --check app.js` |
+| 2026-03-03 | `3b7aa2d` | ??쒕낫???섏씠?쇱씠???ъ빱??UX ?먯뿰??| `app.js`, `styles.css` | `node --check app.js` |
+| 2026-03-03 | `512fd18` | 愿由ъ옄 ?듦퀎 ?뺤옣 + ?대젰 愿由?湲곕컲 媛뺥솕 | `app.js`, `app.html` | `node --check app.js` |
+| 2026-03-03 | `bf479a7` | 愿由ъ옄 ?뱀씤/蹂닿퀬 ?곸뿭???댁쁺 ?대젰 以묒떖?쇰줈 ?ш뎄??| `app.js`, `app.html`, `styles.css` | `node --check app.js` |
+| 2026-03-03 | `195f40a` | 愿由ъ옄 ?꾪꽣/由ъ뒪??媛?쒖꽦 媛쒖꽑 | `app.js`, `styles.css` | `node --check app.js` |
+| 2026-03-03 | `17032af` | 濡쒓렇????寃쎄퀬 ?섏젙, favicon 異붽? | `app.html`, `styles.css` | `node --check app.js` |
+| 2026-03-03 | `4d432e3` | ??쒕낫??媛?낆꽦 諛?紐⑤컮???ъ빱??UX 媛쒖꽑 | `app.js`, `styles.css` | `node --check app.js` |
+| 2026-03-03 | `968e8bc` | ??쒕낫???붿빟/?곗륫 ?⑤꼸 UX ?뺣━ | `app.js`, `app.html`, `styles.css` | `node --check app.js` |
+| 2026-03-03 | `060dd7c` | ?덉빟 ?먮쫫 ?덉젙??諛??ㅽ듃?뚰겕 ???臾몄꽌??| `app.js`, `docs/network-resilience-plan.md` | `node --check app.js` |
+| 2026-01-30 | `bf583ba` | ?묒뾽???덉빟 ?먮룞?뺤젙 + 09~18 ?쒓컙 ?쒗븳 | `app.js` | `node --check app.js` |
+| 2026-01-30 | `5efca01` | 以묐났 ?좎뼵 ?⑥닔 ?쒓굅(`renderPurposeOptions`) | `app.js` | `node --check app.js` |
+| 2026-01-30 | `bd3364d` | 紐⑹쟻???λ퉬蹂꾨줈 ?쒗븳 媛?ν븯?꾨줉 蹂寃?| `app.js`, `app.html` | `node --check app.js` |
+| 2026-01-30 | `851a359` | 愿由ъ옄 紐⑹쟻 愿由?湲곕뒫 異붽? | `app.js`, `app.html` | `node --check app.js` |
+| 2026-01-30 | `9e3aa77` | 猷몃㏊/??꾨씪??媛뺤젣 ?ㅽ겕濡ㅻ컮 ?곸슜 | `styles.css` | `node --check app.js` |
+| 2026-01-30 | `8144ea3` | ?덉빟愿由??붾㈃ ?ㅽ겕濡?泥섎━ | `styles.css`, `app.html` | `node --check app.js` |
+| 2026-01-30 | `602293c` | ?쇱씪 由ы룷???좎쭨 ?좏깮 ?몄뇙 | `app.js`, `app.html` | `node --check app.js` |
+| 2026-01-30 | `cf2843c` | 諛섎젮 ?ъ쑀 ?낅젰 媛뺤젣 | `app.js`, `app.html` | `node --check app.js` |
+| 2026-01-30 | `43053bd` | 愿由ъ옄 ??젣 ?ъ쑀 ?낅젰 媛뺤젣 | `app.js`, `app.html` | `node --check app.js` |
+| 2026-01-30 | `467c160` | ?먮룞 ?뚮룆???좏깮 ?듭뀡?쇰줈 蹂寃?| `app.js`, `app.html` | `node --check app.js` |
+| 2026-01-30 | `1cda7e3` | 1366x768 湲곗? ??쒕낫??洹좏삎 議곗젙(猷몃㏊ 異뺤냼 ?ы븿) | `styles.css` | `node --check app.js` |
+| 2026-01-30 | `7c3510d` | ?꾩껜 ?덉씠?꾩썐 ?ㅼ????ъ“??| `styles.css` | `node --check app.js` |
+| 2026-01-30 | `f0880c0` | ?덉빟???λ퉬 ?????뺤옣/?띿뒪??議곗젙 | `styles.css` | `node --check app.js` |
+| 2026-01-30 | `826fe38` | 猷몃㏊ ???異뺤냼 + ??꾨씪???뺤옣 | `styles.css` | `node --check app.js` |
+| 2026-01-30 | `3c62cb9` | ??꾨씪???섎┝ 諛⑹? ?덉씠?꾩썐 議곗젙 | `styles.css`, `app.html` | `node --check app.js` |
+| 2026-01-30 | `5065cb6` | ?꾨컲 ?덉씠?꾩썐/諛섏쓳??媛쒖꽑 | `styles.css`, `app.html` | `node --check app.js` |
+| 2026-01-29 | `649c8fa` | ?μ냼/?λ퉬 ?ㅼ젙??Firestore config濡??곸냽??| `app.js`, `firestore.rules` | `node --check app.js` |
+| 2026-01-29 | `f8c3bda` | 寃뚯뒪???곕え ?묎렐 ?ъ젙由?+ ?덉빟愿由??μ냼 洹몃９??| `app.js`, `app.html` | `node --check app.js` |
+| 2026-01-29 | `2edd471` | 愿由ъ옄 ?뚯씠釉??ㅻ뜑 ?뺥빀???λ퉬 ?뚮뜑 蹂듦뎄 | `app.js`, `app.html` | `node --check app.js` |
+| 2026-01-29 | `c353397` | `printReport` 蹂듦뎄 | `app.js` | `node --check app.js` |
+| 2026-01-29 | `e669c89` | ?쒕옒洹?由ъ궗?댁쫰 ?몃뱾??蹂듦뎄 | `app.js` | `node --check app.js` |
+| 2026-01-29 | `c681881` | ?λ퉬 ?몃뱾???쇰꺼 ?곕룞 ?ㅻ쪟 ?섏젙 | `app.js`, `app.html` | `node --check app.js` |
+| 2026-01-29 | `a2d86ab` | ?ъ슜??愿由??숈옉/諛곗? ?ㅽ???蹂듦뎄 | `app.js`, `styles.css` | `node --check app.js` |
+| 2026-01-29 | `274a0c7` | ??븷 ?뺢퇋?? 愿由ъ옄 ???묎렐 媛??| `app.js` | `node --check app.js` |
+| 2026-01-29 | `38d6ecc` | ??硫붿씤 ?덉씠?꾩썐 蹂듦뎄 | `app.html` | `node --check app.js` |
+| 2026-01-29 | `f0e69bf` | 濡쒓렇??諛⑹떇 ?⑥닚??ID/鍮꾨?踰덊샇) | `index.html`, `login.js` | `node --check app.js` |
+| 2026-01-29 | `7794709` | 濡쒓렇?????섏씠吏 遺꾨━ | `index.html`, `app.html` | `node --check app.js` |
+| 2026-01-29 | `2fe0d5c` | ??JS 罹먯떆 踰꾩뒪??諛섏쁺 | `app.html` | `node --check app.js` |
+| 2026-01-29 | `6e2aadc` | 珥덇린 遺???대깽??諛붿씤??蹂듦뎄 | `app.js` | `node --check app.js` |
+| 2026-01-29 | `e219a0a` | 濡쒓렇?꾩썐 臾몃쾿 ?ㅻ쪟 ?섏젙 | `app.js` | `node --check app.js` |
+| 2026-01-29 | `6fd80f5` | Firestore rules/config ?꾩엯 | `firestore.rules`, `firebase.json` | `node --check app.js` |
+| 2026-01-29 | `0a7ccd5` | Firebase Auth + 怨듭쑀 ?덉빟 ?숆린???꾩엯 | `app.js`, `app.html` | `node --check app.js` |
+| 2026-01-29 | `1a32140` | ?뚯썝媛???뱀씤 ?뚮줈???꾩엯 | `login.js`, `app.js` | `node --check app.js` |
+| 2026-01-28 | `f95bf4d` | 珥덇린 ?곕え UI 援ъ꽦 | `index.html`, `app.html`, `app.js`, `styles.css` | - |
 
-## 유지 문서(변경 이력 외)
-- `docs/network-resilience-plan.md`: 네트워크 불안정 대응 계획
-- `docs/history-backup-handover.md`: 백업/이관 운영 정책
+## ?좎? 臾몄꽌(蹂寃??대젰 ??
+- `docs/network-resilience-plan.md`: ?ㅽ듃?뚰겕 遺덉븞?????怨꾪쉷
+- `docs/history-backup-handover.md`: 諛깆뾽/?닿? ?댁쁺 ?뺤콉
 
 ## 2026-03-04 WIP
-- Dashboard ����� Site/Room split view�� ��ü.
-- ���� ���¸��/���� ī�带 �����ϰ� ���� ��� �� �гη� ����ȭ.
-- ��� ���信 ������(���� %) ��ǥ�� �߰�.
-- config/app�� configVersion:2, sites, rooms, machines[*].roomId �߰� �� legacy location �ڵ� �̰� ���� �ݿ�.
-- ������ ��Ұ����� Site/Room �̿� ������ �����ϰ� ��� ��� ����� Site -> Room ���� �������� ������Ʈ.
-- 관리자 전용 룸 배치 편집 UX 추가(드래그 이동/크기 조절, 겹침 경고, 저장/취소).
-- 대시보드 룸맵 트리를 파일 탐색기형 계층(Site > Room > 장비)으로 전환하고 클릭 확장 UX를 적용.
-- 작업자/게스트/감독자 계정에서 룸맵 배치 편집 버튼을 숨기고(관리자 전용), 대시보드 범례에서 승인 대기/자동 소독 항목을 제외.
-- 실시간 타임라인 행 렌더를 정규화(빈 장비 ID 스킵)하고 행 간격을 고정해 상/하단 시각 불일치를 완화.
-- 타임라인 렌더 대상을 bscIds 직접순회에서 Room 기반 장비 목록으로 전환해 숨은/비정상 ID 행에 의한 단차를 방지.
-- 타임라인 렌더 장비 ID에 허용 문자 정규식과 Room 매핑 조건을 추가해 비정상/미배정 ID 행이 생성되지 않도록 보정.
-- 타임라인 음영 오버레이를 제거해 스크롤 위치에 따른 상/하단 배경 불일치를 해소하고, 숨은 공백/제어문자가 포함된 장비 ID 정규화를 강화.
-- 숨김 input과 연결된 라벨 및 for 미지정 라벨 구조를 수정해 콘솔의 접근성(label-for) 경고를 정리.
-- 실시간 타임라인 장비 정렬 규칙 변경: 세포은행 Room의 CRF를 최상단 고정, 나머지 장비는 Room 순서 내 ID 오름차순으로 정렬.
-- 타임라인 장비 ID 필터를 문자 시작 규칙으로 강화(숫자 시작/비정상 키 제외)하고 app.js/styles.css 캐시 버전을 갱신.
-- 프로젝트 구조/기술 스택 요약 문서(docs/project-overview.md)를 신규 추가.
-- 구조 개선 권장안 문서(docs/architecture-recommendations.md)를 신규 추가.
+- Dashboard 占쏙옙占쏙옙占?Site/Room split view占쏙옙 占쏙옙체.
+- 占쏙옙占쏙옙 占쏙옙占승몌옙占?占쏙옙占쏙옙 카占썲를 占쏙옙占쏙옙占싹곤옙 占쏙옙占쏙옙 占쏙옙占?占쏙옙 占싻널뤄옙 占쏙옙占쏙옙화.
+- 占쏙옙占?占쏙옙占썰에 占쏙옙占쏙옙占쏙옙(占쏙옙占쏙옙 %) 占쏙옙표占쏙옙 占쌩곤옙.
+- config/app占쏙옙 configVersion:2, sites, rooms, machines[*].roomId 占쌩곤옙 占쏙옙 legacy location 占쌘듸옙 占싱곤옙 占쏙옙占쏙옙 占쌥울옙.
+- 占쏙옙占쏙옙占쏙옙 占쏙옙柰占쏙옙占쏙옙占?Site/Room 占싱울옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占싹곤옙 占쏙옙占?占쏙옙占?占쏙옙占쏙옙占?Site -> Room 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙트.
+- 愿由ъ옄 ?꾩슜 猷?諛곗튂 ?몄쭛 UX 異붽?(?쒕옒洹??대룞/?ш린 議곗젅, 寃뱀묠 寃쎄퀬, ???痍⑥냼).
+- ??쒕낫??猷몃㏊ ?몃━瑜??뚯씪 ?먯깋湲고삎 怨꾩링(Site > Room > ?λ퉬)?쇰줈 ?꾪솚?섍퀬 ?대┃ ?뺤옣 UX瑜??곸슜.
+- ?묒뾽??寃뚯뒪??媛먮룆??怨꾩젙?먯꽌 猷몃㏊ 諛곗튂 ?몄쭛 踰꾪듉???④린怨?愿由ъ옄 ?꾩슜), ??쒕낫??踰붾??먯꽌 ?뱀씤 ?湲??먮룞 ?뚮룆 ??ぉ???쒖쇅.
+- ?ㅼ떆媛???꾨씪?????뚮뜑瑜??뺢퇋??鍮??λ퉬 ID ?ㅽ궢)?섍퀬 ??媛꾧꺽??怨좎젙?????섎떒 ?쒓컖 遺덉씪移섎? ?꾪솕.
+- ??꾨씪???뚮뜑 ??곸쓣 bscIds 吏곸젒?쒗쉶?먯꽌 Room 湲곕컲 ?λ퉬 紐⑸줉?쇰줈 ?꾪솚???⑥?/鍮꾩젙??ID ?됱뿉 ?섑븳 ?⑥감瑜?諛⑹?.
+- ??꾨씪???뚮뜑 ?λ퉬 ID???덉슜 臾몄옄 ?뺢퇋?앷낵 Room 留ㅽ븨 議곌굔??異붽???鍮꾩젙??誘몃같??ID ?됱씠 ?앹꽦?섏? ?딅룄濡?蹂댁젙.
+- ??꾨씪???뚯쁺 ?ㅻ쾭?덉씠瑜??쒓굅???ㅽ겕濡??꾩튂???곕Ⅸ ???섎떒 諛곌꼍 遺덉씪移섎? ?댁냼?섍퀬, ?⑥? 怨듬갚/?쒖뼱臾몄옄媛 ?ы븿???λ퉬 ID ?뺢퇋?붾? 媛뺥솕.
+- ?④? input怨??곌껐???쇰꺼 諛?for 誘몄????쇰꺼 援ъ“瑜??섏젙??肄섏넄???묎렐??label-for) 寃쎄퀬瑜??뺣━.
+- ?ㅼ떆媛???꾨씪???λ퉬 ?뺣젹 洹쒖튃 蹂寃? ?명룷???Room??CRF瑜?理쒖긽??怨좎젙, ?섎㉧吏 ?λ퉬??Room ?쒖꽌 ??ID ?ㅻ쫫李⑥닚?쇰줈 ?뺣젹.
+- ??꾨씪???λ퉬 ID ?꾪꽣瑜?臾몄옄 ?쒖옉 洹쒖튃?쇰줈 媛뺥솕(?レ옄 ?쒖옉/鍮꾩젙?????쒖쇅)?섍퀬 app.js/styles.css 罹먯떆 踰꾩쟾??媛깆떊.
+- ?꾨줈?앺듃 援ъ“/湲곗닠 ?ㅽ깮 ?붿빟 臾몄꽌(docs/project-overview.md)瑜??좉퇋 異붽?.
+- 援ъ“ 媛쒖꽑 沅뚯옣??臾몄꽌(docs/architecture-recommendations.md)瑜??좉퇋 異붽?.
 
-## 2026-03-09 검증 체계 1차
-- `core-utils.mjs` 추가: 시간 처리, 예약 중복 판정, 타임라인 정렬 규칙을 공용 유틸로 분리
-- `app.js`에서 공용 유틸을 사용하도록 연결하여 순수 함수 검증 대상과 실제 로직을 일치시킴
-- `tests/run-tests.mjs` 추가: 포맷/시간 스냅/중복 판정/CRF 최상단 정렬 규칙 자동 확인
-- `docs/qa-checklist.md` 추가: 수동 QA 기준 문서화
-- `docs/verification-workflow.md` 추가: 배포 전 실행 명령과 실패 시 처리 원칙 문서화
-- 검증 결과: `node --check app.js`, `node tests/run-tests.mjs` 통과
-- 후속 수정: `app.js` 공용 유틸 연결 과정에서 깨진 문자열/구문 오류를 복구하고, `app.js`가 다시 `core-utils.mjs`를 정상 참조하도록 정리
-- 검증 체계 2차: 권한 노출 규칙과 예약 이동/리사이즈 판정 로직을 `core-utils.mjs` 공용 유틸로 분리하고, 자동 테스트를 8건으로 확장
-- 실시간 타임라인 정렬 보강: 장비 ID에 `CRF`가 포함된 장비는 Room과 무관하게 상단 고정되도록 정렬 규칙 확장
-- 실시간 타임라인 UX 보정: 현재 시각선과 과거 음영을 스크롤 컨텐츠 전체 높이에 맞춰 렌더하도록 구조를 조정하고, 경과 영역을 회색 음영으로 표시
-- 관리자 전용 장소 관리 확장: 장소 유지보수 예약을 일괄 관리하는 표를 추가하고, 기존 예약의 일괄 수정/삭제 기능을 연결
-- 장소 유지보수 예약 저장 로직 개선: 관리자만 등록/수정/삭제 가능하도록 고정하고, 동일 배치(`maintenanceBatchId`) 기준으로 일괄 편집되도록 보강
-- 장소 유지보수 예약 수정 시 중복 예약이 있으면 일괄 저장을 차단하고, 선택 장소/대상 장비 수를 즉시 재계산하도록 UI를 보정
-- 장소 유지보수 신규 등록 진입 보정: 상단 `+ 장소 유지보수 예약` 버튼 클릭 시 이벤트 객체가 수정 키로 오인되지 않도록 모달 진입 인자를 정규화
-- 관리자 전용 사용자 메뉴얼 섹션 추가: 관리 화면에 위키형 메뉴얼 뷰어(목차 + 본문)와 섹션 관리 표를 신규 도입
-- 메뉴얼 설정 저장 추가: `config/app`에 `manualSections`를 저장하고, 관리자만 섹션 등록/수정/삭제할 수 있도록 편집 모달을 연결
-- 초기 사용자 메뉴얼 초안 반영: 접속/예약/대시보드/운영 유의사항 기본 섹션을 추가하고, 이미지가 없을 때는 스크린샷 대기 플레이스홀더를 표시
-- 관리자 사용자 메뉴얼 기본 섹션에 실제 스크린샷 경로(manual/reservation-step-01~03.png)를 연결하고, 이미지가 없는 섹션은 플레이스홀더 없이 본문만 표시하도록 정리
+## 2026-03-09 寃利?泥닿퀎 1李?- `core-utils.mjs` 異붽?: ?쒓컙 泥섎━, ?덉빟 以묐났 ?먯젙, ??꾨씪???뺣젹 洹쒖튃??怨듭슜 ?좏떥濡?遺꾨━
+- `app.js`?먯꽌 怨듭슜 ?좏떥???ъ슜?섎룄濡??곌껐?섏뿬 ?쒖닔 ?⑥닔 寃利???곴낵 ?ㅼ젣 濡쒖쭅???쇱튂?쒗궡
+- `tests/run-tests.mjs` 異붽?: ?щ㎎/?쒓컙 ?ㅻ깄/以묐났 ?먯젙/CRF 理쒖긽???뺣젹 洹쒖튃 ?먮룞 ?뺤씤
+- `docs/qa-checklist.md` 異붽?: ?섎룞 QA 湲곗? 臾몄꽌??- `docs/verification-workflow.md` 異붽?: 諛고룷 ???ㅽ뻾 紐낅졊怨??ㅽ뙣 ??泥섎━ ?먯튃 臾몄꽌??- 寃利?寃곌낵: `node --check app.js`, `node tests/run-tests.mjs` ?듦낵
+- ?꾩냽 ?섏젙: `app.js` 怨듭슜 ?좏떥 ?곌껐 怨쇱젙?먯꽌 源⑥쭊 臾몄옄??援щЦ ?ㅻ쪟瑜?蹂듦뎄?섍퀬, `app.js`媛 ?ㅼ떆 `core-utils.mjs`瑜??뺤긽 李몄“?섎룄濡??뺣━
+- 寃利?泥닿퀎 2李? 沅뚰븳 ?몄텧 洹쒖튃怨??덉빟 ?대룞/由ъ궗?댁쫰 ?먯젙 濡쒖쭅??`core-utils.mjs` 怨듭슜 ?좏떥濡?遺꾨━?섍퀬, ?먮룞 ?뚯뒪?몃? 8嫄댁쑝濡??뺤옣
+- ?ㅼ떆媛???꾨씪???뺣젹 蹂닿컯: ?λ퉬 ID??`CRF`媛 ?ы븿???λ퉬??Room怨?臾닿??섍쾶 ?곷떒 怨좎젙?섎룄濡??뺣젹 洹쒖튃 ?뺤옣
+- ?ㅼ떆媛???꾨씪??UX 蹂댁젙: ?꾩옱 ?쒓컖?좉낵 怨쇨굅 ?뚯쁺???ㅽ겕濡?而⑦뀗痢??꾩껜 ?믪씠??留욎떠 ?뚮뜑?섎룄濡?援ъ“瑜?議곗젙?섍퀬, 寃쎄낵 ?곸뿭???뚯깋 ?뚯쁺?쇰줈 ?쒖떆
+- 愿由ъ옄 ?꾩슜 ?μ냼 愿由??뺤옣: ?μ냼 ?좎?蹂댁닔 ?덉빟???쇨큵 愿由ы븯???쒕? 異붽??섍퀬, 湲곗〈 ?덉빟???쇨큵 ?섏젙/??젣 湲곕뒫???곌껐
+- ?μ냼 ?좎?蹂댁닔 ?덉빟 ???濡쒖쭅 媛쒖꽑: 愿由ъ옄留??깅줉/?섏젙/??젣 媛?ν븯?꾨줉 怨좎젙?섍퀬, ?숈씪 諛곗튂(`maintenanceBatchId`) 湲곗??쇰줈 ?쇨큵 ?몄쭛?섎룄濡?蹂닿컯
+- ?μ냼 ?좎?蹂댁닔 ?덉빟 ?섏젙 ??以묐났 ?덉빟???덉쑝硫??쇨큵 ??μ쓣 李⑤떒?섍퀬, ?좏깮 ?μ냼/????λ퉬 ?섎? 利됱떆 ?ш퀎?고븯?꾨줉 UI瑜?蹂댁젙
+- ?μ냼 ?좎?蹂댁닔 ?좉퇋 ?깅줉 吏꾩엯 蹂댁젙: ?곷떒 `+ ?μ냼 ?좎?蹂댁닔 ?덉빟` 踰꾪듉 ?대┃ ???대깽??媛앹껜媛 ?섏젙 ?ㅻ줈 ?ㅼ씤?섏? ?딅룄濡?紐⑤떖 吏꾩엯 ?몄옄瑜??뺢퇋??
+- 愿由ъ옄 ?꾩슜 ?ъ슜??硫붾돱???뱀뀡 異붽?: 愿由??붾㈃???꾪궎??硫붾돱??酉곗뼱(紐⑹감 + 蹂몃Ц)? ?뱀뀡 愿由??쒕? ?좉퇋 ?꾩엯
+- 硫붾돱???ㅼ젙 ???異붽?: `config/app`??`manualSections`瑜???ν븯怨? 愿由ъ옄留??뱀뀡 ?깅줉/?섏젙/??젣?????덈룄濡??몄쭛 紐⑤떖???곌껐
+- 珥덇린 ?ъ슜??硫붾돱??珥덉븞 諛섏쁺: ?묒냽/?덉빟/??쒕낫???댁쁺 ?좎쓽?ы빆 湲곕낯 ?뱀뀡??異붽??섍퀬, ?대?吏媛 ?놁쓣 ?뚮뒗 ?ㅽ겕由곗꺑 ?湲??뚮젅?댁뒪??붾? ?쒖떆
+- 愿由ъ옄 ?ъ슜??硫붾돱??湲곕낯 ?뱀뀡???ㅼ젣 ?ㅽ겕由곗꺑 寃쎈줈(manual/reservation-step-01~03.png)瑜??곌껐?섍퀬, ?대?吏媛 ?녿뒗 ?뱀뀡? ?뚮젅?댁뒪????놁씠 蹂몃Ц留??쒖떆?섎룄濡??뺣━
+
