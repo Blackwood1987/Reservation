@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/fireba
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { buildMobileReservationCategories, buildTimelineMachineIds, canRolePerform, canUserOperateBooking, clampHour, compareMachineIdAsc, deriveMachineCategory, formatTime, hasBookingOverlap, snapToHalfHour, sortByOrderThenName, validateBookingDrop, validateBookingResize } from "./core-utils.mjs";
+import { DEFAULT_SITE_NAME, DURATION_TEXT, defaultManualSections, defaultPurposeList, statusMeta } from "./ui-text.mjs";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC3hAHfZFH6g4SjQbwdFIh-V61wezsoDnY",
@@ -22,7 +23,7 @@ let locations = ["Room A","Room B"];
 let machineLocations = {"A-01":"Room A","A-02":"Room A","A-03":"Room A","A-04":"Room A","B-01":"Room B","B-02":"Room B","B-03":"Room B","B-04":"Room B"};
 let machineMgmtNos = {"A-01":"EQ-001","A-02":"EQ-002","A-03":"EQ-003","A-04":"EQ-004","B-01":"EQ-005","B-02":"EQ-006","B-03":"EQ-007","B-04":"EQ-008"};
 let machineDescs = {"A-01":"Class II cabinet","A-02":"Class II cabinet","A-03":"Service unit","A-04":"Service unit","B-01":"Process station","B-02":"Monitoring station","B-03":"Process station","B-04":"Cleaning station"};
-let sites = [{ id: "site-default", name: "기본 Site", order: 1, active: true }];
+let sites = [{ id: "site-default", name: DEFAULT_SITE_NAME, order: 1, active: true }];
 let rooms = [
   { id: "room-a", siteId: "site-default", name: "Room A", order: 1, active: true, layout: { x: 4, y: 6, w: 44, h: 40 } },
   { id: "room-b", siteId: "site-default", name: "Room B", order: 2, active: true, layout: { x: 52, y: 6, w: 44, h: 40 } }
@@ -32,56 +33,7 @@ let machineRoomIds = {
   "B-01": "room-b", "B-02": "room-b", "B-03": "room-b", "B-04": "room-b"
 };
 
-const statusMeta = {
-  free:{label:"사용 가능",color:"var(--status-free)",tile:"tile-free"},
-  process:{label:"공정 가동",color:"var(--status-process)",tile:"tile-process"},
-  maint:{label:"유지보수",color:"var(--status-maint)",tile:"tile-maint"},
-  em:{label:"환경 모니터",color:"var(--status-em)",tile:"tile-em"},
-  clean:{label:"청소/소독",color:"var(--status-clean)",tile:"tile-clean"},
-  other:{label:"기타",color:"var(--status-other)",tile:"tile-other"},
-  pending:{label:"승인 대기",color:"var(--status-pending)",tile:"tile-pending"},
-  system:{label:"자동 소독",color:"var(--status-system)",tile:"tile-system"}
-};
-
-const defaultPurposeList = [
-  { key: "process", label: "공정" },
-  { key: "maint", label: "유지보수" },
-  { key: "em", label: "EM" },
-  { key: "clean", label: "청소" },
-  { key: "other", label: "기타" }
-];
-
 let purposeList = [...defaultPurposeList];
-
-const defaultManualSections = [
-  {
-    id: "manual-reservation",
-    title: "예약 등록 방법",
-    body: "1. 상단 메뉴에서 [예약 관리]로 이동합니다.\n2. 장비, 날짜, 시작 시간, 목적, 소요 시간을 입력합니다.\n3. 저장 버튼을 눌러 예약을 등록합니다.\n4. 중복 시간이 있으면 저장되지 않으므로 시간을 다시 조정합니다.",
-    imageUrl: "manual/reservation-step-02.png",
-    imageCaption: "예약 등록 화면",
-    order: 1,
-    active: true
-  },
-  {
-    id: "manual-dashboard",
-    title: "대시보드 확인 방법",
-    body: "1. 대시보드에서 현재 가동 상태와 실시간 타임라인을 확인합니다.\n2. 장소 또는 장비를 클릭하면 상세 현황을 확인할 수 있습니다.\n3. 라이브 ON 상태에서는 현재 시각 기준으로 화면이 갱신됩니다.",
-    imageUrl: "manual/reservation-step-03.png",
-    imageCaption: "대시보드 확인 화면",
-    order: 2,
-    active: true
-  },
-  {
-    id: "manual-notes",
-    title: "운영 유의사항",
-    body: "1. 현재는 베타 운영 단계이므로 화면 구성과 정책이 변경될 수 있습니다.\n2. 예약이 보이지 않거나 저장되지 않으면 필수 입력값과 시간을 먼저 확인합니다.\n3. 수정/삭제 권한이 보이지 않으면 운영 관리자에게 요청합니다.",
-    imageUrl: "",
-    imageCaption: "",
-    order: 3,
-    active: true
-  }
-];
 
 const defaultManualSectionsById = Object.fromEntries(defaultManualSections.map(section=>[section.id, section]));
 
@@ -348,7 +300,7 @@ function expandTreePathForRoom(siteId,roomId){
 function applyLegacyMigrationData(data){
   const siteId="site-default";
   const legacyLocations=Array.isArray(data?.locations) && data.locations.length ? data.locations : locations;
-  sites=[{ id: siteId, name: "기본 Site", order: 1, active: true }];
+  sites=[{ id: siteId, name: DEFAULT_SITE_NAME, order: 1, active: true }];
   rooms=buildRoomsFromLocations(legacyLocations,siteId);
   assignAutoRoomLayouts(rooms);
   const roomByName=new Map(rooms.map(room=>[room.name,room.id]));
@@ -369,7 +321,7 @@ function applyLegacyMigrationData(data){
 }
 function ensureSiteRoomState(){
   if(!Array.isArray(sites) || sites.length===0){
-    sites=[{ id: "site-default", name: "기본 Site", order: 1, active: true }];
+    sites=[{ id: "site-default", name: DEFAULT_SITE_NAME, order: 1, active: true }];
   }
   if(!Array.isArray(rooms) || rooms.length===0){
     rooms=buildRoomsFromLocations(locations,sites[0].id);
@@ -761,7 +713,7 @@ function applyConfigData(data){
       active: site.active!==false
     }));
   }else{
-    sites = [{ id: "site-default", name: "기본 Site", order: 1, active: true }];
+    sites = [{ id: "site-default", name: DEFAULT_SITE_NAME, order: 1, active: true }];
   }
   if(Array.isArray(data.rooms) && data.rooms.length){
     rooms = data.rooms.map((room,index)=>({
@@ -816,7 +768,7 @@ function handleConfigMissing(){
   configState.needsMigrationSave = false;
   purposeList = [...defaultPurposeList];
   manualSections = defaultManualSections.map(section=>({ ...section }));
-  sites=[{ id: "site-default", name: "기본 Site", order: 1, active: true }];
+  sites=[{ id: "site-default", name: DEFAULT_SITE_NAME, order: 1, active: true }];
   rooms=buildRoomsFromLocations(locations,sites[0].id);
   assignAutoRoomLayouts(rooms);
   machineRoomIds={};
