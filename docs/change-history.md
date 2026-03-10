@@ -15,6 +15,7 @@
 
 | 날짜 | 커밋 | 변경 요약 | 영향 범위 | 검증 |
 |---|---|---|---|---|
+| 2026-03-10 | `3920099` | 사용자 메뉴얼 스크린샷이 원본보다 확대되지 않도록 원본 크기 기준으로 표시되게 조정 | `styles.css` | `node --check app.js`, `node tests\run-tests.mjs` |
 | 2026-03-10 | `ab9029e` | 사용자 메뉴얼 기본 섹션 문자열의 줄바꿈 구문 오류를 수정해 app.js 문법 오류를 복구 | `app.js` | `node --check app.js`, `node tests\run-tests.mjs` |
 | 2026-03-10 | `507187c` | 앱 셸 한글 깨짐과 잘못된 닫힘 태그를 복구하고 변경 이력 문서 인코딩을 정상화 | `app.html`, `docs/change-history.md` | `git diff --check -- app.html`, `node --check app.js`, `node tests\run-tests.mjs` |
 | 2026-03-10 | `5e52ebe` | 사용자 메뉴얼을 로그인 사용자용 탭으로 확장하고 로그인 안내/1번 스크린샷을 제외 | `app.html`, `app.js`, `styles.css` | `node --check app.js`, `node tests\run-tests.mjs` |
@@ -92,6 +93,7 @@
 - 프로젝트 구조/기술 스택 요약 문서(docs/project-overview.md)를 신규 추가.
 - 구조 개선 권장안 문서(docs/architecture-recommendations.md)를 신규 추가.
 
+- 사용자 메뉴얼 스크린샷은 원본 크기를 넘겨 확대하지 않도록 `.manual-image`를 `width:auto; max-width:100%`로 조정해 예약 등록 화면(367x484) 비율을 유지.
 ## 2026-03-09 검증 체계 1차
 - `core-utils.mjs` 추가: 시간 처리, 예약 중복 판정, 타임라인 정렬 규칙을 공용 유틸로 분리
 - `app.js`에서 공용 유틸을 사용하도록 연결하여 순수 함수 검증 대상과 실제 로직을 일치시킴
