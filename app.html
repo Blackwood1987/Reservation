@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>?λ퉬 ?덉빟 愿由??쒖뒪??(?곕え)</title>
+    <title>장비 예약 관리 시스템 (데모)</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="stylesheet" href="styles.css?v=20260305-51" />
@@ -13,103 +13,103 @@
 
     <header class="app-header">
       <div class="header-left">
-        <h2 class="app-title">?λ퉬 ?덉빟 愿由??쒖뒪??/h2>
-        <nav class="tab-container" id="main-tabs" aria-label="二쇱슂 ??>
-          <button class="tab-btn active" data-view="dashboard">??쒕낫??/button>
-          <button class="tab-btn" data-view="reservation">?덉빟 愿由?/button>
-          <button class="tab-btn" data-view="calendar">?붽컙 ?쇱젙</button>
+        <h2 class="app-title">장비 예약 관리 시스템</h2>
+        <nav class="tab-container" id="main-tabs" aria-label="주요 탭">
+          <button class="tab-btn active" data-view="dashboard">대시보드</button>
+          <button class="tab-btn" data-view="reservation">예약 관리</button>
+          <button class="tab-btn" data-view="calendar">월간 일정</button>
           <button class="tab-btn" id="tab-manual" data-view="manual" hidden>&#xC0AC;&#xC6A9;&#xC790; &#xBA54;&#xB274;&#xC5BC;</button>
-          <button class="tab-btn manager-only" id="tab-admin" data-view="admin" hidden>愿由?/button>
+          <button class="tab-btn manager-only" id="tab-admin" data-view="admin" hidden>관리</button>
         </nav>
       </div>
       <div class="header-right">
         <div class="user-profile">
           <span id="user-badge" class="user-badge">GUEST</span>
-          <span id="user-name" class="user-name">濡쒓렇???꾩슂</span>
-          <button id="btn-logout" class="btn-logout" type="button">濡쒓렇?꾩썐</button>
+          <span id="user-name" class="user-name">로그인 필요</span>
+          <button id="btn-logout" class="btn-logout" type="button">로그아웃</button>
         </div>
       </div>
     </header>
 
     <main class="app-main">
-      <section id="mobile-shell" class="mobile-shell" aria-label="紐⑤컮???댁쁺 ?붾㈃">
+      <section id="mobile-shell" class="mobile-shell" aria-label="모바일 운영 화면">
         <div class="mobile-shell-top">
-          <button id="btn-mobile-menu" class="mobile-icon-btn" type="button" aria-label="硫붾돱 ?닿린">??/button>
-          <h3 id="mobile-pane-title" class="mobile-pane-title">??쒕낫??/h3>
-          <button id="btn-mobile-center-reserve-top" class="mobile-top-reserve" type="button">?덉빟</button>
+          <button id="btn-mobile-menu" class="mobile-icon-btn" type="button" aria-label="메뉴 열기">☰</button>
+          <h3 id="mobile-pane-title" class="mobile-pane-title">대시보드</h3>
+          <button id="btn-mobile-center-reserve-top" class="mobile-top-reserve" type="button">예약</button>
         </div>
 
         <div id="mobile-drawer" class="mobile-drawer" hidden>
-          <button class="mobile-nav-btn active" type="button" data-mobile-pane="dashboard">??쒕낫??/button>
-          <button class="mobile-nav-btn" type="button" data-mobile-pane="reservation">?덉빟 愿由?/button>
+          <button class="mobile-nav-btn active" type="button" data-mobile-pane="dashboard">대시보드</button>
+          <button class="mobile-nav-btn" type="button" data-mobile-pane="reservation">예약 관리</button>
           <button id="mobile-nav-manual-drawer" class="mobile-nav-btn" type="button" data-mobile-pane="manual" hidden>&#xC0AC;&#xC6A9;&#xC790; &#xBA54;&#xB274;&#xC5BC;</button>
         </div>
 
         <div class="mobile-shell-body">
-          <nav id="mobile-nav-rail" class="mobile-nav-rail" aria-label="紐⑤컮??硫붾돱">
-            <button class="mobile-nav-btn active" type="button" data-mobile-pane="dashboard">??쒕낫??/button>
-            <button class="mobile-nav-btn" type="button" data-mobile-pane="reservation">?덉빟 愿由?/button>
+          <nav id="mobile-nav-rail" class="mobile-nav-rail" aria-label="모바일 메뉴">
+            <button class="mobile-nav-btn active" type="button" data-mobile-pane="dashboard">대시보드</button>
+            <button class="mobile-nav-btn" type="button" data-mobile-pane="reservation">예약 관리</button>
             <button id="mobile-nav-manual-rail" class="mobile-nav-btn" type="button" data-mobile-pane="manual" hidden>&#xBA54;&#xB274;&#xC5BC;</button>
           </nav>
 
           <div class="mobile-pane-wrap">
-            <section id="mobile-dashboard-pane" class="mobile-pane active" aria-label="紐⑤컮????쒕낫??>
+            <section id="mobile-dashboard-pane" class="mobile-pane active" aria-label="모바일 대시보드">
               <div class="mobile-chart-wrap">
-                <div id="mobile-donut-metric" class="mobile-donut-metric" aria-live="polite">媛?숇쪧 --%</div>
-                <svg id="mobile-dashboard-donut" viewBox="0 0 220 220" class="mobile-dashboard-donut" aria-label="媛??遺꾩꽍"></svg>
-                <button id="btn-mobile-center-reserve" class="mobile-center-reserve is-readonly" type="button" aria-label="?쎄린 ?꾩슜"><span class="reserve-center-icon" aria-hidden="true">??/span></button>
+                <div id="mobile-donut-metric" class="mobile-donut-metric" aria-live="polite">가동률 --%</div>
+                <svg id="mobile-dashboard-donut" viewBox="0 0 220 220" class="mobile-dashboard-donut" aria-label="가동 분석"></svg>
+                <button id="btn-mobile-center-reserve" class="mobile-center-reserve is-readonly" type="button" aria-label="읽기 전용"><span class="reserve-center-icon" aria-hidden="true">•</span></button>
               </div>
             </section>
 
-            <section id="mobile-reservation-pane" class="mobile-pane" aria-label="紐⑤컮???덉빟愿由?>
+            <section id="mobile-reservation-pane" class="mobile-pane" aria-label="모바일 예약관리">
               <div class="mobile-chart-wrap chrono">
-                <svg id="mobile-chrono" viewBox="0 0 240 240" class="mobile-chrono" aria-label="?덉빟 ?щ줈?멸렇?섑봽"></svg>
+                <svg id="mobile-chrono" viewBox="0 0 240 240" class="mobile-chrono" aria-label="예약 크로노그래프"></svg>
               </div>
             </section>
           </div>
 
-          <aside id="mobile-legend-rail" class="mobile-legend-rail" aria-label="?곹깭 踰붾?"></aside>
+          <aside id="mobile-legend-rail" class="mobile-legend-rail" aria-label="상태 범례"></aside>
         </div>
 
-        <div id="mobile-legend-bottom" class="mobile-legend-bottom" aria-label="?곹깭 踰붾?"></div>
+        <div id="mobile-legend-bottom" class="mobile-legend-bottom" aria-label="상태 범례"></div>
       </section>
 
       <section id="view-dashboard" class="view-section active" aria-labelledby="dashboard-title">
-        <div class="dashboard-summary" id="dashboard-summary" aria-label="??쒕낫???붿빟"></div>
-        <div class="dashboard-legend" id="dashboard-legend" aria-label="?곹깭 踰붾?"></div>
-        <div class="dashboard-mobile-tabs" id="dashboard-mobile-tabs" role="tablist" aria-label="紐⑤컮????쒕낫??蹂닿린">
-          <button class="mobile-view-btn active" data-mobile-view="summary" type="button" role="tab" aria-selected="true">?붿빟</button>
-          <button class="mobile-view-btn" data-mobile-view="map" type="button" role="tab" aria-selected="false">猷몃㏊</button>
-          <button class="mobile-view-btn" data-mobile-view="timeline" type="button" role="tab" aria-selected="false">??꾨씪??/button>
+        <div class="dashboard-summary" id="dashboard-summary" aria-label="대시보드 요약"></div>
+        <div class="dashboard-legend" id="dashboard-legend" aria-label="상태 범례"></div>
+        <div class="dashboard-mobile-tabs" id="dashboard-mobile-tabs" role="tablist" aria-label="모바일 대시보드 보기">
+          <button class="mobile-view-btn active" data-mobile-view="summary" type="button" role="tab" aria-selected="true">요약</button>
+          <button class="mobile-view-btn" data-mobile-view="map" type="button" role="tab" aria-selected="false">룸맵</button>
+          <button class="mobile-view-btn" data-mobile-view="timeline" type="button" role="tab" aria-selected="false">타임라인</button>
         </div>
         <div class="dashboard-layout">
           <div class="left-panel">
             <article class="card map-card">
               <div class="card-header">
                 <div>
-                  <h3 id="dashboard-title" class="card-title">猷?留?/h3>
-                  <p class="card-sub">Site/Room &#xC120;&#xD0DD; &#xD6C4; &#xC7A5;&#xBE44; &#xC0C1;&#xD0DC; &#xD655;&#xC778;</p>
+                  <h3 id="dashboard-title" class="card-title">룸 맵</h3>
+                  <p class="card-sub">Site/Room 선택 후 장비 상태 확인</p>
                 </div>
-                <div class="card-meta" id="map-time-label">湲곗? ?쒓컖: --:--</div>
+                <div class="card-meta" id="map-time-label">기준 시각: --:--</div>
               </div>
-              <div class="map-wrapper" id="map-wrapper" role="img" aria-label="?λ퉬 ?곹깭 留?>
+              <div class="map-wrapper" id="map-wrapper" role="img" aria-label="장비 상태 맵">
                 <div class="map-split" id="map-split">
-                  <aside class="map-tree-panel" aria-label="Site/Room ?먯깋">
+                  <aside class="map-tree-panel" aria-label="Site/Room 탐색">
                     <div class="map-tree-tools">
-                      <input id="map-search" type="text" placeholder="Site/Room/?λ퉬 寃?? />
+                      <input id="map-search" type="text" placeholder="Site/Room/장비 검색" />
                     </div>
                     <div class="map-site-list" id="map-site-list"></div>
                   </aside>
-                  <section class="map-canvas-panel" aria-label="Room 留?>
+                  <section class="map-canvas-panel" aria-label="Room 맵">
                     <div class="map-canvas-header">
                       <div class="map-canvas-title-wrap">
-                        <strong id="map-canvas-title">Room 諛곗튂</strong>
+                        <strong id="map-canvas-title">Room 배치</strong>
                         <span id="map-canvas-subtitle"></span>
                       </div>
                       <div class="map-canvas-actions" id="map-canvas-actions" hidden>
-                        <button id="btn-map-layout-toggle" class="btn-map-layout" type="button">諛곗튂 ?몄쭛</button>
-                        <button id="btn-map-layout-cancel" class="btn-map-layout ghost" type="button">痍⑥냼</button>
-                        <button id="btn-map-layout-save" class="btn-map-layout save" type="button">???/button>
+                        <button id="btn-map-layout-toggle" class="btn-map-layout" type="button">배치 편집</button>
+                        <button id="btn-map-layout-cancel" class="btn-map-layout ghost" type="button">취소</button>
+                        <button id="btn-map-layout-save" class="btn-map-layout save" type="button">저장</button>
                       </div>
                     </div>
                     <p id="map-layout-warning" class="map-layout-warning" hidden></p>
@@ -122,15 +122,15 @@
 
             <article class="card timeline-card">
               <div class="card-header">
-                <h3 class="card-title">?ㅼ떆媛???꾨씪??/h3>
+                <h3 class="card-title">실시간 타임라인</h3>
                 <div class="card-meta" id="timeline-date-label"></div>
               </div>
               <div class="time-controller">
-                <span class="time-label">媛?대뱶 ?대┃ ?대룞 (30遺??⑥쐞)</span>
+                <span class="time-label">가이드 클릭 이동 (30분 단위)</span>
                 <input id="time-slider" type="hidden" min="9" max="18" step="0.5" value="9" />
                 <div class="time-actions">
                   <span id="time-slider-label" class="time-value">09:00</span>
-                  <button id="btn-live" class="btn-live-indicator active" type="button" disabled>?쇱씠釉?ON</button>
+                  <button id="btn-live" class="btn-live-indicator active" type="button" disabled>라이브 ON</button>
                 </div>
               </div>
               <div class="timeline-header" aria-hidden="true">
@@ -144,7 +144,7 @@
           <aside class="right-panel">
             <article class="card detail-card" id="side-panel-detail">
               <div class="card-header">
-                <h3 class="card-title">?좏깮 ????곸꽭</h3>
+                <h3 class="card-title">선택 대상 상세</h3>
                 <div class="card-meta" id="detail-date-label"></div>
               </div>
               <div id="detail-panel-body" class="detail-panel-body"></div>
@@ -156,28 +156,28 @@
       <section id="view-reservation" class="view-section" aria-labelledby="reservation-title">
         <article class="card reservation-card">
           <div class="card-header">
-            <h3 id="reservation-title" class="card-title">二쇨컙/?쇨컙 ?덉빟 ?ㅼ?以꾪몴</h3>
-            <div class="date-controller" role="group" aria-label="?좎쭨 ?대룞">
-              <button class="nav-btn" data-date-delta="-1" type="button">?</button>
+            <h3 id="reservation-title" class="card-title">주간/일간 예약 스케줄표</h3>
+            <div class="date-controller" role="group" aria-label="날짜 이동">
+              <button class="nav-btn" data-date-delta="-1" type="button">◀</button>
               <span id="reservation-date-label" class="date-label"></span>
-              <button class="nav-btn" data-date-delta="1" type="button">??/button>
-              <button id="btn-today" class="btn-today" type="button">?ㅻ뒛</button>
+              <button class="nav-btn" data-date-delta="1" type="button">▶</button>
+              <button id="btn-today" class="btn-today" type="button">오늘</button>
             </div>
           </div>
-          <div class="schedule-toolbar" role="group" aria-label="?덉빟 ?꾪꽣">
+          <div class="schedule-toolbar" role="group" aria-label="예약 필터">
             <label class="schedule-filter">
-              <span>?μ냼</span>
+              <span>장소</span>
               <select id="schedule-location-filter"></select>
             </label>
             <label class="schedule-filter">
-              <span>?λ퉬 寃??/span>
-              <input id="schedule-machine-search" type="text" placeholder="?λ퉬ID/愿由щ쾲???ㅻ챸" />
+              <span>장비 검색</span>
+              <input id="schedule-machine-search" type="text" placeholder="장비ID/관리번호/설명" />
             </label>
             <label class="schedule-filter schedule-filter-check">
               <input id="schedule-my-only" type="checkbox" />
-              <span>???덉빟留?/span>
+              <span>내 예약만</span>
             </label>
-            <button id="btn-schedule-filter-reset" class="btn-filter-reset" type="button">?꾪꽣 珥덇린??/button>
+            <button id="btn-schedule-filter-reset" class="btn-filter-reset" type="button">필터 초기화</button>
           </div>
           <div class="table-wrapper">
             <table class="schedule-table" aria-describedby="reservation-title">
@@ -205,9 +205,9 @@
       <section id="view-calendar" class="view-section" aria-labelledby="calendar-title">
         <article class="card calendar-card">
           <div class="cal-nav">
-            <button class="cal-nav-btn" data-month-delta="-1" type="button">?</button>
+            <button class="cal-nav-btn" data-month-delta="-1" type="button">◀</button>
             <h3 id="calendar-title" class="cal-title"></h3>
-            <button class="cal-nav-btn" data-month-delta="1" type="button">??/button>
+            <button class="cal-nav-btn" data-month-delta="1" type="button">▶</button>
           </div>
           <div class="calendar-grid" id="calendar-grid" role="grid" aria-labelledby="calendar-title"></div>
           <div id="calendar-mobile" class="calendar-mobile"></div>
@@ -234,50 +234,50 @@
 
       <section id="view-admin" class="view-section" aria-labelledby="admin-title">
         <div class="dashboard-layout admin-layout">
-          <nav class="admin-sidebar" aria-label="愿由?硫붾돱">
+          <nav class="admin-sidebar" aria-label="관리 메뉴">
             <button class="admin-btn active" data-admin-view="users">
-              <strong>?ъ슜??愿由?/strong>
-              <span>怨꾩젙 ?앹꽦 諛?沅뚰븳 ?ㅼ젙</span>
+              <strong>사용자 관리</strong>
+              <span>계정 생성 및 권한 설정</span>
             </button>
             <button class="admin-btn" data-admin-view="machines">
-              <strong>?λ퉬 愿由?/strong>
-              <span>?λ퉬 ?깅줉/?섏젙/??젣</span>
+              <strong>장비 관리</strong>
+              <span>장비 등록/수정/삭제</span>
             </button>
             <button class="admin-btn" data-admin-view="purposes">
-              <strong>媛??紐⑹쟻 愿由?/strong>
-              <span>紐⑹쟻 紐⑸줉 ?몄쭛</span>
+              <strong>가동 목적 관리</strong>
+              <span>목적 목록 편집</span>
             </button>
             <button class="admin-btn" data-admin-view="locations">
-              <strong>?μ냼 愿由?/strong>
-              <span>?μ냼 ?깅줉/?섏젙/??젣</span>
+              <strong>장소 관리</strong>
+              <span>장소 등록/수정/삭제</span>
             </button>
             <button class="admin-btn" data-admin-view="manual">
-              <strong>?ъ슜??硫붾돱??/strong>
-              <span>?ъ슜???덈궡 臾몄꽌 ?몄쭛</span>
+              <strong>사용자 메뉴얼</strong>
+              <span>사용자 안내 문서 편집</span>
             </button>
             <button class="admin-btn" data-admin-view="audit">
-              <strong>?댁쁺 ?대젰 諛?蹂닿퀬</strong>
-              <span>?대젰 議고쉶 諛?由ы룷??/span>
+              <strong>운영 이력 및 보고</strong>
+              <span>이력 조회 및 리포트</span>
             </button>
             <button class="admin-btn" data-admin-view="stats">
-              <strong>?댁쁺 ?듦퀎</strong>
-              <span>紐⑹쟻/遺?쒕퀎 ?ъ슜 遺꾩꽍</span>
+              <strong>운영 통계</strong>
+              <span>목적/부서별 사용 분석</span>
             </button>
           </nav>
 
           <article class="card admin-main">
-            <div id="admin-title" class="sr-only">愿由?/div>
-            <div class="admin-toolbar" id="admin-toolbar" role="group" aria-label="愿由?紐⑸줉 ?꾪꽣">
-              <input id="admin-search" type="text" placeholder="寃?됱뼱 ?낅젰" />
+            <div id="admin-title" class="sr-only">관리</div>
+            <div class="admin-toolbar" id="admin-toolbar" role="group" aria-label="관리 목록 필터">
+              <input id="admin-search" type="text" placeholder="검색어 입력" />
               <select id="admin-status-filter"></select>
               <select id="admin-sort-filter"></select>
-              <button id="btn-admin-filter-reset" class="btn btn-cancel" type="button">珥덇린??/button>
-              <button id="btn-admin-compact" class="btn btn-save" type="button">??媛꾧꺽 異뺤냼</button>
+              <button id="btn-admin-filter-reset" class="btn btn-cancel" type="button">초기화</button>
+              <button id="btn-admin-compact" class="btn btn-save" type="button">행 간격 축소</button>
             </div>
 
             <section id="admin-users" class="admin-section active">
               <div class="card-header">
-                <h3 class="card-title">?ъ슜??怨꾩젙 紐⑸줉</h3>
+                <h3 class="card-title">사용자 계정 목록</h3>
                 <button id="btn-create-user" class="btn-time-reset success" type="button">&#xC0C8;&#xB85C;&#xACE0;&#xCE68;</button>
               </div>
               <div class="admin-table-wrap">
@@ -298,29 +298,29 @@
 
             <section id="admin-locations" class="admin-section">
               <div class="card-header">
-                <h3 class="card-title">Site / Room 愿由?/h3>
+                <h3 class="card-title">Site / Room 관리</h3>
                 <div class="admin-header-actions">
-                  <button id="btn-location-maintenance" class="btn-time-reset warning" type="button">+ ?μ냼 ?좎?蹂댁닔 ?덉빟</button>
-                  <button id="btn-create-site" class="btn-time-reset success" type="button">+ Site ?깅줉</button>
-                  <button id="btn-create-room" class="btn-time-reset success" type="button">+ Room ?깅줉</button>
+                  <button id="btn-location-maintenance" class="btn-time-reset warning" type="button">+ 장소 유지보수 예약</button>
+                  <button id="btn-create-site" class="btn-time-reset success" type="button">+ Site 등록</button>
+                  <button id="btn-create-room" class="btn-time-reset success" type="button">+ Room 등록</button>
                 </div>
               </div>
-              <div class="admin-subhead">Site 紐⑸줉</div>
+              <div class="admin-subhead">Site 목록</div>
               <div class="admin-table-wrap compact">
                 <table class="user-table">
                   <thead>
                     <tr>
                       <th>Site ID</th>
-                      <th>Site紐?/th>
-                      <th>Room ??/th>
-                      <th>?곹깭</th>
-                      <th>愿由?/th>
+                      <th>Site명</th>
+                      <th>Room 수</th>
+                      <th>상태</th>
+                      <th>관리</th>
                     </tr>
                   </thead>
                   <tbody id="site-table-body"></tbody>
                 </table>
               </div>
-              <div class="admin-subhead">Room 紐⑸줉</div>
+              <div class="admin-subhead">Room 목록</div>
               <div class="admin-header-actions room-filter-row">
                 <label class="schedule-filter inline">
                   <span>Site</span>
@@ -331,30 +331,30 @@
                 <table class="user-table">
                   <thead>
                     <tr>
-                      <th>Room紐?/th>
+                      <th>Room명</th>
                       <th>Site</th>
                       <th>&#xC7A5;&#xBE44; &#xC218;</th>
-                      <th>醫뚰몴(x,y,w,h)</th>
-                      <th>?곹깭</th>
+                      <th>좌표(x,y,w,h)</th>
+                      <th>상태</th>
                       <th>&#xAD00;&#xB9AC;</th>
                     </tr>
                   </thead>
                   <tbody id="room-table-body"></tbody>
                 </table>
               </div>
-              <div class="admin-subhead">?μ냼 ?좎?蹂댁닔 ?덉빟 ?쇨큵 愿由?/div>
-              <p class="admin-inline-note">愿由ъ옄媛 ?깅줉???μ냼 ?좎?蹂댁닔 ?덉빟???쇨큵 ?섏젙?섍굅????젣?????덉뒿?덈떎.</p>
+              <div class="admin-subhead">장소 유지보수 예약 일괄 관리</div>
+              <p class="admin-inline-note">관리자가 등록한 장소 유지보수 예약을 일괄 수정하거나 삭제할 수 있습니다.</p>
               <div class="admin-table-wrap compact">
                 <table class="user-table">
                   <thead>
                     <tr>
-                      <th>?좎쭨</th>
-                      <th>?쒓컙</th>
-                      <th>????μ냼</th>
-                      <th>?묒뾽紐??대떦</th>
-                      <th>?ъ쑀</th>
-                      <th>????λ퉬</th>
-                      <th>愿由?/th>
+                      <th>날짜</th>
+                      <th>시간</th>
+                      <th>대상 장소</th>
+                      <th>작업명/담당</th>
+                      <th>사유</th>
+                      <th>대상 장비</th>
+                      <th>관리</th>
                     </tr>
                   </thead>
                   <tbody id="location-maintenance-table-body"></tbody>
@@ -364,8 +364,8 @@
 
             <section id="admin-machines" class="admin-section">
               <div class="card-header">
-                <h3 class="card-title">?λ퉬 紐⑸줉</h3>
-                <button id="btn-create-machine" class="btn-time-reset success" type="button">+ ?λ퉬 ?깅줉</button>
+                <h3 class="card-title">장비 목록</h3>
+                <button id="btn-create-machine" class="btn-time-reset success" type="button">+ 장비 등록</button>
               </div>
               <div class="admin-table-wrap">
                 <table class="user-table">
@@ -386,17 +386,17 @@
 
             <section id="admin-purposes" class="admin-section">
               <div class="card-header">
-                <h3 class="card-title">媛??紐⑹쟻 愿由?/h3>
-                <button id="btn-create-purpose" class="btn-time-reset success" type="button">+ 紐⑹쟻 ?깅줉</button>
+                <h3 class="card-title">가동 목적 관리</h3>
+                <button id="btn-create-purpose" class="btn-time-reset success" type="button">+ 목적 등록</button>
               </div>
               <div class="admin-table-wrap">
                 <table class="user-table">
                   <thead>
                     <tr>
-                      <th>肄붾뱶</th>
-                      <th>?쒖떆紐?/th>
-                      <th>?곸슜 ?λ퉬</th>
-                      <th>愿由?/th>
+                      <th>코드</th>
+                      <th>표시명</th>
+                      <th>적용 장비</th>
+                      <th>관리</th>
                     </tr>
                   </thead>
                   <tbody id="purpose-table-body"></tbody>
@@ -405,27 +405,27 @@
             </section>
             <section id="admin-manual" class="admin-section">
               <div class="card-header">
-                <h3 class="card-title">?ъ슜??硫붾돱??/h3>
-                <button id="btn-create-manual-section" class="btn-time-reset success" type="button">+ ?뱀뀡 異붽?</button>
+                <h3 class="card-title">사용자 메뉴얼</h3>
+                <button id="btn-create-manual-section" class="btn-time-reset success" type="button">+ 섹션 추가</button>
               </div>
-              <p class="admin-inline-note">?꾩옱??愿由ъ옄?먭쾶留??몄텧?⑸땲?? ?댁슜 寃?좉? ?앸굹硫??묒뾽???붾㈃?쇰줈 ?뺤옣?????덉뒿?덈떎.</p>
+              <p class="admin-inline-note">상단 사용자 메뉴얼 탭에 노출되는 내용을 여기서 편집합니다.</p>
               <div class="manual-admin-layout">
                 <aside class="manual-toc-panel">
-                  <div class="manual-panel-title">紐⑹감</div>
+                  <div class="manual-panel-title">목차</div>
                   <div id="manual-toc" class="manual-toc"></div>
                 </aside>
                 <div id="manual-content" class="manual-content"></div>
               </div>
-              <div class="admin-subhead">硫붾돱???뱀뀡 愿由?/div>
+              <div class="admin-subhead">메뉴얼 섹션 관리</div>
               <div class="admin-table-wrap compact">
                 <table class="user-table">
                   <thead>
                     <tr>
-                      <th>?쒖꽌</th>
-                      <th>?쒕ぉ</th>
-                      <th>?대?吏</th>
-                      <th>?곹깭</th>
-                      <th>愿由?/th>
+                      <th>순서</th>
+                      <th>제목</th>
+                      <th>이미지</th>
+                      <th>상태</th>
+                      <th>관리</th>
                     </tr>
                   </thead>
                   <tbody id="manual-section-table-body"></tbody>
@@ -435,28 +435,28 @@
 
             <section id="admin-audit" class="admin-section">
               <div class="card-header">
-                <h3 class="card-title">?댁쁺 ?대젰 諛?由ы룷??/h3>
-                <div class="card-meta">?꾨줎???곕え (?뺤옣 ?꾩젣)</div>
+                <h3 class="card-title">운영 이력 및 리포트</h3>
+                <div class="card-meta">프론트 데모 (확장 전제)</div>
               </div>
               <div class="audit-panels">
                 <div class="audit-panel">
-                  <div class="audit-icon">?뱴</div>
-                  <h4>?댁쁺 ?대젰</h4>
-                  <p>?좏깮 ?좎쭨???덉빟/??젣/諛섎젮 ?대젰??議고쉶?⑸땲??</p>
+                  <div class="audit-icon">📚</div>
+                  <h4>운영 이력</h4>
+                  <p>선택 날짜의 예약/삭제/반려 이력을 조회합니다.</p>
                   <div class="audit-header-actions">
-                    <button id="btn-refresh-audit-history" class="btn-time-reset" type="button">?대젰 ?덈줈怨좎묠</button>
+                    <button id="btn-refresh-audit-history" class="btn-time-reset" type="button">이력 새로고침</button>
                   </div>
                   <div id="audit-summary" class="audit-summary"></div>
                   <div class="audit-history-wrap">
                     <table class="user-table audit-table">
                       <thead>
                         <tr>
-                          <th>?λ퉬</th>
-                          <th>?묒뾽??/th>
-                          <th>紐⑹쟻</th>
-                          <th>?곹깭</th>
-                          <th>?쒓컙</th>
-                          <th>?ъ쑀</th>
+                          <th>장비</th>
+                          <th>작업자</th>
+                          <th>목적</th>
+                          <th>상태</th>
+                          <th>시간</th>
+                          <th>사유</th>
                         </tr>
                       </thead>
                       <tbody id="audit-history-body"></tbody>
@@ -464,20 +464,20 @@
                   </div>
                 </div>
                 <div class="audit-panel">
-                  <div class="audit-icon">?뱞</div>
-                  <h4>?쇱씪 ?댁쁺 由ы룷??/h4>
-                  <p>?좏깮???좎쭨???덉빟 ?꾪솴???몄뇙?⑸땲??</p>
+                  <div class="audit-icon">📄</div>
+                  <h4>일일 운영 리포트</h4>
+                  <p>선택한 날짜의 예약 현황을 인쇄합니다.</p>
                   <div class="form-group">
-                    <label for="report-date">由ы룷???좎쭨</label>
+                    <label for="report-date">리포트 날짜</label>
                     <input id="report-date" type="date" />
                   </div>
-                  <button id="btn-print" class="btn-audit-big" type="button">由ы룷???몄뇙</button>
+                  <button id="btn-print" class="btn-audit-big" type="button">리포트 인쇄</button>
                   <div class="audit-backup-actions">
-                    <button id="btn-export-audit-csv" class="btn btn-save" type="button">?댁쁺 ?대젰 CSV 諛깆뾽</button>
-                    <button id="btn-export-activity-json" class="btn btn-cancel" type="button">?묒뾽 ?대젰 JSON 諛깆뾽</button>
+                    <button id="btn-export-audit-csv" class="btn btn-save" type="button">운영 이력 CSV 백업</button>
+                    <button id="btn-export-activity-json" class="btn btn-cancel" type="button">작업 이력 JSON 백업</button>
                   </div>
-                  <p class="audit-backup-note">?곕え ?댁쁺 以묒뿉??愿由ъ옄媛 ?뺥빐吏?二쇨린濡??섎룞 諛깆뾽???섑뻾?섏꽭??</p>
-                  <h4 class="audit-subtitle">理쒓렐 愿由ъ옄 ?묒뾽</h4>
+                  <p class="audit-backup-note">데모 운영 중에는 관리자가 정해진 주기로 수동 백업을 수행하세요.</p>
+                  <h4 class="audit-subtitle">최근 관리자 작업</h4>
                   <div id="admin-activity-list" class="admin-activity-list"></div>
                 </div>
               </div>
@@ -485,51 +485,51 @@
 
             <section id="admin-stats" class="admin-section">
               <div class="card-header">
-                <h3 class="card-title">?댁쁺 ?듦퀎 (?곕え)</h3>
+                <h3 class="card-title">운영 통계 (데모)</h3>
                 <div class="stats-controls">
-                  <button id="btn-stats-prev" class="nav-btn" type="button">?</button>
+                  <button id="btn-stats-prev" class="nav-btn" type="button">◀</button>
                   <span id="stats-month-label" class="stats-month-label"></span>
-                  <button id="btn-stats-next" class="nav-btn" type="button">??/button>
-                  <button id="btn-stats-current" class="btn-today" type="button">?꾩옱 ??/button>
+                  <button id="btn-stats-next" class="nav-btn" type="button">▶</button>
+                  <button id="btn-stats-current" class="btn-today" type="button">현재 월</button>
                 </div>
               </div>
               <p id="stats-capacity-note" class="stats-capacity-note"></p>
               <div class="stats-grid">
                 <div class="stat-card process">
-                  <strong>怨듭젙 媛??/strong>
+                  <strong>공정 가동</strong>
                   <div class="stat-value" id="stat-process">-</div>
-                  <span>?좏깮 ???꾩쟻 ?쒓컙</span>
+                  <span>선택 월 누적 시간</span>
                 </div>
                 <div class="stat-card maint">
-                  <strong>?좎?蹂댁닔</strong>
+                  <strong>유지보수</strong>
                   <div class="stat-value" id="stat-maint">-</div>
-                  <span>?좏깮 ???꾩쟻 ?쒓컙</span>
+                  <span>선택 월 누적 시간</span>
                 </div>
                 <div class="stat-card clean">
-                  <strong>泥?냼 諛??뚮룆</strong>
+                  <strong>청소 및 소독</strong>
                   <div class="stat-value" id="stat-clean">-</div>
-                  <span>?좏깮 ???꾩쟻 ?쒓컙</span>
+                  <span>선택 월 누적 시간</span>
                 </div>
               </div>
               <div class="admin-stats-layout">
                 <section class="stats-panel">
-                  <h4>?붽컙 ?붿빟</h4>
+                  <h4>월간 요약</h4>
                   <div id="stats-kpi-list" class="stats-kpi-list"></div>
                 </section>
                 <section class="stats-panel">
-                  <h4>紐⑹쟻蹂??ъ슜 鍮꾩쑉</h4>
+                  <h4>목적별 사용 비율</h4>
                   <div id="stats-purpose-bars" class="stats-purpose-bars"></div>
                 </section>
                 <section class="stats-panel">
-                  <h4>?μ냼蹂??꾪솴</h4>
+                  <h4>장소별 현황</h4>
                   <div class="admin-table-wrap">
                     <table class="user-table">
                       <thead>
                         <tr>
-                          <th>?μ냼</th>
-                          <th>?λ퉬 ??/th>
-                          <th>?덉빟 嫄댁닔</th>
-                          <th>?ъ슜 ?쒓컙</th>
+                          <th>장소</th>
+                          <th>장비 수</th>
+                          <th>예약 건수</th>
+                          <th>사용 시간</th>
                         </tr>
                       </thead>
                       <tbody id="stats-location-body"></tbody>
@@ -537,7 +537,7 @@
                   </div>
                 </section>
                 <section class="stats-panel">
-                  <h4>?곸쐞 ?ъ슜 ?λ퉬</h4>
+                  <h4>상위 사용 장비</h4>
                   <ol id="stats-top-machines" class="stats-top-machines"></ol>
                 </section>
               </div>
@@ -549,267 +549,267 @@
 
     <div id="booking-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="booking-title">
       <div class="modal">
-        <h3 id="booking-title" class="modal-title">?묒뾽 ?덉빟 ?깅줉</h3>
+        <h3 id="booking-title" class="modal-title">작업 예약 등록</h3>
         <p id="booking-sub" class="modal-sub"></p>
         <div class="form-group">
-          <label for="booking-user">?묒뾽??/label>
-          <input id="booking-user" type="text" placeholder="?? 源?곌뎄?? />
+          <label for="booking-user">작업자</label>
+          <input id="booking-user" type="text" placeholder="예: 김연구원" />
         </div>
         <div class="form-group">
-          <label for="booking-date">?좎쭨</label>
+          <label for="booking-date">날짜</label>
           <input id="booking-date" type="date" />
         </div>
         <div class="form-group">
-          <label for="booking-purpose">紐⑹쟻</label>
+          <label for="booking-purpose">목적</label>
           <select id="booking-purpose">
-            <option value="process">怨듭젙</option>
-            <option value="maint">?좎?蹂댁닔</option>
+            <option value="process">공정</option>
+            <option value="maint">유지보수</option>
             <option value="em">EM</option>
-            <option value="clean">泥?냼</option>
-            <option value="other">湲고?</option>
+            <option value="clean">청소</option>
+            <option value="other">기타</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="booking-start">?쒖옉 ?쒓컙 (30遺??⑥쐞)</label>
+          <label for="booking-start">시작 시간 (30분 단위)</label>
           <select id="booking-start"></select>
         </div>
         <div class="form-group">
-          <label for="booking-duration">?뚯슂 ?쒓컙</label>
+          <label for="booking-duration">소요 시간</label>
           <select id="booking-duration">
-            <option value="0.5">30遺?/option>
-            <option value="1">1?쒓컙</option>
-            <option value="1.5">1?쒓컙 30遺?/option>
-            <option value="2">2?쒓컙</option>
-            <option value="3">3?쒓컙</option>
-            <option value="4">4?쒓컙</option>
+            <option value="0.5">30분</option>
+            <option value="1">1시간</option>
+            <option value="1.5">1시간 30분</option>
+            <option value="2">2시간</option>
+            <option value="3">3시간</option>
+            <option value="4">4시간</option>
           </select>
         </div>
         <div class="form-check" id="booking-recurring-row">
           <label>
             <input id="booking-recurring" type="checkbox" />
-            留ㅼ＜ 諛섎났 (4二?
+            매주 반복 (4주)
           </label>
         </div>
         <div class="form-check">
           <label>
             <input id="booking-autoclean" type="checkbox" />
-            ?묒뾽 醫낅즺 ???먮룞 ?뚮룆 異붽?
+            작업 종료 후 자동 소독 추가
           </label>
         </div>
-        <p id="booking-edit-note" class="modal-sub booking-edit-note" hidden>?섏젙 紐⑤뱶?먯꽌??諛섎났 ?덉빟???ъ슜?????놁뒿?덈떎.</p>
+        <p id="booking-edit-note" class="modal-sub booking-edit-note" hidden>수정 모드에서는 반복 예약을 사용할 수 없습니다.</p>
         <div class="btn-group">
-          <button class="btn btn-cancel" data-close-modal="booking-modal" type="button">痍⑥냼</button>
-          <button id="btn-save-booking" class="btn btn-save" type="button">?덉빟 ???/button>
+          <button class="btn btn-cancel" data-close-modal="booking-modal" type="button">취소</button>
+          <button id="btn-save-booking" class="btn btn-save" type="button">예약 저장</button>
         </div>
       </div>
     </div>
 
     <div id="delete-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="delete-title">
       <div class="modal">
-        <h3 id="delete-title" class="modal-title">?덉빟 ??젣</h3>
-        <p class="modal-sub">??젣 ?ъ쑀瑜??낅젰?댁빞 ?⑸땲??</p>
+        <h3 id="delete-title" class="modal-title">예약 삭제</h3>
+        <p class="modal-sub">삭제 사유를 입력해야 합니다.</p>
         <div id="delete-impact" class="modal-impact"></div>
         <div class="form-group">
-          <label for="delete-reason">??젣 ?ъ쑀</label>
-          <textarea id="delete-reason" rows="3" placeholder="?? ?쇱젙 蹂寃쎌쑝濡?痍⑥냼"></textarea>
+          <label for="delete-reason">삭제 사유</label>
+          <textarea id="delete-reason" rows="3" placeholder="예: 일정 변경으로 취소"></textarea>
         </div>
         <div class="btn-group">
-          <button class="btn btn-cancel" data-close-modal="delete-modal" type="button">痍⑥냼</button>
-          <button id="btn-confirm-delete" class="btn btn-del" type="button">??젣</button>
+          <button class="btn btn-cancel" data-close-modal="delete-modal" type="button">취소</button>
+          <button id="btn-confirm-delete" class="btn btn-del" type="button">삭제</button>
         </div>
       </div>
     </div>
 
     <div id="mobile-reserve-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="mobile-reserve-title">
       <div class="modal">
-        <h3 id="mobile-reserve-title" class="modal-title">鍮좊Ⅸ ?덉빟</h3>
+        <h3 id="mobile-reserve-title" class="modal-title">빠른 예약</h3>
         <p id="mobile-reserve-step-label" class="modal-sub"></p>
         <div id="mobile-reserve-body"></div>
         <div class="btn-group">
-          <button id="btn-mobile-reserve-back" class="btn btn-cancel" type="button">?댁쟾</button>
-          <button id="btn-mobile-reserve-cancel" class="btn btn-cancel" type="button">痍⑥냼</button>
-          <button id="btn-mobile-reserve-next" class="btn btn-save" type="button">?ㅼ쓬</button>
-          <button id="btn-mobile-reserve-submit" class="btn btn-save" type="button">?덉빟 ?뺤젙</button>
+          <button id="btn-mobile-reserve-back" class="btn btn-cancel" type="button">이전</button>
+          <button id="btn-mobile-reserve-cancel" class="btn btn-cancel" type="button">취소</button>
+          <button id="btn-mobile-reserve-next" class="btn btn-save" type="button">다음</button>
+          <button id="btn-mobile-reserve-submit" class="btn btn-save" type="button">예약 확정</button>
         </div>
       </div>
     </div>
 
     <div id="user-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
       <div class="modal">
-        <h3 id="user-modal-title" class="modal-title">怨꾩젙 ?앹꽦</h3>
+        <h3 id="user-modal-title" class="modal-title">계정 생성</h3>
         <input id="user-original-id" type="hidden" />
         <div class="form-group">
-          <label for="user-display-name">?대쫫</label>
+          <label for="user-display-name">이름</label>
           <input id="user-display-name" type="text" />
         </div>
         <div class="form-group">
-          <label for="user-id">?꾩씠??/label>
+          <label for="user-id">아이디</label>
           <input id="user-id" type="text" />
         </div>
         <div class="form-group">
-          <label for="user-role">沅뚰븳</label>
+          <label for="user-role">권한</label>
           <select id="user-role">
-            <option value="admin">愿由ъ옄</option>
-            <option value="supervisor">媛먮룆??/option>
-            <option value="worker">?묒뾽??/option>
+            <option value="admin">관리자</option>
+            <option value="supervisor">감독자</option>
+            <option value="worker">작업자</option>
           </select>
         </div>
         <div class="btn-group">
-          <button class="btn btn-cancel" data-close-modal="user-modal" type="button">痍⑥냼</button>
-          <button id="btn-save-user" class="btn btn-save" type="button">???/button>
+          <button class="btn btn-cancel" data-close-modal="user-modal" type="button">취소</button>
+          <button id="btn-save-user" class="btn btn-save" type="button">저장</button>
         </div>
       </div>
     </div>
 
     <div id="purpose-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="purpose-modal-title">
       <div class="modal">
-        <h3 id="purpose-modal-title" class="modal-title">媛??紐⑹쟻 ?깅줉</h3>
+        <h3 id="purpose-modal-title" class="modal-title">가동 목적 등록</h3>
         <input id="purpose-original-key" type="hidden" />
         <div class="form-group">
-          <label for="purpose-key">紐⑹쟻 肄붾뱶</label>
-          <input id="purpose-key" type="text" placeholder="?? process" />
+          <label for="purpose-key">목적 코드</label>
+          <input id="purpose-key" type="text" placeholder="예: process" />
         </div>
         <div class="form-group">
-          <label for="purpose-label">?쒖떆紐?/label>
-          <input id="purpose-label" type="text" placeholder="?? 怨듭젙" />
+          <label for="purpose-label">표시명</label>
+          <input id="purpose-label" type="text" placeholder="예: 공정" />
         </div>
         <div class="form-group">
-          <p class="form-label">?곸슜 ?λ퉬</p>
+          <p class="form-label">적용 장비</p>
           <label class="form-check inline">
             <input id="purpose-all" type="checkbox" />
-            ?꾩껜 ?곸슜
+            전체 적용
           </label>
           <div id="purpose-machine-list" class="form-checklist"></div>
         </div>
         <div class="btn-group">
-          <button class="btn btn-cancel" data-close-modal="purpose-modal" type="button">痍⑥냼</button>
-          <button id="btn-save-purpose" class="btn btn-save" type="button">???/button>
+          <button class="btn btn-cancel" data-close-modal="purpose-modal" type="button">취소</button>
+          <button id="btn-save-purpose" class="btn btn-save" type="button">저장</button>
         </div>
       </div>
     </div>
 
     <div id="manual-section-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="manual-section-modal-title">
       <div class="modal">
-        <h3 id="manual-section-modal-title" class="modal-title">硫붾돱???뱀뀡 ?깅줉</h3>
+        <h3 id="manual-section-modal-title" class="modal-title">메뉴얼 섹션 등록</h3>
         <input id="manual-section-original-id" type="hidden" />
         <div class="form-group">
-          <label for="manual-section-title">?쒕ぉ</label>
-          <input id="manual-section-title" type="text" placeholder="?? ?덉빟 ?깅줉 諛⑸쾿" />
+          <label for="manual-section-title">제목</label>
+          <input id="manual-section-title" type="text" placeholder="예: 예약 등록 방법" />
         </div>
         <div class="form-group">
-          <label for="manual-section-body">蹂몃Ц</label>
-          <textarea id="manual-section-body" rows="7" placeholder="?ъ슜??愿?먯뿉???④퀎蹂??ㅻ챸???낅젰?섏꽭??"></textarea>
+          <label for="manual-section-body">본문</label>
+          <textarea id="manual-section-body" rows="7" placeholder="사용자 관점에서 단계별 설명을 입력하세요."></textarea>
         </div>
         <div class="form-group">
-          <label for="manual-section-image">?대?吏 寃쎈줈</label>
-          <input id="manual-section-image" type="text" placeholder="?? /manual/reservation-step-02.png" />
+          <label for="manual-section-image">이미지 경로</label>
+          <input id="manual-section-image" type="text" placeholder="예: /manual/reservation-step-02.png" />
         </div>
         <div class="form-group">
-          <label for="manual-section-caption">?대?吏 ?ㅻ챸</label>
-          <input id="manual-section-caption" type="text" placeholder="?? ?덉빟 ?깅줉 ?붾㈃ ?덉떆" />
+          <label for="manual-section-caption">이미지 설명</label>
+          <input id="manual-section-caption" type="text" placeholder="예: 예약 등록 화면 예시" />
         </div>
         <div class="form-group">
-          <label for="manual-section-order">?뺣젹 ?쒖꽌</label>
+          <label for="manual-section-order">정렬 순서</label>
           <input id="manual-section-order" type="number" min="1" step="1" />
         </div>
         <div class="form-check inline">
           <label>
             <input id="manual-section-active" type="checkbox" checked />
-            硫붾돱?쇱뿉 ?몄텧
+            메뉴얼에 노출
           </label>
         </div>
         <div class="btn-group">
-          <button class="btn btn-cancel" data-close-modal="manual-section-modal" type="button">痍⑥냼</button>
-          <button id="btn-save-manual-section" class="btn btn-save" type="button">???/button>
+          <button class="btn btn-cancel" data-close-modal="manual-section-modal" type="button">취소</button>
+          <button id="btn-save-manual-section" class="btn btn-save" type="button">저장</button>
         </div>
       </div>
     </div>
 
     <div id="location-maintenance-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="location-maintenance-title">
       <div class="modal">
-        <h3 id="location-maintenance-title" class="modal-title">?μ냼 ?좎?蹂댁닔 ?덉빟</h3>
-        <p id="location-maintenance-sub" class="modal-sub">?좏깮???μ냼???λ퉬 ?꾩껜???숈씪???좎?蹂댁닔 ?덉빟???깅줉?⑸땲??</p>
+        <h3 id="location-maintenance-title" class="modal-title">장소 유지보수 예약</h3>
+        <p id="location-maintenance-sub" class="modal-sub">선택한 장소의 장비 전체에 동일한 유지보수 예약을 등록합니다.</p>
         <div class="form-group">
-          <label for="location-maintenance-date">?좎쭨</label>
+          <label for="location-maintenance-date">날짜</label>
           <input id="location-maintenance-date" type="date" />
         </div>
         <div class="form-group">
-          <label for="location-maintenance-start">?쒖옉 ?쒓컙 (30遺??⑥쐞)</label>
+          <label for="location-maintenance-start">시작 시간 (30분 단위)</label>
           <select id="location-maintenance-start"></select>
         </div>
         <div class="form-group">
-          <label for="location-maintenance-duration">?뚯슂 ?쒓컙</label>
+          <label for="location-maintenance-duration">소요 시간</label>
           <select id="location-maintenance-duration">
-            <option value="0.5">30遺?/option>
-            <option value="1">1?쒓컙</option>
-            <option value="1.5">1?쒓컙 30遺?/option>
-            <option value="2">2?쒓컙</option>
-            <option value="3">3?쒓컙</option>
-            <option value="4">4?쒓컙</option>
+            <option value="0.5">30분</option>
+            <option value="1">1시간</option>
+            <option value="1.5">1시간 30분</option>
+            <option value="2">2시간</option>
+            <option value="3">3시간</option>
+            <option value="4">4시간</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="location-maintenance-operator">?묒뾽紐??대떦</label>
-          <input id="location-maintenance-operator" type="text" placeholder="?? ?쒖꽕 ?먭?" />
+          <label for="location-maintenance-operator">작업명/담당</label>
+          <input id="location-maintenance-operator" type="text" placeholder="예: 시설 점검" />
         </div>
         <div class="form-group">
-          <label for="location-maintenance-reason">?ъ쑀</label>
-          <textarea id="location-maintenance-reason" rows="2" placeholder="?? 怨듭“ ?ㅻ퉬 ?뺢린 ?먭?"></textarea>
+          <label for="location-maintenance-reason">사유</label>
+          <textarea id="location-maintenance-reason" rows="2" placeholder="예: 공조 설비 정기 점검"></textarea>
         </div>
         <div class="form-check inline">
           <label>
             <input id="location-maintenance-all" type="checkbox" checked />
-            ?꾩껜 ?μ냼 ?좏깮
+            전체 장소 선택
           </label>
         </div>
         <div id="location-maintenance-list" class="form-checklist"></div>
         <p class="modal-sub" id="location-maintenance-impact"></p>
         <div class="btn-group">
-          <button class="btn btn-cancel" data-close-modal="location-maintenance-modal" type="button">痍⑥냼</button>
-          <button id="btn-save-location-maintenance" class="btn btn-save" type="button">?덉빟 ???/button>
+          <button class="btn btn-cancel" data-close-modal="location-maintenance-modal" type="button">취소</button>
+          <button id="btn-save-location-maintenance" class="btn btn-save" type="button">예약 저장</button>
         </div>
       </div>
     </div>
 
     <div id="site-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="site-modal-title">
       <div class="modal">
-        <h3 id="site-modal-title" class="modal-title">Site ?깅줉</h3>
+        <h3 id="site-modal-title" class="modal-title">Site 등록</h3>
         <input id="site-original-id" type="hidden" />
         <div class="form-group">
           <label for="site-id">Site ID</label>
-          <input id="site-id" type="text" placeholder="?? site-m2" />
+          <input id="site-id" type="text" placeholder="예: site-m2" />
         </div>
         <div class="form-group">
-          <label for="site-name">Site紐?/label>
-          <input id="site-name" type="text" placeholder="?? M2 Site" />
+          <label for="site-name">Site명</label>
+          <input id="site-name" type="text" placeholder="예: M2 Site" />
         </div>
         <div class="form-check inline">
-          <label><input id="site-active" type="checkbox" checked />?쒖꽦</label>
+          <label><input id="site-active" type="checkbox" checked />활성</label>
         </div>
         <div class="btn-group">
-          <button class="btn btn-cancel" data-close-modal="site-modal" type="button">痍⑥냼</button>
-          <button id="btn-save-site" class="btn btn-save" type="button">???/button>
+          <button class="btn btn-cancel" data-close-modal="site-modal" type="button">취소</button>
+          <button id="btn-save-site" class="btn btn-save" type="button">저장</button>
         </div>
       </div>
     </div>
 
     <div id="room-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="room-modal-title">
       <div class="modal">
-        <h3 id="room-modal-title" class="modal-title">Room ?깅줉</h3>
+        <h3 id="room-modal-title" class="modal-title">Room 등록</h3>
         <input id="room-original-id" type="hidden" />
         <div class="form-group">
-          <label for="room-name">Room紐?/label>
-          <input id="room-name" type="text" placeholder="?? M2-301" />
+          <label for="room-name">Room명</label>
+          <input id="room-name" type="text" placeholder="예: M2-301" />
         </div>
         <div class="form-group">
           <label for="room-site">Site</label>
           <select id="room-site"></select>
         </div>
         <div class="form-check inline">
-          <label><input id="room-active" type="checkbox" checked />?쒖꽦</label>
+          <label><input id="room-active" type="checkbox" checked />활성</label>
         </div>
         <div class="form-group">
-          <p class="form-label">諛곗튂 醫뚰몴 (%)</p>
+          <p class="form-label">배치 좌표 (%)</p>
           <div class="layout-input-grid">
             <label>X<input id="room-layout-x" type="number" min="0" max="100" step="1" /></label>
             <label>Y<input id="room-layout-y" type="number" min="0" max="100" step="1" /></label>
@@ -818,15 +818,15 @@
           </div>
         </div>
         <div class="btn-group">
-          <button class="btn btn-cancel" data-close-modal="room-modal" type="button">痍⑥냼</button>
-          <button id="btn-save-room" class="btn btn-save" type="button">???/button>
+          <button class="btn btn-cancel" data-close-modal="room-modal" type="button">취소</button>
+          <button id="btn-save-room" class="btn btn-save" type="button">저장</button>
         </div>
       </div>
     </div>
 
     <div id="machine-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="machine-modal-title">
       <div class="modal">
-        <h3 id="machine-modal-title" class="modal-title">?λ퉬 ?깅줉</h3>
+        <h3 id="machine-modal-title" class="modal-title">장비 등록</h3>
         <input id="machine-original-id" type="hidden" />
                 <div class="form-group">
           <label for="machine-id">&#xC7A5;&#xBE44; ID</label>
@@ -849,8 +849,8 @@
           <textarea id="machine-desc" rows="3" placeholder="&#xC124;&#xBA85;&#xC744; &#xC785;&#xB825;&#xD558;&#xC138;&#xC694;"></textarea>
         </div>
         <div class="btn-group">
-          <button class="btn btn-cancel" data-close-modal="machine-modal" type="button">痍⑥냼</button>
-          <button id="btn-save-machine" class="btn btn-save" type="button">???/button>
+          <button class="btn btn-cancel" data-close-modal="machine-modal" type="button">취소</button>
+          <button id="btn-save-machine" class="btn btn-save" type="button">저장</button>
         </div>
       </div>
     </div>
@@ -858,12 +858,12 @@
     <div id="day-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="day-modal-title">
       <div class="modal large">
         <div class="day-modal-header">
-          <h3 id="day-modal-title" class="modal-title">?곸꽭 ?쇱젙</h3>
-          <button class="icon-close" data-close-modal="day-modal" type="button" aria-label="?リ린">&times;</button>
+          <h3 id="day-modal-title" class="modal-title">상세 일정</h3>
+          <button class="icon-close" data-close-modal="day-modal" type="button" aria-label="닫기">&times;</button>
         </div>
         <div class="day-quick-actions">
-          <button class="btn btn-save" type="button" data-day-action="reservation">?덉빟 愿由щ줈 ?대룞</button>
-          <button class="btn btn-save" type="button" data-day-action="print">由ы룷???몄뇙</button>
+          <button class="btn btn-save" type="button" data-day-action="reservation">예약 관리로 이동</button>
+          <button class="btn btn-save" type="button" data-day-action="print">리포트 인쇄</button>
         </div>
         <div class="day-modal-body">
           <div class="timeline-header" aria-hidden="true">
@@ -878,27 +878,4 @@
     <script type="module" src="app.js?v=20260305-51"></script>
   </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
