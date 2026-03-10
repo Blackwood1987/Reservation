@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/fireba
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { buildMobileReservationCategories, buildTimelineMachineIds, canRolePerform, canUserOperateBooking, clampHour, compareMachineIdAsc, deriveMachineCategory, formatTime, hasBookingOverlap, snapToHalfHour, sortByOrderThenName, validateBookingDrop, validateBookingResize } from "./core-utils.mjs";
-import { DEFAULT_SITE_NAME, DURATION_TEXT, defaultManualSections, defaultPurposeList, statusMeta } from "./ui-text.mjs";
+import { DEFAULT_SITE_NAME, DURATION_TEXT, defaultManualSections, defaultPurposeList, statusMeta, uiMessages } from "./ui-text.mjs";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC3hAHfZFH6g4SjQbwdFIh-V61wezsoDnY",
@@ -316,7 +316,7 @@ function applyLegacyMigrationData(data){
   configState.needsMigrationSave=true;
   if(!configState.migrationNotified){
     configState.migrationNotified=true;
-    showToast("장소 데이터가 Site/Room 구조로 자동 변환되었습니다.","info");
+    showToast(uiMessages.sync.locationMigrated,"info");
   }
 }
 function ensureSiteRoomState(){
@@ -471,7 +471,7 @@ async function saveMapLayoutEdit(){
   const selectedSiteId=appState.map.selectedSiteId;
   const overlaps=getOverlappingRoomIds(selectedSiteId);
   if(overlaps.size>0){
-    showToast("Room 영역이 겹쳐 저장할 수 없습니다.","warn");
+    showToast(uiMessages.sync.roomLayoutOverlap,"warn");
     updateMapLayoutValidationUI(selectedSiteId);
     return;
   }
@@ -484,7 +484,7 @@ async function saveMapLayoutEdit(){
     stopMapLayoutEditMode(true);
     await saveConfig();
     renderAll();
-    showToast("Room 배치 좌표를 저장했습니다.","success");
+    showToast(uiMessages.sync.roomLayoutSaved,"success");
     addAdminActivity("Room 배치 저장", `${formatDateLabel(getViewDate())} / ${getSiteById(selectedSiteId)?.name || "-"}`);
   }catch(error){
     reportAsyncError("saveMapLayoutEdit", error, "Room 배치 저장에 실패했습니다.");
@@ -781,7 +781,7 @@ function subscribeConfig(){
   configUnsub = onSnapshot(configRef, snap=>{
     if(snap.exists()) applyConfigData(snap.data());
     else handleConfigMissing();
-  }, ()=>showToast("설정 동기화에 실패했습니다.","warn"));
+  }, ()=>showToast(uiMessages.sync.configSyncFailed,"warn"));
 }
 
 async function ensureConfigDoc(){
@@ -874,7 +874,7 @@ function subscribeBookings(force=false){
   bookingsUnsub = onSnapshot(bookingsQuery, snapshot=>{
     syncBookingsSnapshot(snapshot);
     renderAfterBookingsChange();
-  }, ()=> showToast("예약 동기화에 실패했습니다.","warn"));
+  }, ()=> showToast(uiMessages.sync.bookingSyncFailed,"warn"));
 }
 
 function normalizeLoginId(value){
@@ -999,10 +999,10 @@ function reportAsyncError(context, error, fallbackMessage){
   console.error(`[${context}]`, error);
   const text=getErrorText(error).toLowerCase();
   if(text.includes("network") || text.includes("unavailable") || text.includes("deadline-exceeded")){
-    showToast("네트워크 상태가 불안정합니다. 잠시 후 다시 시도해주세요.","warn");
+    showToast(uiMessages.sync.networkUnstable,"warn");
     return;
   }
-  showToast(fallbackMessage || "요청 처리 중 오류가 발생했습니다.","warn");
+  showToast(fallbackMessage || uiMessages.sync.requestFailed,"warn");
 }
 
 function getReportDateValue(){
@@ -1102,24 +1102,24 @@ function initTimelineHours(){
 async function login(role){
   const demo = demoAccounts[role];
   if(!demo){
-    alert("데모 계정을 확인해주세요.");
+    alert(uiMessages.auth.demoAccountMissing);
     return;
   }
   try{
     await signInWithEmailAndPassword(auth,demo.email,demo.password);
   }catch(e){
-    alert("데모 계정 로그인에 실패했습니다. 관리자에게 문의하세요.");
+    alert(uiMessages.auth.demoLoginFailed);
   }
 }
 async function loginWithCredentials(){
   const rawId=document.getElementById("login-id").value.trim();
   const password=document.getElementById("login-password").value;
-  if(!rawId||!password){alert("\uC544\uC774\uB514 \uB610\uB294 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");return;}
+  if(!rawId||!password){alert(uiMessages.auth.credentialsRequired);return;}
   const email=normalizeLoginId(rawId);
   try{
     await signInWithEmailAndPassword(auth,email,password);
   }catch(e){
-    alert("\uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+    alert(uiMessages.auth.loginFailed);
   }
 }
 
@@ -1127,8 +1127,8 @@ async function registerWithCredentials(){
   const name=document.getElementById("login-name").value.trim();
   const rawId=document.getElementById("login-id").value.trim();
   const password=document.getElementById("login-password").value;
-  if(!name){alert("\uC774\uB984\uC744 \uC785\uB825\uD574\uC8FC\uC138\uC694.");return;}
-  if(!rawId||!password){alert("\uC544\uC774\uB514 \uB610\uB294 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");return;}
+  if(!name){alert(uiMessages.auth.nameRequired);return;}
+  if(!rawId||!password){alert(uiMessages.auth.credentialsRequired);return;}
   const email=normalizeLoginId(rawId);
   try{
     const cred = await createUserWithEmailAndPassword(auth,email,password);
@@ -1140,10 +1140,10 @@ async function registerWithCredentials(){
       approved:false,
       createdAt: serverTimestamp()
     });
-    alert("\uAC00\uC785\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uAD00\uB9AC\uC790 \uC2B9\uC778 \uD6C4 \uB85C\uADF8\uC778 \uAC00\uB2A5\uD569\uB2C8\uB2E4.");
+    alert(uiMessages.auth.signupCompleted);
     await signOut(auth);
   }catch(e){
-    alert("\uD68C\uC6D0\uAC00\uC785\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+    alert(uiMessages.auth.signupFailed);
   }
 }
 function applyHeaderSession(user){
@@ -1194,14 +1194,14 @@ function initAuthListener(){
       const snap = await getDoc(doc(db,"users",user.uid));
       if(!snap.exists()){
         await signOut(auth);
-        alert("계정 정보를 찾을 수 없습니다.");
+        alert(uiMessages.auth.accountNotFound);
         window.location.replace("index.html");
         return;
       }
       const data = snap.data();
       if(!data.approved){
         await signOut(auth);
-        alert("승인 대기 중입니다.");
+        alert(uiMessages.auth.approvalPending);
         window.location.replace("index.html");
         return;
       }
@@ -1227,8 +1227,8 @@ function switchView(view){
   if(view!=="dashboard" && appState.map.layoutEditMode){
     stopMapLayoutEditMode(true);
   }
-  if(view==="admin"&&!can("admin")){alert("접근 권한이 없습니다.");return;}
-  if(view==="manual"&&!canReadManual()){alert("접근 권한이 없습니다.");return;}
+  if(view==="admin"&&!can("admin")){alert(uiMessages.common.permissionDenied);return;}
+  if(view==="manual"&&!canReadManual()){alert(uiMessages.common.permissionDenied);return;}
   if(view!=="dashboard" && view!=="reservation"){
     closeReserveWizard();
   }
@@ -3179,7 +3179,7 @@ async function handleDrop(e,targetMachineId,targetHour){
   try{
     const payloadRaw=e.dataTransfer.getData("text");
     if(!payloadRaw){
-      showToast("드래그 정보가 비어 있습니다.","warn");
+      showToast(uiMessages.booking.dragPayloadEmpty,"warn");
       return;
     }
     let payload;
@@ -3190,7 +3190,7 @@ async function handleDrop(e,targetMachineId,targetHour){
       return;
     }
     if(!payload || typeof payload.machineId!=="string" || typeof payload.docId!=="string"){
-      showToast("유효하지 않은 드래그 데이터입니다.","warn");
+      showToast(uiMessages.booking.dragPayloadInvalid,"warn");
       return;
     }
     const sourceMachineId=payload.machineId;
@@ -3205,7 +3205,7 @@ async function handleDrop(e,targetMachineId,targetHour){
     if(targetMachineId!==sourceMachineId) updates.machineId=targetMachineId;
     await updateBookingDoc(docId,updates);
     const movedMachine = targetMachineId!==sourceMachineId;
-    showToast(movedMachine ? "예약 장비/시간을 변경했습니다." : "예약 시간을 변경했습니다.","success");
+    showToast(movedMachine ? uiMessages.booking.moved : uiMessages.booking.timeChanged,"success");
   }catch(error){
     reportAsyncError("handleDrop", error, "예약 이동에 실패했습니다.");
   }
@@ -3309,7 +3309,7 @@ async function handleResizeEnd(event){
       return;
     }
     await updateBookingDoc(docId,{duration:newDuration});
-    showToast("예약 시간을 조정했습니다.","success");
+    showToast(uiMessages.booking.timeAdjusted,"success");
   }catch(error){
     reportAsyncError("handleResizeEnd", error, "예약 시간 조정에 실패했습니다.");
   }finally{
@@ -3328,7 +3328,7 @@ async function handleResizeEnd(event){
 
 function printReport(dateOverride){
   if(!can("print")){
-    alert("권한이 없습니다.");
+    alert(uiMessages.common.noPermission);
     return;
   }
   const dateInput=document.getElementById("report-date");
@@ -3482,7 +3482,7 @@ function handleDayAction(action){
     applyDateContext(date);
     switchView("reservation");
     closeModal("day-modal");
-    showToast("예약 관리 화면으로 이동했습니다.","info");
+    showToast(uiMessages.common.movedToReservation,"info");
     return;
   }
   if(action==="print"){
@@ -3641,7 +3641,7 @@ function jumpToManualSection(sectionId, contentId="manual-content"){
 
 function openManualSectionModal(mode,sectionId=""){
   if(!isAdminUser()){
-    showToast("관리자만 메뉴얼을 편집할 수 있습니다.","warn");
+    showToast(uiMessages.manual.adminOnlyEdit,"warn");
     return;
   }
   const modal=document.getElementById("manual-section-modal");
@@ -3669,7 +3669,7 @@ function openManualSectionModal(mode,sectionId=""){
   const section=manualSections.find(item=>item.id===sectionId);
   if(!section){
     closeModal("manual-section-modal");
-    showToast("수정할 메뉴얼 섹션을 찾을 수 없습니다.","warn");
+    showToast(uiMessages.manual.sectionNotFound,"warn");
     return;
   }
   if(title) title.textContent="메뉴얼 섹션 수정";
@@ -3684,7 +3684,7 @@ function openManualSectionModal(mode,sectionId=""){
 
 async function saveManualSection(){
   if(!isAdminUser()){
-    showToast("관리자만 메뉴얼을 편집할 수 있습니다.","warn");
+    showToast(uiMessages.manual.adminOnlyEdit,"warn");
     return;
   }
   try{
@@ -3695,11 +3695,11 @@ async function saveManualSection(){
     const imageCaption=(document.getElementById("manual-section-caption")?.value || "").trim();
     const order=Math.max(1,Number(document.getElementById("manual-section-order")?.value || 1));
     const active=document.getElementById("manual-section-active")?.checked ?? true;
-    if(!title){ alert("제목을 입력하세요."); return; }
-    if(!body){ alert("본문을 입력하세요."); return; }
+    if(!title){ alert(uiMessages.manual.titleRequired); return; }
+    if(!body){ alert(uiMessages.manual.bodyRequired); return; }
     if(originalId){
       const idx=manualSections.findIndex(section=>section.id===originalId);
-      if(idx<0){ alert("메뉴얼 섹션 정보를 찾을 수 없습니다."); return; }
+      if(idx<0){ alert(uiMessages.manual.sectionInfoMissing); return; }
       manualSections[idx]={ ...manualSections[idx], title, body, imageUrl, imageCaption, order, active };
     }else{
       let nextId=makeSafeId(title,"manual");
@@ -3714,15 +3714,15 @@ async function saveManualSection(){
     await saveConfig();
     renderManualAdmin();
     addAdminActivity(originalId ? "메뉴얼 수정" : "메뉴얼 등록", title);
-    showToast(originalId ? "메뉴얼 섹션을 수정했습니다." : "메뉴얼 섹션을 등록했습니다.","success");
+    showToast(originalId ? uiMessages.manual.sectionUpdated : uiMessages.manual.sectionCreated,"success");
   }catch(error){
-    reportAsyncError("saveManualSection", error, "메뉴얼 섹션 저장에 실패했습니다.");
+    reportAsyncError("saveManualSection", error, uiMessages.manual.sectionSaveFailed);
   }
 }
 
 async function deleteManualSection(sectionId){
   if(!isAdminUser()){
-    showToast("관리자만 메뉴얼을 삭제할 수 있습니다.","warn");
+    showToast(uiMessages.manual.adminOnlyDelete,"warn");
     return;
   }
   const section=manualSections.find(item=>item.id===sectionId);
@@ -3733,7 +3733,7 @@ async function deleteManualSection(sectionId){
     await saveConfig();
     renderManualAdmin();
     addAdminActivity("메뉴얼 삭제", section.title);
-    showToast("메뉴얼 섹션을 삭제했습니다.","success");
+    showToast(uiMessages.manual.sectionDeleted,"success");
   }catch(error){
     reportAsyncError("deleteManualSection", error, "메뉴얼 섹션 삭제에 실패했습니다.");
   }
@@ -3937,7 +3937,7 @@ async function exportAuditHistoryCsv(){
   }
   const rows=[...auditHistoryRows].sort((a,b)=>a.machineId.localeCompare(b.machineId)||a.start-b.start);
   if(rows.length===0){
-    showToast("백업할 운영 이력이 없습니다.","warn");
+    showToast(uiMessages.backup.noOperationHistory,"warn");
     return;
   }
   const headers=["날짜","장비","작업자","목적","상태","시작","종료","사유"];
@@ -3953,7 +3953,7 @@ async function exportAuditHistoryCsv(){
   ].map(escapeCsvCell).join(","));
   const csv="\ufeff"+[headers.map(escapeCsvCell).join(","), ...body].join("\r\n");
   downloadFile(`audit-history-${date}.csv`, csv, "text/csv;charset=utf-8");
-  showToast("운영 이력 CSV 백업을 저장했습니다.","success");
+  showToast(uiMessages.backup.operationHistorySaved,"success");
   addAdminActivity("운영 이력 백업", `${date} ${rows.length}건`);
 }
 
@@ -3961,7 +3961,7 @@ function exportAdminActivityJson(){
   if(!can("admin")) return;
   const rows=readAdminActivity();
   if(rows.length===0){
-    showToast("백업할 관리자 작업 이력이 없습니다.","warn");
+    showToast(uiMessages.backup.noAdminHistory,"warn");
     return;
   }
   const payload={
@@ -3972,7 +3972,7 @@ function exportAdminActivityJson(){
   };
   const json=JSON.stringify(payload, null, 2);
   downloadFile(`admin-activity-${todayISO()}.json`, json, "application/json;charset=utf-8");
-  showToast("작업 이력 JSON 백업을 저장했습니다.","success");
+  showToast(uiMessages.backup.adminHistorySaved,"success");
   addAdminActivity("작업 이력 백업", `${rows.length}건`);
 }
 
@@ -4159,7 +4159,7 @@ function handleMobileReserveTrigger(){
 
 function openReserveWizard(source="dashboard",presetTime=null,categoryFilter="all"){
   if(!can("create")){
-    showToast("예약 권한이 없습니다.","warn");
+    showToast(uiMessages.booking.reservePermissionDenied,"warn");
     return;
   }
   const date=getViewDate();
@@ -4306,19 +4306,19 @@ function handleReserveWizardNext(){
   const step=state.steps[state.stepIndex];
   const fields=state.fields;
   if(step==="timePurpose"){
-    if(!fields.date){ showToast("날짜를 선택해주세요.","warn"); return; }
-    if(fields.time<9 || fields.time+fields.duration>18){ showToast("운영 시간(09:00~18:00)을 벗어났습니다.","warn"); return; }
+    if(!fields.date){ showToast(uiMessages.booking.dateRequired,"warn"); return; }
+    if(fields.time<9 || fields.time+fields.duration>18){ showToast(uiMessages.booking.outsideOperatingHours,"warn"); return; }
     if(fields.date===todayISO()){
       const minHour=getMinReservableHour(fields.date);
       if(fields.time<minHour){ showToast(`오늘 예약은 ${formatTime(minHour)} 이후로 가능합니다.`,"warn"); return; }
     }
   }
   if(step==="location" && !fields.location){
-    showToast("장소를 선택해주세요.","warn");
+    showToast(uiMessages.booking.locationRequired,"warn");
     return;
   }
   if(step==="machine" && !fields.machineId){
-    showToast("장비를 선택해주세요.","warn");
+    showToast(uiMessages.booking.machineRequired,"warn");
     return;
   }
   if(state.stepIndex>=state.steps.length-1) return;
@@ -4330,17 +4330,17 @@ async function submitReserveWizard(){
   const state=appState.reserveWizard;
   if(!state) return;
   const { date, time, duration, purpose, machineId } = state.fields;
-  if(!machineId){ showToast("장비를 선택해주세요.","warn"); return; }
-  if(time<9 || time+duration>18){ showToast("운영 시간(09:00~18:00)을 벗어났습니다.","warn"); return; }
+  if(!machineId){ showToast(uiMessages.booking.machineRequired,"warn"); return; }
+  if(time<9 || time+duration>18){ showToast(uiMessages.booking.outsideOperatingHours,"warn"); return; }
   if(isOverlap(machineId,date,time,duration)){
-    showToast("선택 시간에 이미 예약이 있습니다. 시간을 다시 확인해주세요.","warn");
+    showToast(uiMessages.booking.selectedTimeTaken,"warn");
     const idx=state.steps.indexOf("timePurpose");
     if(idx>=0){ state.stepIndex=idx; renderReserveWizardStep(); }
     return;
   }
   const allowedPurposes=getPurposesForMachine(machineId);
   if(allowedPurposes.length && !allowedPurposes.some(item=>item.key===purpose)){
-    showToast("선택한 목적은 해당 장비에서 사용할 수 없습니다.","warn");
+    showToast(uiMessages.booking.purposeNotAllowed,"warn");
     return;
   }
   try{
@@ -4360,14 +4360,14 @@ async function submitReserveWizard(){
     closeReserveWizard();
     appState.mobile.drawerOpen=false;
     switchView("dashboard");
-    showToast("예약이 등록되었습니다.");
+    showToast(uiMessages.booking.created);
   }catch(error){
     reportAsyncError("submitReserveWizard", error, "모바일 예약 저장에 실패했습니다.");
   }
 }
 
 function openBookingModal(id,start){
-  if(!can("create")){showToast("예약 생성 권한이 없습니다.","warn");return;}
+  if(!can("create")){showToast(uiMessages.booking.createPermissionDenied,"warn");return;}
   appState.bookingEditTarget=null;
   appState.bookingTarget={id,start};
   setBookingModalMode(false);
@@ -4404,11 +4404,11 @@ function setBookingModalMode(isEdit){
 function openBookingEditModal(id,docId){
   const booking=findBookingByDocId(id,docId);
   if(!booking || booking.user==="System"){
-    showToast("수정 가능한 예약을 찾을 수 없습니다.","warn");
+    showToast(uiMessages.booking.editableNotFound,"warn");
     return;
   }
   if(!canEditBooking(booking)){
-    showToast("본인 예약만 수정할 수 있습니다.","warn");
+    showToast(uiMessages.booking.ownBookingOnly,"warn");
     return;
   }
   appState.bookingTarget={id,start:booking.start};
@@ -4450,7 +4450,7 @@ function closeModal(id){
 }
 
 function openDeleteModal(id, docId){
-  if(!can("edit")){showToast("삭제 권한이 없습니다.","warn");return;}
+  if(!can("edit")){showToast(uiMessages.booking.deletePermissionDenied,"warn");return;}
   appState.deleteTarget = { id, docId };
   const reason = document.getElementById("delete-reason");
   if(reason) reason.value = "";
@@ -4475,7 +4475,7 @@ async function confirmDelete(){
     const reasonEl = document.getElementById("delete-reason");
     const reason = reasonEl ? reasonEl.value.trim() : "";
     if(!reason){
-      showToast("삭제 사유를 입력해주세요.","warn");
+      showToast(uiMessages.booking.deleteReasonRequired,"warn");
       return;
     }
     const { id, docId } = target;
@@ -4503,7 +4503,7 @@ async function confirmDelete(){
     }
     closeModal("delete-modal");
     appState.deleteTarget = null;
-    showToast("예약이 삭제되었습니다.","info");
+    showToast(uiMessages.booking.deleted,"info");
     addAdminActivity("예약 삭제", `${id} ${booking.user} ${booking.date} ${formatTime(booking.start)}~${formatTime(booking.start+booking.duration)}`);
     refreshAuditHistory(true);
   }catch(error){
@@ -4548,24 +4548,24 @@ async function updateExistingBooking({ user, date, start, duration, purpose, aut
   const { id, docId }=target;
   const booking=findBookingByDocId(id,docId);
   if(!booking){
-    showToast("수정할 예약을 찾을 수 없습니다.","warn");
+    showToast(uiMessages.booking.editTargetNotFound,"warn");
     return false;
   }
   if(!canEditBooking(booking)){
-    showToast("본인 예약만 수정할 수 있습니다.","warn");
+    showToast(uiMessages.booking.ownBookingOnly,"warn");
     return false;
   }
   if(isWorkerUser() && booking.date===todayISO() && booking.start<=getNowHour()){
-    showToast("이미 시작된 예약은 수정할 수 없습니다.","warn");
+    showToast(uiMessages.booking.alreadyStarted,"warn");
     return false;
   }
   if(isOverlap(id,date,start,duration,docId)){
-    showToast("해당 날짜/시간에 예약이 중복됩니다.","warn");
+    showToast(uiMessages.booking.overlapDetected,"warn");
     return false;
   }
   const allowedPurposes=getPurposesForMachine(id);
   if(allowedPurposes.length && !allowedPurposes.some(p=>p.key===purpose)){
-    showToast("선택한 목적은 해당 장비에 사용할 수 없습니다.","warn");
+    showToast(uiMessages.booking.purposeNotAllowed,"warn");
     return false;
   }
   const userId=isManagerUser() ? (booking.userId || user) : (appState.currentUser.id || appState.currentUser.name || user);
@@ -4579,7 +4579,7 @@ async function updateExistingBooking({ user, date, start, duration, purpose, aut
     autoClean: !!autoClean
   });
   await syncAutoCleanAfterEdit(id,booking,{date,start,duration,autoClean: !!autoClean});
-  showToast("예약이 변경되었습니다.","success");
+  showToast(uiMessages.booking.updated,"success");
   addAdminActivity("예약 수정", `${id} ${date} ${formatTime(start)} ${formatTime(start+duration)}`);
   return true;
 }
@@ -4593,8 +4593,8 @@ async function confirmBooking(){
     const purpose=document.getElementById("booking-purpose").value;
     const recurring=document.getElementById("booking-recurring").checked;
     const autoClean=document.getElementById("booking-autoclean")?.checked || false;
-    if(!user||!date){showToast("정보를 모두 입력해주세요.","warn");return;}
-    if(start < 9 || start+duration>18){showToast("운영 시간(09:00~18:00)을 초과합니다.","warn");return;}
+    if(!user||!date){showToast(uiMessages.common.infoRequired,"warn");return;}
+    if(start < 9 || start+duration>18){showToast(uiMessages.booking.operatingHoursExceeded,"warn");return;}
     if(isWorkerUser() && date===todayISO()){
       const minHour=getMinReservableHour(date);
       if(start<minHour){
@@ -4604,7 +4604,7 @@ async function confirmBooking(){
     }
     const allowedPurposes = getPurposesForMachine(appState.bookingTarget.id);
     if(allowedPurposes.length && !allowedPurposes.some(p=>p.key===purpose)){
-      showToast("선택한 목적은 해당 장비에 사용할 수 없습니다.","warn");
+      showToast(uiMessages.booking.purposeNotAllowed,"warn");
       return;
     }
     if(appState.bookingEditTarget){
@@ -4621,7 +4621,7 @@ async function confirmBooking(){
       const dateObj=new Date(date);dateObj.setDate(dateObj.getDate()+i*7);
       const targetDate=dateObj.toISOString().slice(0,10);
       if(isOverlap(appState.bookingTarget.id,targetDate,start,duration)){
-        if(!recurring){showToast("해당 날짜/시간에 예약이 중복됩니다.","warn");return;}
+        if(!recurring){showToast(uiMessages.booking.overlapDetected,"warn");return;}
         continue;
       }
       await createBookingDoc({
@@ -4642,8 +4642,8 @@ async function confirmBooking(){
       }
     }
     closeModal("booking-modal");
-    if(success===0){showToast("모든 반복 예약이 중복으로 인해 실패했습니다.","warn");return;}
-    showToast(status==="pending"?"예약 요청이 등록되었습니다.":"예약이 확정되었습니다.");
+    if(success===0){showToast(uiMessages.booking.recurringFailedAll,"warn");return;}
+    showToast(status==="pending"?uiMessages.booking.requestRegistered:uiMessages.booking.confirmed);
     if(recurring) showToast(`${success}건의 반복 예약이 등록되었습니다.`,"info");
     addAdminActivity("예약 등록", `${appState.bookingTarget.id} ${date} ${formatTime(start)} ${success}건`);
     refreshAuditHistory(true);
@@ -4751,12 +4751,12 @@ async function saveMachine(){
     const nextRoomId=document.getElementById("machine-room")?.value || "";
     const nextRoom=getRoomById(nextRoomId);
     const nextLocation=nextRoom?.name || "";
-    if(!nextId){alert("장비 ID를 입력하세요.");return;}
-    if(!nextRoomId || !nextRoom){alert("Room을 선택하세요.");return;}
+    if(!nextId){alert(uiMessages.admin.machineIdRequired);return;}
+    if(!nextRoomId || !nextRoom){alert(uiMessages.admin.roomSelectionRequired);return;}
     const isEdit=!!originalId;
     if(originalId){
       if(originalId!==nextId && bscIds.includes(nextId)){
-        alert("이미 존재하는 장비 ID입니다.");
+        alert(uiMessages.admin.duplicateMachineId);
         return;
       }
       if(originalId!==nextId){
@@ -4782,7 +4782,7 @@ async function saveMachine(){
       }
     }else{
       if(bscIds.includes(nextId)){
-        alert("이미 존재하는 장비 ID입니다.");
+        alert(uiMessages.admin.duplicateMachineId);
         return;
       }
       bscIds=[...bscIds,nextId];
@@ -4793,7 +4793,7 @@ async function saveMachine(){
       bookings[nextId]=[];
     }
     closeModal("machine-modal");
-    showToast("장비 목록이 갱신되었습니다.","info");
+    showToast(uiMessages.admin.machineListUpdated,"info");
     await saveConfig();
     ensureBookingBuckets();
     renderAll();
@@ -4965,14 +4965,14 @@ async function saveSite(){
     const nextId=(idInput?.value || "").trim() || makeSafeId(nameInput?.value || "site","site");
     const nextName=(nameInput?.value || "").trim();
     const nextActive=activeInput ? !!activeInput.checked : true;
-    if(!nextName){alert("Site명을 입력하세요.");return;}
+    if(!nextName){alert(uiMessages.admin.siteNameRequired);return;}
     const isEdit=!!originalId;
     if(!isEdit){
-      if(sites.some(site=>site.id===nextId)){alert("이미 존재하는 Site ID입니다.");return;}
+      if(sites.some(site=>site.id===nextId)){alert(uiMessages.admin.duplicateSiteId);return;}
       sites=[...sites,{ id: nextId, name: nextName, order: sites.length+1, active: nextActive }];
     }else{
       const idx=sites.findIndex(site=>site.id===originalId);
-      if(idx<0){alert("Site 정보를 찾을 수 없습니다.");return;}
+      if(idx<0){alert(uiMessages.admin.siteInfoMissing);return;}
       sites[idx]={...sites[idx], name: nextName, active: nextActive};
     }
     closeModal("site-modal");
@@ -4991,7 +4991,7 @@ async function deleteSite(siteId){
     if(!site) return;
     const childRooms=getRoomsBySite(siteId,{includeInactive:true});
     if(childRooms.length>0){
-      alert("하위 Room이 있는 Site는 삭제할 수 없습니다.");
+      alert(uiMessages.admin.siteHasRooms);
       return;
     }
     if(!confirm(`${site.name} Site를 삭제하시겠습니까?`)) return;
@@ -5056,15 +5056,15 @@ async function saveRoom(){
       w:Number(document.getElementById("room-layout-w")?.value || 30),
       h:Number(document.getElementById("room-layout-h")?.value || 28)
     };
-    if(!name){alert("Room명을 입력하세요.");return;}
-    if(!getSiteById(siteId)){alert("Site를 선택하세요.");return;}
+    if(!name){alert(uiMessages.admin.roomNameRequired);return;}
+    if(!getSiteById(siteId)){alert(uiMessages.admin.siteSelectionRequired);return;}
     const normalized=normalizeRoomLayout(layout,0,1);
     const isEdit=!!originalId;
     if(isEdit){
       const idx=rooms.findIndex(room=>room.id===originalId);
-      if(idx<0){alert("Room 정보를 찾을 수 없습니다.");return;}
+      if(idx<0){alert(uiMessages.admin.roomInfoMissing);return;}
       const duplicate=rooms.some(room=>room.id!==originalId && room.name===name);
-      if(duplicate){alert("동일한 Room명이 이미 존재합니다.");return;}
+      if(duplicate){alert(uiMessages.admin.duplicateRoomName);return;}
       rooms[idx]={...rooms[idx], name, siteId, active, layout:normalized};
       bscIds.forEach(id=>{
         if(getMachineRoomId(id)===originalId){
@@ -5073,7 +5073,7 @@ async function saveRoom(){
       });
     }else{
       const duplicate=rooms.some(room=>room.name===name);
-      if(duplicate){alert("동일한 Room명이 이미 존재합니다.");return;}
+      if(duplicate){alert(uiMessages.admin.duplicateRoomName);return;}
       const roomId=makeSafeId(name,"room");
       rooms=[...rooms,{ id:roomId, siteId, name, order:rooms.length+1, active, layout:normalized }];
     }
@@ -5093,7 +5093,7 @@ async function deleteRoom(roomId){
     if(!room) return;
     const assigned=bscIds.some(id=>getMachineRoomId(id)===roomId);
     if(assigned){
-      alert("장비가 배정된 Room은 삭제할 수 없습니다.");
+      alert(uiMessages.admin.roomHasMachines);
       return;
     }
     if(!confirm(`${room.name} Room을 삭제하시겠습니까?`)) return;
@@ -5223,13 +5223,13 @@ async function savePurpose(){
         if(cb.checked) selected.push(cb.value);
       });
     }
-    if(!key || !label){alert("코드와 표시명을 입력하세요.");return;}
+    if(!key || !label){alert(uiMessages.admin.purposeCodeAndLabelRequired);return;}
     if(!applyAll && selected.length === 0){
-      alert("적용할 장비를 하나 이상 선택하세요.");
+      alert(uiMessages.admin.purposeMachineSelectionRequired);
       return;
     }
     if(!original){
-      if(purposeList.some(p=>p.key===key)){alert("이미 존재하는 코드입니다.");return;}
+      if(purposeList.some(p=>p.key===key)){alert(uiMessages.admin.duplicatePurposeCode);return;}
       purposeList=[...purposeList,{key,label,machines: applyAll ? null : selected}];
     }else{
       const idx=purposeList.findIndex(p=>p.key===original);
@@ -5247,7 +5247,7 @@ async function savePurpose(){
 async function deletePurpose(key){
   try{
     if(isPurposeUsed(key)){
-      alert("해당 목적이 예약에 사용 중이어서 삭제할 수 없습니다.");
+      alert(uiMessages.admin.purposeInUse);
       return;
     }
     if(!confirm(`${key} 목적을 삭제하시겠습니까?`)) return;
@@ -5292,9 +5292,9 @@ async function saveUser(){
     const id=document.getElementById("user-id")?.value.trim() || "";
     const name=document.getElementById("user-display-name")?.value.trim() || "";
     const role=document.getElementById("user-role")?.value || "worker";
-    if(!id||!name){alert("정보를 모두 입력해주세요.");return;}
+    if(!id||!name){alert(uiMessages.common.infoRequired);return;}
     if(!uid){
-      alert("회원가입은 로그인 화면에서 진행합니다.");
+      alert(uiMessages.admin.signupFromLoginScreen);
       closeModal("user-modal");
       return;
     }
@@ -5519,13 +5519,13 @@ function renderLocationMaintenanceTable(){
 }
 function openLocationMaintenanceModal(groupKey=null){
   if(!isAdminUser()){
-    showToast("관리자만 장소 유지보수 예약을 등록할 수 있습니다.","warn");
+    showToast(uiMessages.admin.maintenanceCreateAdminOnly,"warn");
     return;
   }
   const targetKey=(typeof groupKey==="string" && groupKey.trim()) ? groupKey : null;
   const group=targetKey ? getLocationMaintenanceGroup(targetKey) : null;
   if(targetKey && !group){
-    showToast("수정할 장소 유지보수 예약을 찾을 수 없습니다.","warn");
+    showToast(uiMessages.admin.maintenanceEditTargetNotFound,"warn");
     return;
   }
   const modal=document.getElementById("location-maintenance-modal");
@@ -5564,12 +5564,12 @@ function openLocationMaintenanceModal(groupKey=null){
 
 async function deleteLocationMaintenanceGroup(groupKey){
   if(!isAdminUser()){
-    showToast("관리자만 장소 유지보수 예약을 삭제할 수 있습니다.","warn");
+    showToast(uiMessages.admin.maintenanceDeleteAdminOnly,"warn");
     return;
   }
   const group=getLocationMaintenanceGroup(groupKey);
   if(!group){
-    showToast("삭제할 장소 유지보수 예약을 찾을 수 없습니다.","warn");
+    showToast(uiMessages.admin.maintenanceDeleteTargetNotFound,"warn");
     return;
   }
   const summary=`${formatDateLabel(group.date)} ${formatTime(group.start)} ~ ${formatTime(group.start+group.duration)} / ${group.locations.join(", ")}`;
@@ -5588,13 +5588,13 @@ async function deleteLocationMaintenanceGroup(groupKey){
 
 async function saveLocationMaintenance(){
   if(!isAdminUser()){
-    showToast("관리자만 장소 유지보수 예약을 등록할 수 있습니다.","warn");
+    showToast(uiMessages.admin.maintenanceCreateAdminOnly,"warn");
     return;
   }
   try{
     const editing=appState.locationMaintenanceEdit ? getLocationMaintenanceGroup(appState.locationMaintenanceEdit.key) : null;
     if(appState.locationMaintenanceEdit && !editing){
-      showToast("기존 장소 유지보수 예약 정보를 찾을 수 없습니다. 다시 시도해주세요.","warn");
+      showToast(uiMessages.admin.maintenanceExistingGroupMissing,"warn");
       return;
     }
     const date=document.getElementById("location-maintenance-date")?.value || "";
@@ -5603,12 +5603,12 @@ async function saveLocationMaintenance(){
     const operator=(document.getElementById("location-maintenance-operator")?.value || "").trim() || "시설 점검";
     const reason=(document.getElementById("location-maintenance-reason")?.value || "").trim();
     const selectedLocations=normalizeLocationMaintenanceLocations(getLocationMaintenanceSelectedLocations());
-    if(!date){ showToast("날짜를 선택해주세요.","warn"); return; }
-    if(selectedLocations.length===0){ showToast("유지보수 대상 장소를 선택해주세요.","warn"); return; }
+    if(!date){ showToast(uiMessages.booking.dateRequired,"warn"); return; }
+    if(selectedLocations.length===0){ showToast(uiMessages.admin.maintenanceLocationRequired,"warn"); return; }
     if(start<9 || start+duration>18){ showToast("운영 시간(09:00~18:00)을 벗어납니다.","warn"); return; }
     const targetMachineIds=getLocationMaintenanceTargetMachineIds(selectedLocations);
     if(targetMachineIds.length===0){
-      showToast("선택한 장소에 등록된 장비가 없습니다.","warn");
+      showToast(uiMessages.admin.maintenanceNoMachines,"warn");
       return;
     }
     const previousDocIdsByMachine=new Map((editing?.bookings || []).map(item=>[item.machineId,item.docId]));
