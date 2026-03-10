@@ -201,6 +201,17 @@ body.login-page {
   min-height: 0;
 }
 
+#view-manual {
+  flex-direction: column;
+  overflow: auto;
+  padding-bottom: 12px;
+}
+
+.manual-page-card {
+  flex: 1;
+  min-height: 0;
+}
+
 .dashboard-layout {
   display: flex;
   gap: 14px;
@@ -2467,6 +2478,7 @@ body.is-resizing .resize-handle {
   color: #6b7d8f;
 }
 
+.manual-page-layout,
 .manual-admin-layout {
   margin-top: 12px;
   display: grid;
@@ -2522,6 +2534,11 @@ body.is-resizing .resize-handle {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.manual-page-layout .manual-content {
+  max-height: none;
+  min-height: min(60vh, 560px);
 }
 
 .manual-section-card {
@@ -3767,6 +3784,7 @@ body.is-resizing .resize-handle {
 
 
 @media (max-width: 1024px) {
+  .manual-page-layout,
   .manual-admin-layout {
     grid-template-columns: 1fr;
   }

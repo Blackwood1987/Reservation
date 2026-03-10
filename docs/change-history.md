@@ -15,6 +15,7 @@
 
 | 날짜 | 커밋 | 변경 요약 | 영향 범위 | 검증 |
 |---|---|---|---|---|
+| 2026-03-10 | `TBD` | 사용자 메뉴얼을 로그인 사용자 탭으로 확장하고 로그인 안내 섹션/스크린샷을 제외 | `app.html`, `app.js`, `styles.css` | `node --check app.js`, `node tests\run-tests.mjs` |
 | 2026-03-04 | `a6c755c` | 관리자 장소 유지보수 예약(전체/일부 장소 선택) 기능 추가 | `app.html`, `app.js`, `styles.css` | `node --check app.js` |
 | 2026-03-04 | `8546095` | 리사이즈 프리뷰와 포인터 위치 정렬 보정(px 기준) | `app.js`, `app.html` | `node --check app.js` |
 | 2026-03-04 | `80baf37` | 리사이즈 의도잠금 + 실시간 프리뷰/가이드 UX 추가 | `app.js`, `styles.css` | `node --check app.js` |
